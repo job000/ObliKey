@@ -1,0 +1,274 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  # PR Metadata
+  pr-info:
+    name: PR Information
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: PR details
+        run: |
+          echo "PR Title: ${{ github.event.pull_request.title }}"
+          echo "PR Author: ${{ github.event.pull_request.user.login }}"
+          echo "Base Branch: ${{ github.event.pull_request.base.ref }}"
+          echo "Head Branch: ${{ github.event.pull_request.head.ref }}"
+
+  # Check PR Title
+  pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check PR title format
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+          requireScope: false
+
+  # Check for breaking changes
+  breaking-changes:
+    name: Check for Breaking Changes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for schema changes
+        id: schema_check
+        run: |
+          if git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep -q "prisma/schema"; then
+            echo "has_schema_changes=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Database schema changes detected"
+          else
+            echo "has_schema_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on PR if schema changed
+        if: steps.schema_check.outputs.has_schema_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ **Database Schema Changes Detected**\n\nThis PR includes changes to the Prisma schema. Please ensure:\n- [ ] Migration files are included\n- [ ] Breaking changes are documented\n- [ ] Backward compatibility is considered\n- [ ] Database backup plan is in place'
+            })
+
+  # Size check
+  pr-size:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check PR size
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const additions = pr.additions;
+            const deletions = pr.deletions;
+            const changes = additions + deletions;
+
+            let label = '';
+            let message = '';
+
+            if (changes < 100) {
+              label = 'size/XS';
+              message = '✅ Small PR - Easy to review';
+            } else if (changes < 300) {
+              label = 'size/S';
+              message = '✅ Small-Medium PR';
+            } else if (changes < 600) {
+              label = 'size/M';
+              message = '⚠️ Medium PR - Consider breaking into smaller PRs';
+            } else if (changes < 1000) {
+              label = 'size/L';
+              message = '⚠️ Large PR - Please break into smaller PRs';
+            } else {
+              label = 'size/XL';
+              message = '🚨 Very Large PR - Must be broken into smaller PRs';
+            }
+
+            console.log(`${message} (${changes} lines changed)`);
+
+            // Add label
+            github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: [label]
+            });
+
+  # Test coverage comparison
+  coverage-diff:
+    name: Test Coverage Comparison
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: oblikey_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Generate Prisma Client
+        working-directory: backend
+        run: npx prisma generate
+
+      - name: Run tests with coverage
+        working-directory: backend
+        run: npm test -- --coverage --maxWorkers=2
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/oblikey_test
+          JWT_SECRET: test-jwt-secret
+          NODE_ENV: test
+
+      - name: Comment coverage on PR
+        uses: romeovs/lcov-reporter-action@v0.3.1
+        with:
+          lcov-file: ./backend/coverage/lcov.info
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Security check
+  security-check:
+    name: Security Vulnerability Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run security audit
+        run: |
+          cd backend && npm audit --audit-level=moderate || true
+          cd ../frontend && npm audit --audit-level=moderate || true
+
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
+
+  # Code quality metrics
+  code-quality:
+    name: Code Quality Metrics
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: backend
+        run: npm run lint -- --format json --output-file eslint-report.json || true
+
+      - name: Comment lint results
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const report = JSON.parse(fs.readFileSync('backend/eslint-report.json', 'utf8'));
+              const errorCount = report.reduce((sum, file) => sum + file.errorCount, 0);
+              const warningCount = report.reduce((sum, file) => sum + file.warningCount, 0);
+
+              if (errorCount > 0 || warningCount > 0) {
+                const body = `## 📊 Code Quality Report\n\n- Errors: ${errorCount}\n- Warnings: ${warningCount}\n\nPlease fix errors before merging.`;
+
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: body
+                });
+              }
+            } catch (error) {
+              console.log('No lint report found or error reading it');
+            }
+
+  # All PR checks passed
+  pr-checks-complete:
+    name: All PR Checks Complete
+    runs-on: ubuntu-latest
+    needs: [pr-title, breaking-changes, pr-size, coverage-diff, security-check, code-quality]
+    if: always()
+
+    steps:
+      - name: Check if all checks passed
+        run: |
+          if [ "${{ needs.pr-title.result }}" != "success" ]; then
+            echo "PR title check failed"
+            exit 1
+          fi
+          if [ "${{ needs.coverage-diff.result }}" != "success" ]; then
+            echo "Coverage check failed"
+            exit 1
+          fi
+          echo "✅ All PR checks passed!"
+
+      - name: Add ready-to-review label
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['ready-for-review']
+            })

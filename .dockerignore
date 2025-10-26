@@ -1,0 +1,50 @@
+# Node modules
+**/node_modules
+**/npm-debug.log
+
+# Development files
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Build outputs
+**/dist
+**/build
+**/.next
+**/.nuxt
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+**/coverage
+**/.nyc_output
+
+# Misc
+*.md
+!README.md
+.prettierrc
+.eslintrc*
+tsconfig.tsbuildinfo
+
+# Database
+*.db
+*.sqlite
+prisma/migrations/*.sql
+
+# Logs
+**/logs
+*.log

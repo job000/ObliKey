@@ -1,0 +1,409 @@
+// ObliKey - Shop & CMS Schema Extension
+// Legg til i hovedfilen schema.prisma
+
+// ============================================
+// SHOP & PRODUCTS
+// ============================================
+
+enum ProductType {
+  PHYSICAL_PRODUCT  // Fysiske varer (proteinpulver, klær, etc)
+  PT_SERVICE        // PT-tjenester (pakker med timer)
+  MEMBERSHIP        // Medlemskap
+  DIGITAL           // Digital produkt (treningsplan PDF, etc)
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Product {
+  id          String        @id @default(uuid())
+  tenantId    String
+  name        String
+  description String
+  type        ProductType
+  status      ProductStatus @default(DRAFT)
+
+  // Pricing
+  price       Float
+  compareAtPrice Float?      // Original pris (for å vise rabatt)
+  currency    String        @default("NOK")
+  taxRate     Float         @default(0.25) // 25% MVA
+
+  // Inventory (kun for fysiske produkter)
+  sku         String?       @unique
+  stock       Int?
+  trackInventory Boolean    @default(false)
+
+  // PT Service specifics
+  sessionCount Int?         // Antall timer i pakken
+  validityDays Int?         // Hvor lenge pakken er gyldig
+
+  // SEO & Display
+  slug        String
+  featured    Boolean       @default(false)
+  sortOrder   Int           @default(0)
+
+  // Metadata
+  metadata    Json?         // Ekstra data (størrelser, farger, etc)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  images      ProductImage[]
+  categories  ProductCategory[]
+  orders      OrderItem[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+  @@index([type])
+  @@map("products")
+}
+
+model ProductImage {
+  id          String   @id @default(uuid())
+  productId   String
+  url         String
+  altText     String?
+  sortOrder   Int      @default(0)
+  isPrimary   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model ProductCategory {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@unique([tenantId, slug])
+  @@map("product_categories")
+}
+
+// ============================================
+// ORDERS & CART
+// ============================================
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  tenantId        String
+  userId          String?
+  orderNumber     String      @unique
+
+  // Customer info (hvis ikke innlogget)
+  customerEmail   String
+  customerName    String
+  customerPhone   String?
+
+  // Shipping
+  shippingAddress Json?
+  shippingMethod  String?
+  shippingCost    Float       @default(0)
+
+  // Pricing
+  subtotal        Float
+  tax             Float
+  total           Float
+  currency        String      @default("NOK")
+
+  // Status
+  status          OrderStatus @default(PENDING)
+  paidAt          DateTime?
+
+  // Payment
+  paymentMethod   String?
+  paymentId       String?     // Stripe payment ID
+
+  // Metadata
+  notes           String?
+  metadata        Json?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  productId   String?
+
+  // Product snapshot (i tilfelle produkt blir slettet)
+  name        String
+  description String?
+  price       Float
+  quantity    Int
+  total       Float
+
+  metadata    Json?    // Størrelser, farger, etc
+  createdAt   DateTime @default(now())
+
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Cart {
+  id          String     @id @default(uuid())
+  tenantId    String
+  userId      String?
+  sessionId   String?    // For ikke-innloggede brukere
+
+  items       Json       // Array of cart items
+  subtotal    Float      @default(0)
+
+  expiresAt   DateTime
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([sessionId])
+  @@map("carts")
+}
+
+// ============================================
+// NEWS & BLOG
+// ============================================
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+  ARCHIVED
+}
+
+model Article {
+  id          String        @id @default(uuid())
+  tenantId    String
+  authorId    String
+
+  title       String
+  slug        String
+  excerpt     String?
+  content     String        // Rich text content (HTML or JSON)
+  coverImage  String?
+
+  status      ArticleStatus @default(DRAFT)
+  featured    Boolean       @default(false)
+
+  // SEO
+  metaTitle   String?
+  metaDescription String?
+
+  // Publishing
+  publishedAt DateTime?
+  scheduledFor DateTime?
+
+  // Stats
+  views       Int           @default(0)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author      User          @relation(fields: [authorId], references: [id])
+  categories  ArticleCategory[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+  @@index([publishedAt])
+  @@map("articles")
+}
+
+model ArticleCategory {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+  color       String?  // Hex color for badge
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  articles    Article[]
+
+  @@unique([tenantId, slug])
+  @@map("article_categories")
+}
+
+// ============================================
+// CMS / PAGE BUILDER
+// ============================================
+
+enum ContentBlockType {
+  HERO
+  TEXT
+  IMAGE
+  GALLERY
+  VIDEO
+  CTA
+  TESTIMONIALS
+  FEATURES
+  PRICING
+  FAQ
+  CUSTOM_HTML
+}
+
+model Page {
+  id          String   @id @default(uuid())
+  tenantId    String
+
+  title       String
+  slug        String
+  metaTitle   String?
+  metaDescription String?
+
+  isHomepage  Boolean  @default(false)
+  isPublished Boolean  @default(false)
+
+  // Content blocks (ordered JSON array)
+  content     Json     // Array of content blocks
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@map("pages")
+}
+
+model ContentBlock {
+  id          String          @id @default(uuid())
+  pageId      String?
+  tenantId    String
+
+  type        ContentBlockType
+  title       String?
+  content     Json            // Block-specific content
+
+  // Styling
+  background  String?
+  textColor   String?
+  padding     String?
+
+  sortOrder   Int             @default(0)
+  isVisible   Boolean         @default(true)
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@index([tenantId])
+  @@map("content_blocks")
+}
+
+// ============================================
+// MEDIA LIBRARY
+// ============================================
+
+model Media {
+  id          String   @id @default(uuid())
+  tenantId    String
+  uploadedBy  String
+
+  filename    String
+  url         String
+  mimeType    String
+  size        Int      // bytes
+  width       Int?
+  height      Int?
+
+  altText     String?
+  caption     String?
+
+  folder      String?  // Organizational folder
+
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploader    User     @relation(fields: [uploadedBy], references: [id])
+
+  @@index([tenantId])
+  @@index([folder])
+  @@map("media")
+}
+
+// ============================================
+// UPDATE EXISTING MODELS
+// ============================================
+
+// Legg til i Tenant model:
+model Tenant {
+  // ... existing fields
+
+  // Shop & CMS relations
+  products          Product[]
+  productCategories ProductCategory[]
+  orders            Order[]
+  carts             Cart[]
+  articles          Article[]
+  articleCategories ArticleCategory[]
+  pages             Page[]
+  contentBlocks     ContentBlock[]
+  media             Media[]
+}
+
+// Legg til i User model:
+model User {
+  // ... existing fields
+
+  // Shop & CMS relations
+  orders            Order[]
+  carts             Cart[]
+  articles          Article[]
+  mediaUploads      Media[]
+}
+
+// Legg til i TenantFeatures model:
+model TenantFeatures {
+  // ... existing fields
+
+  // Shop & CMS features
+  shop              Boolean @default(false)
+  news              Boolean @default(false)
+  customHomepage    Boolean @default(false)
+  productReviews    Boolean @default(false)
+}

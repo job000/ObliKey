@@ -1,0 +1,196 @@
+// ObliKey - Feedback & Notification Schema Extension
+// Legg til i hovedfilen schema.prisma
+
+// ============================================
+// FEEDBACK & REVIEWS
+// ============================================
+
+enum FeedbackType {
+  CLASS_REVIEW      // Vurdering av klasse
+  TRAINER_REVIEW    // Vurdering av trener
+  APP_FEEDBACK      // Generell tilbakemelding om appen
+  SUGGESTION        // Forbedringsforslag
+  BUG_REPORT        // Feilrapport
+}
+
+enum FeedbackStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model Feedback {
+  id          String         @id @default(uuid())
+  tenantId    String
+  userId      String
+
+  type        FeedbackType
+  status      FeedbackStatus @default(OPEN)
+
+  // Rating (1-5 stars, kun for reviews)
+  rating      Int?
+
+  // Content
+  title       String?
+  message     String
+
+  // References
+  classId     String?       // Hvis det er class review
+  trainerId   String?       // Hvis det er trainer review
+
+  // Admin response
+  adminResponse String?
+  respondedBy   String?
+  respondedAt   DateTime?
+
+  // Metadata
+  isAnonymous Boolean       @default(false)
+  isPublic    Boolean       @default(false)  // Vis på public side
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id])
+  class       Class?        @relation(fields: [classId], references: [id], onDelete: SetNull)
+  trainer     User?         @relation("TrainerReviews", fields: [trainerId], references: [id], onDelete: SetNull)
+  responder   User?         @relation("FeedbackResponses", fields: [respondedBy], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@map("feedback")
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+enum NotificationType {
+  BOOKING_CONFIRMATION
+  BOOKING_REMINDER     // X timer før klassen
+  BOOKING_CANCELLED
+  CLASS_CANCELLED      // Klassen er kansellert av admin
+  CLASS_UPDATED        // Klasse endret tid/sted
+  PAYMENT_RECEIVED
+  MESSAGE_RECEIVED
+  ANNOUNCEMENT         // Generell kunngjøring fra admin
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+model Notification {
+  id          String            @id @default(uuid())
+  tenantId    String
+  userId      String
+
+  type        NotificationType
+  channel     NotificationChannel
+
+  title       String
+  message     String
+
+  // Metadata
+  data        Json?             // Ekstra data (classId, bookingId, etc)
+
+  // Status
+  isRead      Boolean           @default(false)
+  readAt      DateTime?
+
+  // Scheduling
+  scheduledFor DateTime?        // Send på bestemt tidspunkt
+  sentAt      DateTime?
+
+  createdAt   DateTime          @default(now())
+
+  // Relations
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([isRead])
+  @@index([scheduledFor])
+  @@map("notifications")
+}
+
+model NotificationSettings {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+
+  // Email notifications
+  emailBookingConfirmation    Boolean @default(true)
+  emailBookingReminder        Boolean @default(true)
+  emailClassCancelled         Boolean @default(true)
+  emailNewsletter             Boolean @default(false)
+
+  // SMS notifications
+  smsBookingReminder          Boolean @default(false)
+  smsClassCancelled           Boolean @default(false)
+
+  // Push notifications
+  pushBookingReminder         Boolean @default(true)
+  pushMessageReceived         Boolean @default(true)
+
+  // In-app notifications
+  inAppAll                    Boolean @default(true)
+
+  // Reminder timing
+  reminderHoursBefore         Int     @default(2)  // Send påminnelse X timer før
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
+// ============================================
+// UPDATE EXISTING MODELS
+// ============================================
+
+// Legg til i User model:
+model User {
+  // ... existing fields
+
+  // Feedback & Notifications
+  feedback              Feedback[]
+  receivedReviews       Feedback[]  @relation("TrainerReviews")
+  feedbackResponses     Feedback[]  @relation("FeedbackResponses")
+  notifications         Notification[]
+  notificationSettings  NotificationSettings?
+}
+
+// Legg til i Tenant model:
+model Tenant {
+  // ... existing fields
+
+  feedback              Feedback[]
+  notifications         Notification[]
+}
+
+// Legg til i Class model:
+model Class {
+  // ... existing fields
+
+  feedback              Feedback[]
+}
+
+// Legg til i TenantFeatures:
+model TenantFeatures {
+  // ... existing fields
+
+  // Feedback & Communication
+  publicReviews         Boolean @default(false)  // Vis vurderinger offentlig
+  smsReminders          Boolean @default(false)  // SMS-påminnelser
+  pushNotifications     Boolean @default(false)  // Push-varsler
+}

@@ -1,0 +1,1002 @@
+// Prisma Schema for ObliKey Multi-Tenant System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// MULTI-TENANT CORE
+// ============================================
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  subdomain String   @unique
+  logo      String?
+  email     String
+  phone     String?
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users            User[]
+  classes          Class[]
+  bookings         Booking[]
+  ptSessions       PTSession[]
+  ptCredits        PTCredit[]
+  trainingPrograms TrainingProgram[]
+  payments         Payment[]
+  settings         TenantSettings?
+  emailTemplates   EmailTemplate[]
+  feedback         Feedback[]
+  products         Product[]
+  orders           Order[]
+  exercises        Exercise[]
+  suppliers        Supplier[]
+  accounts         Account[]
+  invoices         Invoice[]
+  transactions     Transaction[]
+  vatReports       VATReport[]
+  conversations    Conversation[]
+  landingPageContent LandingPageContent[]
+  activityLogs     ActivityLog[]
+  productViews     ProductView[]
+
+  @@map("tenants")
+}
+
+model TenantSettings {
+  id                    String   @id @default(uuid())
+  tenantId              String   @unique
+  businessHoursStart    String   @default("06:00")
+  businessHoursEnd      String   @default("22:00")
+  bookingCancellation   Int      @default(24) // hours before
+  maxBookingsPerUser    Int      @default(10)
+  requirePayment        Boolean  @default(false)
+  currency              String   @default("NOK")
+  timezone              String   @default("Europe/Oslo")
+  emailNotifications    Boolean  @default(true)
+  smsNotifications      Boolean  @default(false)
+  primaryColor          String   @default("#3B82F6")
+  secondaryColor        String   @default("#10B981")
+  accountingEnabled     Boolean  @default(false)
+  classesEnabled        Boolean  @default(true)
+  chatEnabled           Boolean  @default(true)
+  landingPageEnabled    Boolean  @default(false)
+  companyVatNumber      String?
+  companyRegNumber      String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_settings")
+}
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  TRAINER
+  CUSTOMER
+}
+
+model User {
+  id                      String   @id @default(uuid())
+  tenantId                String
+  email                   String
+  password                String
+  firstName               String
+  lastName                String
+  phone                   String?
+  dateOfBirth             DateTime?
+  username                String?
+  usernameChangesThisYear Int      @default(0)
+  lastUsernameChangeYear  Int?
+  avatar                  String?
+  role                    UserRole @default(CUSTOMER)
+  active                  Boolean  @default(true)
+  emailVerified           Boolean @default(false)
+  lastLoginAt             DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  tenant                   Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookings                 Booking[]
+  ptSessions               PTSession[]               @relation("CustomerSessions")
+  trainerSessions          PTSession[]               @relation("TrainerSessions")
+  trainingPrograms         TrainingProgram[]         @relation("CustomerPrograms")
+  assignedPrograms         TrainingProgram[]         @relation("TrainerPrograms")
+  payments                 Payment[]
+  createdClasses           Class[]
+  feedback                 Feedback[]
+  trainerReviews           Feedback[]                @relation("TrainerReviews")
+  feedbackResponses        Feedback[]                @relation("FeedbackResponses")
+  createdExercises         Exercise[]                @relation("CreatedExercises")
+  customerInvoices         Invoice[]                 @relation("CustomerInvoices")
+  createdInvoices          Invoice[]                 @relation("CreatedInvoices")
+  createdTransactions      Transaction[]             @relation("CreatedTransactions")
+  submittedVATReports      VATReport[]               @relation("SubmittedVATReports")
+  ptCredits                PTCredit[]
+  orders                   Order[]
+  conversationParticipants ConversationParticipant[]
+  sentMessages             Message[]                 @relation("SentMessages")
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, username])
+  @@map("users")
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+  @@map("password_resets")
+}
+
+model PTCredit {
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String
+  credits    Int      // Number of PT sessions
+  purchaseDate DateTime @default(now())
+  expiryDate DateTime?
+  orderId    String?  // Reference to order that created this credit
+  used       Int      @default(0)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order  Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@map("pt_credits")
+}
+
+// ============================================
+// BOOKING SYSTEM
+// ============================================
+
+enum ClassType {
+  GROUP_CLASS
+  OPEN_GYM
+  FACILITY
+}
+
+model Class {
+  id          String    @id @default(uuid())
+  tenantId    String
+  trainerId   String
+  name        String
+  description String?
+  type        ClassType @default(GROUP_CLASS)
+  capacity    Int       @default(20)
+  duration    Int       // minutes
+  startTime   DateTime
+  endTime     DateTime
+  recurring   Boolean   @default(false)
+  recurringPattern String? // JSON string for recurrence rules
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  trainer  User      @relation(fields: [trainerId], references: [id])
+  bookings Booking[]
+  feedback Feedback[]
+
+  @@map("classes")
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+model Booking {
+  id         String        @id @default(uuid())
+  tenantId   String
+  classId    String
+  userId     String
+  status     BookingStatus @default(PENDING)
+  notes      String?
+  cancelledAt DateTime?
+  cancelReason String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([classId, userId])
+  @@map("bookings")
+}
+
+// ============================================
+// PT (Personal Training) MODULE
+// ============================================
+
+enum PTSessionStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model PTSession {
+  id         String          @id @default(uuid())
+  tenantId   String
+  trainerId  String
+  customerId String
+  title      String
+  description String?
+  startTime  DateTime
+  endTime    DateTime
+  location   String?
+  status     PTSessionStatus @default(SCHEDULED)
+  price      Float?          @default(0)
+  notes      String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  // Relations
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  trainer  User   @relation("TrainerSessions", fields: [trainerId], references: [id])
+  customer User   @relation("CustomerSessions", fields: [customerId], references: [id])
+  payment  Payment?
+
+  @@map("pt_sessions")
+}
+
+model TrainingProgram {
+  id          String   @id @default(uuid())
+  tenantId    String
+  trainerId   String
+  customerId  String
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  goals       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  trainer  User   @relation("TrainerPrograms", fields: [trainerId], references: [id])
+  customer User   @relation("CustomerPrograms", fields: [customerId], references: [id])
+  exercises ProgramExercise[]
+
+  @@map("training_programs")
+}
+
+// Exercise library - shared across tenant
+model Exercise {
+  id          String   @id @default(uuid())
+  tenantId    String
+  createdBy   String   // User who created this exercise
+  name        String
+  description String?
+  category    String?  // e.g., "Strength", "Cardio", "Flexibility"
+  muscleGroup String?  // e.g., "Legs", "Arms", "Core"
+  difficulty  String?  // e.g., "Beginner", "Intermediate", "Advanced"
+  instructions String? // How to perform the exercise
+  videoUrl    String?
+  imageUrl    String?
+  isPublished Boolean  @default(false) // Only published exercises are visible to all
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User   @relation("CreatedExercises", fields: [createdBy], references: [id])
+  programs ProgramExercise[]
+
+  @@map("exercises")
+}
+
+// Many-to-many relationship between programs and exercises
+model ProgramExercise {
+  id        String   @id @default(uuid())
+  programId String
+  exerciseId String
+  sets      Int      @default(3)
+  reps      String   @default("10") // Can be "10" or "8-12" or "30s"
+  restTime  Int?     // Rest time in seconds
+  notes     String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  program  TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  exercise Exercise        @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, exerciseId, sortOrder])
+  @@map("program_exercises")
+}
+
+// ============================================
+// PAYMENTS
+// ============================================
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  MEMBERSHIP
+  PT_SESSION
+  CLASS
+  PRODUCT
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  tenantId    String
+  userId      String
+  ptSessionId String?       @unique
+  amount      Float
+  currency    String        @default("NOK")
+  type        PaymentType
+  status      PaymentStatus @default(PENDING)
+  description String?
+  stripeId    String?       @unique
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id])
+  ptSession PTSession? @relation(fields: [ptSessionId], references: [id])
+
+  @@map("payments")
+}
+
+// ============================================
+// EMAIL SYSTEM
+// ============================================
+
+enum EmailTemplateType {
+  BOOKING_CONFIRMATION
+  BOOKING_REMINDER
+  BOOKING_CANCELLATION
+  PT_SESSION_CONFIRMATION
+  PT_SESSION_REMINDER
+  WELCOME
+  PASSWORD_RESET
+  PAYMENT_RECEIPT
+}
+
+model EmailTemplate {
+  id       String            @id @default(uuid())
+  tenantId String
+  type     EmailTemplateType @unique
+  subject  String
+  body     String            // HTML content
+  active   Boolean           @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("email_templates")
+}
+
+// ============================================
+// FEEDBACK & REVIEWS
+// ============================================
+
+enum FeedbackType {
+  CLASS_REVIEW
+  TRAINER_REVIEW
+  APP_FEEDBACK
+  SUGGESTION
+  BUG_REPORT
+}
+
+enum FeedbackStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model Feedback {
+  id            String         @id @default(uuid())
+  tenantId      String
+  userId        String
+  type          FeedbackType
+  status        FeedbackStatus @default(OPEN)
+  rating        Int?
+  title         String?
+  message       String
+  classId       String?
+  trainerId     String?
+  adminResponse String?
+  respondedBy   String?
+  respondedAt   DateTime?
+  isAnonymous   Boolean        @default(false)
+  isPublic      Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id])
+  class         Class?         @relation(fields: [classId], references: [id], onDelete: SetNull)
+  trainer       User?          @relation("TrainerReviews", fields: [trainerId], references: [id], onDelete: SetNull)
+  responder     User?          @relation("FeedbackResponses", fields: [respondedBy], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("feedback")
+}
+
+// ============================================
+// CHAT SYSTEM
+// ============================================
+
+model Conversation {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String?
+  isGroup   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([tenantId])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String    @id @default(uuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime?
+  joinedAt       DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  content        String
+  type           String   @default("text") // text, image, video, file
+  attachmentUrl  String?
+  read           Boolean  @default(false)
+  deleted        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@map("messages")
+}
+
+// ============================================
+// SHOP & PRODUCTS
+// ============================================
+
+enum ProductType {
+  PHYSICAL_PRODUCT
+  PT_SERVICE
+  MEMBERSHIP
+  DIGITAL
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Product {
+  id             String        @id @default(uuid())
+  tenantId       String
+  name           String
+  description    String
+  type           ProductType
+  status         ProductStatus @default(DRAFT)
+  price          Float
+  compareAtPrice Float?
+  currency       String        @default("NOK")
+  sku            String?       @unique
+  stock          Int?
+  trackInventory Boolean       @default(false)
+  sessionCount   Int?
+  validityDays   Int?
+  slug           String
+  featured       Boolean       @default(false)
+  sortOrder      Int           @default(0)
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  images         ProductImage[]
+  invoiceLines   InvoiceLine[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  url       String
+  altText   String?
+  sortOrder Int      @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model ProductView {
+  id        String   @id @default(uuid())
+  tenantId  String
+  productId String
+  userId    String?
+  sessionId String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, productId])
+  @@index([tenantId, createdAt])
+  @@index([productId, createdAt])
+  @@map("product_views")
+}
+
+// ============================================
+// CART SYSTEM
+// ============================================
+
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  tenantId  String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  items     CartItem[]
+
+  @@index([userId])
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  productId String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@map("cart_items")
+}
+
+// ============================================
+// ORDER SYSTEM
+// ============================================
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  tenantId        String
+  userId          String
+  orderNumber     String      @unique
+  status          OrderStatus @default(PENDING)
+  subtotal        Float
+  tax             Float       @default(0)
+  total           Float
+  currency        String      @default("NOK")
+  notes           String?
+
+  // Payment information
+  paymentMethod   String?     // CARD, VIPPS, etc.
+  paymentId       String?     // External payment ID from payment provider
+
+  // Delivery information
+  requiresDelivery Boolean    @default(false)
+  deliveryAddress  String?
+  deliveryCity     String?
+  deliveryZip      String?
+  deliveryCountry  String?    @default("Norway")
+  trackingNumber   String?
+  shippedAt        DateTime?
+  deliveredAt      DateTime?
+
+  completedAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User        @relation(fields: [userId], references: [id])
+  items           OrderItem[]
+  ptCredits       PTCredit[]
+
+  @@index([tenantId, userId])
+  @@index([orderNumber])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  orderId      String
+  productId    String
+  productName  String   // Snapshot of product name at time of purchase
+  productType  String   // Snapshot of product type
+  quantity     Int
+  price        Float    // Price at time of purchase
+  subtotal     Float    // quantity * price
+  sessionCount Int?     // For PT sessions or memberships
+  createdAt    DateTime @default(now())
+
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+// ============================================
+// ACCOUNTING SYSTEM
+// ============================================
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum VATRate {
+  RATE_25  // 25%
+  RATE_15  // 15%
+  RATE_12  // 12%
+  RATE_0   // 0%
+  EXEMPT   // Fritatt
+}
+
+// Supplier/Vendor management
+model Supplier {
+  id              String   @id @default(uuid())
+  tenantId        String
+  name            String
+  contactPerson   String?
+  email           String?
+  phone           String?
+  address         String?
+  vatNumber       String?
+  accountNumber   String?
+  notes           String?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@map("suppliers")
+}
+
+// Chart of Accounts
+model Account {
+  id          String   @id @default(uuid())
+  tenantId    String
+  accountNumber String  // e.g., "3000", "4000"
+  name        String   // e.g., "Salgsinntekt", "Varekjøp"
+  type        String   // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
+  vatCode     VATRate?
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([tenantId, accountNumber])
+  @@map("accounts")
+}
+
+// Invoices
+model Invoice {
+  id              String        @id @default(uuid())
+  tenantId        String
+  invoiceNumber   String        // Auto-generated: INV-2025-001
+  customerId      String?       // Reference to User (customer) - optional for walk-in
+  customerName    String        // Stored for historical purposes
+  customerEmail   String?
+  customerAddress String?
+  customerVatNumber String?
+  issueDate       DateTime      @default(now())
+  dueDate         DateTime
+  status          InvoiceStatus @default(DRAFT)
+  subtotal        Float         @default(0)
+  vatAmount       Float         @default(0)
+  total           Float         @default(0)
+  notes           String?
+  paymentTerms    String?       @default("14 dager")
+  paidAt          DateTime?
+  sentAt          DateTime?
+  createdBy       String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer User?         @relation("CustomerInvoices", fields: [customerId], references: [id])
+  creator  User          @relation("CreatedInvoices", fields: [createdBy], references: [id])
+  lines    InvoiceLine[]
+
+  @@unique([tenantId, invoiceNumber])
+  @@map("invoices")
+}
+
+// Invoice lines
+model InvoiceLine {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  description String
+  quantity    Float   @default(1)
+  unitPrice   Float
+  vatRate     VATRate @default(RATE_25)
+  vatAmount   Float
+  total       Float
+  sortOrder   Int     @default(0)
+  productId   String? // Optional link to product
+  accountId   String? // Which account to book to
+
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@map("invoice_lines")
+}
+
+// Transactions (journal entries)
+model Transaction {
+  id            String          @id @default(uuid())
+  tenantId      String
+  type          TransactionType
+  accountId     String
+  supplierId    String?
+  description   String
+  amount        Float
+  vatAmount     Float           @default(0)
+  vatRate       VATRate?
+  invoiceId     String?         // Link to invoice if this transaction is from an invoice
+  transactionDate DateTime      @default(now())
+  receiptUrl    String?         // Link to uploaded receipt/bilag
+  notes         String?
+  createdBy     String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account  Account   @relation(fields: [accountId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+  creator  User      @relation("CreatedTransactions", fields: [createdBy], references: [id])
+
+  @@index([tenantId, transactionDate])
+  @@map("transactions")
+}
+
+// VAT Reports
+model VATReport {
+  id               String   @id @default(uuid())
+  tenantId         String
+  periodStart      DateTime
+  periodEnd        DateTime
+  totalSales       Float    @default(0)
+  totalVATOut      Float    @default(0) // Utgående MVA
+  totalPurchases   Float    @default(0)
+  totalVATIn       Float    @default(0) // Inngående MVA
+  netVAT           Float    @default(0) // To pay or receive
+  status           String   @default("DRAFT") // DRAFT, SUBMITTED
+  submittedAt      DateTime?
+  submittedBy      String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  submitter User?  @relation("SubmittedVATReports", fields: [submittedBy], references: [id])
+
+  @@map("vat_reports")
+}
+
+// ============================================
+// LANDING PAGE CMS
+// ============================================
+
+model LandingPageContent {
+  id          String   @id @default(uuid())
+  tenantId    String
+  section     String   // HERO, FEATURES, ABOUT, NEWS, TESTIMONIALS, CTA, etc
+  title       String?
+  subtitle    String?
+  content     String?  // Can be JSON for complex content
+  imageUrl    String?
+  buttonText  String?
+  buttonUrl   String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  metadata    Json?    // For additional flexible data
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, section, sortOrder])
+  @@index([tenantId, section])
+  @@map("landing_page_content")
+}
+
+// ============================================
+// ACTIVITY LOGGING
+// ============================================
+
+enum ActivityAction {
+  // Authentication & Profile
+  LOGIN
+  LOGOUT
+  REGISTER
+  UPDATE_PROFILE
+  CHANGE_PASSWORD
+  UPDATE_USERNAME
+  UPDATE_AVATAR
+  REMOVE_AVATAR
+
+  // Generic CRUD
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  EXPORT
+  DOWNLOAD
+  UPLOAD
+
+  // Messaging & Chat
+  SEND_MESSAGE
+  READ_MESSAGE
+  DELETE_MESSAGE
+  CREATE_CONVERSATION
+
+  // Bookings & Classes
+  BOOK_CLASS
+  CANCEL_BOOKING
+  JOIN_CLASS
+  LEAVE_CLASS
+
+  // PT Sessions & Programs
+  CREATE_PT_SESSION
+  COMPLETE_PT_SESSION
+  ASSIGN_TRAINER
+  UNASSIGN_TRAINER
+
+  // Orders & Shopping
+  PURCHASE
+  CREATE_ORDER
+  UPDATE_ORDER
+  CANCEL_ORDER
+  SHIP_ORDER
+  DELIVER_ORDER
+  CLEAR_CART
+  ADD_TO_CART
+  REMOVE_FROM_CART
+  CHECKOUT
+
+  // Products
+  CREATE_PRODUCT
+  UPDATE_PRODUCT
+  DELETE_PRODUCT
+
+  // Payments
+  PAYMENT
+  REFUND
+
+  // User Administration
+  DEACTIVATE_USER
+  ACTIVATE_USER
+  UPDATE_USER_ROLE
+  DELETE_USER
+
+  // Reports & Analytics
+  GENERATE_REPORT
+  VIEW_ANALYTICS
+}
+
+model ActivityLog {
+  id          String         @id @default(uuid())
+  tenantId    String
+  userId      String?        // Null for system actions
+  action      ActivityAction
+  resource    String         // e.g., "User", "Booking", "PTSession"
+  resourceId  String?        // ID of the affected resource
+  description String         // Human-readable description
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?          // Additional context data
+  createdAt   DateTime       @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+  @@index([tenantId, action])
+  @@index([tenantId, createdAt])
+  @@index([userId])
+  @@map("activity_logs")
+}

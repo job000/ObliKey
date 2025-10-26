@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.boostsystem.no)",
+      "Bash(docker-compose:*)",
+      "Bash(curl:*)",
+      "Bash(node update-user-role.js:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma migrate:*)",
+      "Bash(pkill:*)",
+      "Read(//private/tmp/**)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Read(//tmp/**)",
+      "Bash(npm run dev:*)",
+      "Bash(node:*)",
+      "Bash(npx prisma studio:*)",
+      "Bash(psql postgresql://postgres:password@localhost:5432/oblikey -c \"SELECT COUNT(*) FROM users;\")",
+      "Bash(psql postgresql://postgres:password@localhost:5432/oblikey -c \"SELECT COUNT(*) FROM classes; SELECT * FROM tenant_settings;\")",
+      "Bash(psql postgresql://postgres:password@localhost:5432/oblikey -c \"SELECT id, name, subdomain FROM tenants;\")",
+      "Bash(psql:*)",
+      "Bash(ss:*)",
+      "Bash(cat:*)",
+      "Bash(npm test:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxY2JiYmM2YS0xZWExLTQzZGYtYTdkZC0xZWIxY2MxZGVjNGYiLCJ0ZW5hbnRJZCI6Im9ibGlrZXktZGVtbyIsImVtYWlsIjoibnlicnVrZXIxQHRlc3Qubm8iLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3NjE0NzgzNDYsImV4cCI6MTc2MjA4MzE0Nn0.xKXzvGykbKoE4JNdkmX7eOPUsdd2mjAF6ds6PYfuCBU\")",
+      "Bash(tee:*)",
+      "Bash(USERID=\"aa85e885-befb-48ad-afc7-6a7c183e9b7d\":*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(open http://localhost:5174)",
+      "Bash(npx vite build:*)",
+      "Bash(awk:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

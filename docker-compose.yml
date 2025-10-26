@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: oblikey-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-oblikey}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oblikey_password}
+      POSTGRES_DB: ${POSTGRES_DB:-oblikey}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-oblikey}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - oblikey-network
+
+  # Redis (for caching and sessions)
+  redis:
+    image: redis:7-alpine
+    container_name: oblikey-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - oblikey-network
+
+  # ObliKey Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oblikey-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-oblikey}:${POSTGRES_PASSWORD:-oblikey_password}@postgres:5432/${POSTGRES_DB:-oblikey}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      VIPPS_CLIENT_ID: ${VIPPS_CLIENT_ID}
+      VIPPS_CLIENT_SECRET: ${VIPPS_CLIENT_SECRET}
+      VIPPS_SUBSCRIPTION_KEY: ${VIPPS_SUBSCRIPTION_KEY}
+      VIPPS_ENV: ${VIPPS_ENV:-test}
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - oblikey-network
+    command: >
+      sh -c "npx prisma migrate deploy &&
+             node dist/index.js"
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  oblikey-network:
+    driver: bridge

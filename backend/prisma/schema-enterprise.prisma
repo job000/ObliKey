@@ -1,0 +1,610 @@
+// ObliKey Enterprise - Multi-Tenant SaaS Platform Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// PLATFORM ADMINISTRATION (OSS)
+// ============================================
+
+enum PlatformRole {
+  PLATFORM_OWNER    // Full access to everything
+  PLATFORM_ADMIN    // Manage tenants, billing, support
+  PLATFORM_SUPPORT  // Read-only, customer support
+}
+
+model PlatformAdmin {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  password     String
+  firstName    String
+  lastName     String
+  role         PlatformRole
+  active       Boolean      @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  createdTenants Tenant[] @relation("CreatedByAdmin")
+  auditLogs      AuditLog[]
+
+  @@map("platform_admins")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  action     String   // "tenant_created", "plan_changed", etc.
+  entityType String   // "Tenant", "Subscription", etc.
+  entityId   String
+  details    String?  // JSON string
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  admin PlatformAdmin @relation(fields: [adminId], references: [id])
+
+  @@index([adminId])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ============================================
+// SUBSCRIPTION & BILLING
+// ============================================
+
+enum SubscriptionPlan {
+  STARTER
+  BASIC
+  PRO
+  ENTERPRISE
+  CUSTOM
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELLED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+model Subscription {
+  id                String             @id @default(uuid())
+  tenantId          String             @unique
+  plan              SubscriptionPlan
+  status            SubscriptionStatus @default(TRIAL)
+  billingCycle      BillingCycle       @default(MONTHLY)
+
+  // Pricing
+  price             Float              // Monthly price in NOK
+  currency          String             @default("NOK")
+
+  // Dates
+  trialEndsAt       DateTime?
+  currentPeriodStart DateTime          @default(now())
+  currentPeriodEnd   DateTime
+  cancelAt          DateTime?
+  cancelledAt       DateTime?
+
+  // Stripe
+  stripeCustomerId      String?        @unique
+  stripeSubscriptionId  String?        @unique
+  stripeProductId       String?
+
+  // Metadata
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  // Relations
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoices          Invoice[]
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id             String   @id @default(uuid())
+  subscriptionId String
+  invoiceNumber  String   @unique
+  amount         Float
+  tax            Float    @default(0)
+  total          Float
+  currency       String   @default("NOK")
+  status         String   // "draft", "open", "paid", "void"
+  dueDate        DateTime
+  paidAt         DateTime?
+  stripeInvoiceId String? @unique
+  invoiceUrl     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@map("invoices")
+}
+
+// ============================================
+// TENANT MANAGEMENT
+// ============================================
+
+model Tenant {
+  id            String   @id @default(uuid())
+
+  // Identity
+  subdomain     String   @unique
+  customDomain  String?  @unique
+  companyName   String
+
+  // Contact
+  email         String
+  phone         String?
+  address       String?
+  country       String   @default("NO")
+
+  // Status
+  active        Boolean  @default(true)
+  onboarded     Boolean  @default(false)
+
+  // Metadata
+  industry      String?  // "gym", "pt", "yoga", etc.
+  language      String   @default("nb")
+  timezone      String   @default("Europe/Oslo")
+  createdById   String?  // Platform admin who created it
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  createdBy         PlatformAdmin?    @relation("CreatedByAdmin", fields: [createdById], references: [id])
+  branding          TenantBranding?
+  features          TenantFeatures?
+  limits            TenantLimits?
+  integrations      TenantIntegrations?
+  subscription      Subscription?
+  users             User[]
+  classes           Class[]
+  bookings          Booking[]
+  ptSessions        PTSession[]
+  trainingPrograms  TrainingProgram[]
+  payments          Payment[]
+  settings          TenantSettings?
+  emailTemplates    EmailTemplate[]
+  analytics         TenantAnalytics[]
+
+  @@map("tenants")
+}
+
+model TenantBranding {
+  id             String   @id @default(uuid())
+  tenantId       String   @unique
+
+  // Visual Identity
+  logo           String?  // URL
+  logoSmall      String?  // URL for favicon/small displays
+  favicon        String?
+
+  // Colors
+  primaryColor   String   @default("#3B82F6")
+  secondaryColor String   @default("#10B981")
+  accentColor    String   @default("#8B5CF6")
+  backgroundColor String  @default("#FFFFFF")
+  textColor      String   @default("#1F2937")
+
+  // Typography
+  fontFamily     String   @default("Inter")
+  fontUrl        String?  // Google Fonts URL if custom
+
+  // Custom CSS
+  customCss      String?  // Advanced customization
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_branding")
+}
+
+model TenantFeatures {
+  id                    String   @id @default(uuid())
+  tenantId              String   @unique
+
+  // Core Features
+  booking               Boolean  @default(true)
+  customerPortal        Boolean  @default(false)
+  ptModule              Boolean  @default(false)
+  trainingPrograms      Boolean  @default(false)
+  payments              Boolean  @default(false)
+
+  // Communication
+  emailNotifications    Boolean  @default(false)
+  smsNotifications      Boolean  @default(false)
+  pushNotifications     Boolean  @default(false)
+
+  // Advanced
+  analytics             Boolean  @default(false)
+  apiAccess             Boolean  @default(false)
+  mobileApp             Boolean  @default(false)
+  whiteLabel            Boolean  @default(false)
+  customDomain          Boolean  @default(false)
+
+  // Add-ons
+  onlineTraining        Boolean  @default(false)
+  ecommerce             Boolean  @default(false)
+  membershipManagement  Boolean  @default(false)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_features")
+}
+
+model TenantLimits {
+  id              String   @id @default(uuid())
+  tenantId        String   @unique
+
+  // User Limits
+  maxUsers        Int      @default(50)
+  maxTrainers     Int      @default(5)
+  maxAdmins       Int      @default(2)
+
+  // Booking Limits
+  maxClasses      Int      @default(100)  // per month
+  maxBookings     Int      @default(1000) // per month
+
+  // Storage
+  maxStorage      Int      @default(1000) // MB
+
+  // API
+  maxApiCalls     Int      @default(0)    // per day, 0 = no API access
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_limits")
+}
+
+model TenantIntegrations {
+  id                    String   @id @default(uuid())
+  tenantId              String   @unique
+
+  // Payment Providers
+  stripeEnabled         Boolean  @default(false)
+  stripePublicKey       String?
+  stripeSecretKey       String?  // Encrypted
+
+  vippsEnabled          Boolean  @default(false)
+  vippsMerchantId       String?
+  vippsClientId         String?
+  vippsClientSecret     String?  // Encrypted
+
+  // Analytics
+  googleAnalyticsEnabled Boolean @default(false)
+  googleAnalyticsId      String?
+
+  facebookPixelEnabled   Boolean @default(false)
+  facebookPixelId        String?
+
+  // Email
+  customEmailEnabled     Boolean @default(false)
+  smtpHost               String?
+  smtpPort               Int?
+  smtpUser               String?
+  smtpPassword           String?  // Encrypted
+
+  // Calendar
+  googleCalendarEnabled  Boolean @default(false)
+  outlookCalendarEnabled Boolean @default(false)
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_integrations")
+}
+
+model TenantAnalytics {
+  id              String   @id @default(uuid())
+  tenantId        String
+  date            DateTime @default(now())
+
+  // User metrics
+  totalUsers      Int      @default(0)
+  activeUsers     Int      @default(0)
+  newUsers        Int      @default(0)
+
+  // Booking metrics
+  totalBookings   Int      @default(0)
+  totalClasses    Int      @default(0)
+  attendanceRate  Float    @default(0)
+
+  // Revenue metrics (tenant's revenue, not ours)
+  revenue         Float    @default(0)
+  transactions    Int      @default(0)
+
+  // Engagement
+  pageViews       Int      @default(0)
+  sessionsessions Int      @default(0)
+  avgSessionTime  Int      @default(0)
+
+  createdAt       DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, date])
+  @@index([tenantId, date])
+  @@map("tenant_analytics")
+}
+
+// ============================================
+// REST OF SCHEMA (Users, Classes, etc.)
+// ============================================
+
+enum UserRole {
+  TENANT_OWNER  // Full access to their tenant
+  TENANT_ADMIN  // Admin access
+  TRAINER       // PT/Trainer
+  CUSTOMER      // End customer
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  email        String
+  password     String
+  firstName    String
+  lastName     String
+  phone        String?
+  dateOfBirth  DateTime?
+  avatar       String?
+  role         UserRole @default(CUSTOMER)
+  active       Boolean  @default(true)
+  emailVerified Boolean @default(false)
+  twoFactorEnabled Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  tenant               Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookings             Booking[]
+  ptSessions           PTSession[]       @relation("CustomerSessions")
+  trainerSessions      PTSession[]       @relation("TrainerSessions")
+  trainingPrograms     TrainingProgram[] @relation("CustomerPrograms")
+  assignedPrograms     TrainingProgram[] @relation("TrainerPrograms")
+  payments             Payment[]
+  createdClasses       Class[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+// Classes, Bookings, PT Sessions, Training Programs, Payments, etc.
+// (Keep existing models from previous schema)
+
+model TenantSettings {
+  id                    String   @id @default(uuid())
+  tenantId              String   @unique
+  businessHoursStart    String   @default("06:00")
+  businessHoursEnd      String   @default("22:00")
+  bookingCancellation   Int      @default(24)
+  maxBookingsPerUser    Int      @default(10)
+  requirePayment        Boolean  @default(false)
+  currency              String   @default("NOK")
+  timezone              String   @default("Europe/Oslo")
+  emailNotifications    Boolean  @default(true)
+  smsNotifications      Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_settings")
+}
+
+enum ClassType {
+  GROUP_CLASS
+  OPEN_GYM
+  FACILITY
+  ONLINE
+}
+
+model Class {
+  id          String    @id @default(uuid())
+  tenantId    String
+  trainerId   String
+  name        String
+  description String?
+  type        ClassType @default(GROUP_CLASS)
+  capacity    Int       @default(20)
+  duration    Int
+  startTime   DateTime
+  endTime     DateTime
+  recurring   Boolean   @default(false)
+  recurringPattern String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  trainer  User      @relation(fields: [trainerId], references: [id])
+  bookings Booking[]
+
+  @@index([tenantId])
+  @@map("classes")
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+model Booking {
+  id         String        @id @default(uuid())
+  tenantId   String
+  classId    String
+  userId     String
+  status     BookingStatus @default(PENDING)
+  notes      String?
+  cancelledAt DateTime?
+  cancelReason String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([classId, userId])
+  @@index([tenantId])
+  @@map("bookings")
+}
+
+enum PTSessionStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model PTSession {
+  id         String          @id @default(uuid())
+  tenantId   String
+  trainerId  String
+  customerId String
+  title      String
+  description String?
+  startTime  DateTime
+  endTime    DateTime
+  location   String?
+  status     PTSessionStatus @default(SCHEDULED)
+  notes      String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  trainer  User   @relation("TrainerSessions", fields: [trainerId], references: [id])
+  customer User   @relation("CustomerSessions", fields: [customerId], references: [id])
+  payment  Payment?
+
+  @@index([tenantId])
+  @@map("pt_sessions")
+}
+
+model TrainingProgram {
+  id          String   @id @default(uuid())
+  tenantId    String
+  trainerId   String
+  customerId  String
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  goals       String?
+  exercises   String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  trainer  User   @relation("TrainerPrograms", fields: [trainerId], references: [id])
+  customer User   @relation("CustomerPrograms", fields: [customerId], references: [id])
+
+  @@index([tenantId])
+  @@map("training_programs")
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  MEMBERSHIP
+  PT_SESSION
+  CLASS
+  PRODUCT
+}
+
+enum PaymentProvider {
+  STRIPE
+  VIPPS
+  MANUAL
+}
+
+model Payment {
+  id          String          @id @default(uuid())
+  tenantId    String
+  userId      String
+  ptSessionId String?         @unique
+  amount      Float
+  currency    String          @default("NOK")
+  type        PaymentType
+  provider    PaymentProvider @default(STRIPE)
+  status      PaymentStatus   @default(PENDING)
+  description String?
+
+  // Provider IDs
+  stripeId    String?         @unique
+  vippsId     String?         @unique
+
+  paidAt      DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id])
+  ptSession PTSession? @relation(fields: [ptSessionId], references: [id])
+
+  @@index([tenantId])
+  @@map("payments")
+}
+
+enum EmailTemplateType {
+  BOOKING_CONFIRMATION
+  BOOKING_REMINDER
+  BOOKING_CANCELLATION
+  PT_SESSION_CONFIRMATION
+  PT_SESSION_REMINDER
+  WELCOME
+  PASSWORD_RESET
+  PAYMENT_RECEIPT
+}
+
+model EmailTemplate {
+  id       String            @id @default(uuid())
+  tenantId String
+  type     EmailTemplateType @unique
+  subject  String
+  body     String
+  active   Boolean           @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("email_templates")
+}
