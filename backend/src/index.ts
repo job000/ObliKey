@@ -17,6 +17,7 @@ import {
 // Import routes
 import authRoutes from './routes/auth.routes';
 import tenantRoutes from './routes/tenant.routes';
+import tenantSettingsRoutes from './routes/tenantSettings.routes';
 import userRoutes from './routes/user.routes';
 import classRoutes from './routes/class.routes';
 import bookingRoutes from './routes/booking.routes';
@@ -30,12 +31,21 @@ import uploadRoutes from './routes/upload.routes';
 import exerciseRoutes from './routes/exercise.routes';
 import accountingRoutes from './routes/accounting.routes';
 import invoiceRoutes from './routes/invoice.routes';
+import programRoutes from './routes/program.routes';
 import orderRoutes from './routes/order.routes';
 import landingPageRoutes from './routes/landingPage.routes';
 import activityLogRoutes from './routes/activityLog.routes';
 import passwordResetRoutes from './routes/passwordReset.routes';
 import cartRoutes from './routes/cart.routes';
 import productAnalyticsRoutes from './routes/productAnalytics.routes';
+import analyticsRoutes from './routes/analytics.routes';
+import ecommerceRoutes from './routes/ecommerce.routes';
+import notificationRoutes from './routes/notification.routes';
+import membershipRoutes from './routes/membership.routes';
+import doorRoutes from './routes/door.routes';
+import accessRoutes from './routes/access.routes';
+import doorAccessRuleRoutes from './routes/door-access-rule.routes';
+import superAdminRoutes from './routes/super-admin.routes';
 
 dotenv.config();
 
@@ -82,6 +92,7 @@ app.get('/health', (req, res) => {
 // ============================================
 app.use('/api/auth', authRoutes);
 app.use('/api/tenants', tenantRoutes);
+app.use('/api/tenant-settings', tenantSettingsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/bookings', bookingRoutes);
@@ -92,6 +103,7 @@ app.use('/api/platform', platformRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/product-analytics', productAnalyticsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/exercises', exerciseRoutes);
 app.use('/api/accounting', accountingRoutes);
@@ -101,6 +113,14 @@ app.use('/api/landing-page', landingPageRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/password-reset', passwordResetRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/ecommerce', ecommerceRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/programs', programRoutes);
+app.use('/api/memberships', membershipRoutes);
+app.use('/api/door-access/doors', doorRoutes);
+app.use('/api/door-access', accessRoutes);
+app.use('/api/door-access', doorAccessRuleRoutes);
+app.use('/api/super-admin', superAdminRoutes);
 
 // ============================================
 // ERROR HANDLING
@@ -110,10 +130,11 @@ app.use(errorHandler);
 // ============================================
 // START SERVER
 // ============================================
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API: http://localhost:${PORT}/api`);
+  console.log(`🔗 Network: http://10.0.0.57:${PORT}/api`);
 });
 
 export default app;

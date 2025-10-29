@@ -246,7 +246,7 @@ export class StripeService {
   /**
    * Get Stripe pricing based on plan
    */
-  getPrice PriceId(plan: 'STARTER' | 'BASIC' | 'PRO' | 'ENTERPRISE', billingCycle: 'MONTHLY' | 'YEARLY'): string {
+  getPriceId(plan: 'STARTER' | 'BASIC' | 'PRO' | 'ENTERPRISE', billingCycle: 'MONTHLY' | 'YEARLY'): string {
     // These would be actual Stripe Price IDs from your Stripe dashboard
     const prices: Record<string, Record<string, string>> = {
       STARTER: {

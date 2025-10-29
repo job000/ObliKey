@@ -138,11 +138,55 @@ export class TenantController {
     }
   }
 
+  // Get current user's tenant settings
+  async getSettings(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user?.tenantId) {
+        throw new AppError('Tenant ikke funnet', 404);
+      }
+
+      const settings = await prisma.tenantSettings.findUnique({
+        where: { tenantId: req.user.tenantId },
+        include: {
+          tenant: {
+            select: {
+              name: true,
+              email: true,
+              phone: true,
+              address: true,
+              subdomain: true
+            }
+          }
+        }
+      });
+
+      if (!settings) {
+        throw new AppError('Innstillinger ikke funnet', 404);
+      }
+
+      res.json({ success: true, data: settings });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        res.status(500).json({ success: false, error: 'Kunne ikke hente innstillinger' });
+      }
+    }
+  }
+
   // Update tenant settings
   async updateSettings(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const settings = req.body;
+      const userTenantId = req.user!.tenantId;
+      const userRole = req.user!.role;
+
+      // Verify user can update this tenant's settings
+      // Only SUPER_ADMIN can update other tenants, regular ADMIN can only update their own
+      if (userRole !== 'SUPER_ADMIN' && userTenantId !== id) {
+        throw new AppError('Ingen tilgang', 403);
+      }
 
       const updatedSettings = await prisma.tenantSettings.update({
         where: { tenantId: id },
@@ -155,7 +199,96 @@ export class TenantController {
         message: 'Innstillinger oppdatert'
       });
     } catch (error) {
-      res.status(500).json({ success: false, error: 'Kunne ikke oppdatere innstillinger' });
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        res.status(500).json({ success: false, error: 'Kunne ikke oppdatere innstillinger' });
+      }
+    }
+  }
+
+  // Set tenant status (activate/deactivate) - Super Admin only
+  async setTenantStatus(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { active } = req.body;
+
+      // Verify tenant exists
+      const tenant = await prisma.tenant.findUnique({
+        where: { id }
+      });
+
+      if (!tenant) {
+        throw new AppError('Tenant ikke funnet', 404);
+      }
+
+      // Update tenant status
+      const updatedTenant = await prisma.tenant.update({
+        where: { id },
+        data: { active }
+      });
+
+      res.json({
+        success: true,
+        data: updatedTenant,
+        message: `Tenant ${active ? 'aktivert' : 'deaktivert'} vellykket`
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        res.status(500).json({ success: false, error: 'Kunne ikke endre status' });
+      }
+    }
+  }
+
+  // Delete tenant permanently - Super Admin only
+  async deleteTenant(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      // Verify tenant exists
+      const tenant = await prisma.tenant.findUnique({
+        where: { id },
+        include: {
+          _count: {
+            select: {
+              users: true,
+              products: true,
+              classes: true,
+              bookings: true,
+              ptSessions: true,
+              orders: true
+            }
+          }
+        }
+      });
+
+      if (!tenant) {
+        throw new AppError('Tenant ikke funnet', 404);
+      }
+
+      // Delete tenant - Prisma cascade will handle all related records
+      // (users, products, classes, bookings, PT sessions, orders, etc.)
+      await prisma.tenant.delete({
+        where: { id }
+      });
+
+      res.json({
+        success: true,
+        message: `Tenant "${tenant.name}" og alle tilknyttede data ble slettet permanent`,
+        data: {
+          deletedTenant: tenant.name,
+          deletedRecords: tenant._count
+        }
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Delete tenant error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke slette tenant' });
+      }
     }
   }
 }

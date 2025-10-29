@@ -21,6 +21,7 @@ const validate = (req: Request, res: Response, next: NextFunction): void => {
 // Routes
 router.post('/register', registerValidation, validate, (req, res) => authController.register(req, res));
 router.post('/login', loginValidation, validate, (req, res) => authController.login(req, res));
+router.post('/select-tenant', (req, res) => authController.selectTenant(req, res)); // Multi-tenant user selects organization
 router.get('/me', authenticate, (req, res) => authController.getCurrentUser(req, res));
 router.post('/change-password', authenticate, (req, res) => authController.changePassword(req, res));
 

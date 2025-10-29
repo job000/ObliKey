@@ -45,6 +45,50 @@ export class UserController {
     }
   }
 
+  // Search users (for chat)
+  async searchUsers(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+      const { q } = req.query;
+
+      if (!q || (q as string).trim().length < 2) {
+        res.json({ success: true, data: [] });
+        return;
+      }
+
+      const searchTerm = (q as string).trim();
+
+      const users = await prisma.user.findMany({
+        where: {
+          tenantId,
+          active: true,
+          OR: [
+            { firstName: { contains: searchTerm, mode: 'insensitive' } },
+            { lastName: { contains: searchTerm, mode: 'insensitive' } },
+            { email: { contains: searchTerm, mode: 'insensitive' } },
+            { username: { contains: searchTerm, mode: 'insensitive' } }
+          ]
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          avatar: true,
+          role: true,
+          username: true
+        },
+        take: 20, // Limit results
+        orderBy: { firstName: 'asc' }
+      });
+
+      res.json({ success: true, data: users });
+    } catch (error) {
+      console.error('Search users error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke søke etter brukere' });
+    }
+  }
+
   // Get user by ID
   async getUserById(req: AuthRequest, res: Response): Promise<void> {
     try {
@@ -97,6 +141,15 @@ export class UserController {
       const { id } = req.params;
       const tenantId = req.tenantId!;
       const { firstName, lastName, phone, dateOfBirth, avatar } = req.body;
+
+      // Verify user belongs to tenant FIRST
+      const existingUser = await prisma.user.findFirst({
+        where: { id, tenantId }
+      });
+
+      if (!existingUser) {
+        throw new AppError('Bruker ikke funnet', 404);
+      }
 
       const user = await prisma.user.update({
         where: { id },
@@ -153,9 +206,9 @@ export class UserController {
         throw new AppError('Brukernavn må være 3-20 tegn og kan bare inneholde bokstaver, tall og understrek', 400);
       }
 
-      // Get current user to check change limits
-      const currentUser = await prisma.user.findUnique({
-        where: { id },
+      // Get current user to check change limits (with tenant verification)
+      const currentUser = await prisma.user.findFirst({
+        where: { id, tenantId },
         select: {
           username: true,
           usernameChangesThisYear: true,
@@ -244,6 +297,16 @@ export class UserController {
   async deactivateUser(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
+      const tenantId = req.tenantId!;
+
+      // Verify user belongs to tenant FIRST
+      const existingUser = await prisma.user.findFirst({
+        where: { id, tenantId }
+      });
+
+      if (!existingUser) {
+        throw new AppError('Bruker ikke funnet', 404);
+      }
 
       await prisma.user.update({
         where: { id },
@@ -252,7 +315,11 @@ export class UserController {
 
       res.json({ success: true, message: 'Bruker deaktivert' });
     } catch (error) {
-      res.status(500).json({ success: false, error: 'Kunne ikke deaktivere bruker' });
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        res.status(500).json({ success: false, error: 'Kunne ikke deaktivere bruker' });
+      }
     }
   }
 
@@ -260,6 +327,16 @@ export class UserController {
   async activateUser(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
+      const tenantId = req.tenantId!;
+
+      // Verify user belongs to tenant FIRST
+      const existingUser = await prisma.user.findFirst({
+        where: { id, tenantId }
+      });
+
+      if (!existingUser) {
+        throw new AppError('Bruker ikke funnet', 404);
+      }
 
       await prisma.user.update({
         where: { id },
@@ -268,7 +345,11 @@ export class UserController {
 
       res.json({ success: true, message: 'Bruker aktivert' });
     } catch (error) {
-      res.status(500).json({ success: false, error: 'Kunne ikke aktivere bruker' });
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        res.status(500).json({ success: false, error: 'Kunne ikke aktivere bruker' });
+      }
     }
   }
 
@@ -320,6 +401,15 @@ export class UserController {
         throw new AppError('Ugyldig rolle', 400);
       }
 
+      // Verify user belongs to tenant FIRST
+      const existingUser = await prisma.user.findFirst({
+        where: { id, tenantId }
+      });
+
+      if (!existingUser) {
+        throw new AppError('Bruker ikke funnet', 404);
+      }
+
       // Prevent self-demotion from admin
       if (id === req.user!.userId && role !== 'ADMIN') {
         throw new AppError('Du kan ikke endre din egen admin-rolle', 400);
@@ -368,6 +458,15 @@ export class UserController {
         throw new AppError('Avatar URL er påkrevd', 400);
       }
 
+      // Verify user belongs to tenant FIRST
+      const existingUser = await prisma.user.findFirst({
+        where: { id, tenantId }
+      });
+
+      if (!existingUser) {
+        throw new AppError('Bruker ikke funnet', 404);
+      }
+
       const user = await prisma.user.update({
         where: { id },
         data: { avatar },
@@ -412,6 +511,15 @@ export class UserController {
       // Users can only remove their own avatar unless they are admin
       if (id !== userId && req.user!.role !== 'ADMIN' && req.user!.role !== 'SUPER_ADMIN') {
         throw new AppError('Ingen tilgang', 403);
+      }
+
+      // Verify user belongs to tenant FIRST
+      const existingUser = await prisma.user.findFirst({
+        where: { id, tenantId }
+      });
+
+      if (!existingUser) {
+        throw new AppError('Bruker ikke funnet', 404);
       }
 
       const user = await prisma.user.update({
@@ -501,6 +609,36 @@ export class UserController {
         console.error('Reset user rate limit error:', error);
         res.status(500).json({ success: false, error: 'Kunne ikke tilbakestille rate limit' });
       }
+    }
+  }
+
+  /**
+   * Get door access module status for the tenant
+   * Public endpoint - no admin required
+   */
+  async getDoorAccessModuleStatus(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+
+      const settings = await prisma.tenantSettings.findUnique({
+        where: { tenantId },
+        select: {
+          doorAccessEnabled: true
+        }
+      });
+
+      res.json({
+        success: true,
+        data: {
+          enabled: settings?.doorAccessEnabled || false
+        }
+      });
+    } catch (error) {
+      console.error('Get door access status error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Kunne ikke hente modulstatus'
+      });
     }
   }
 }

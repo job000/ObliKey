@@ -1,1011 +1,1710 @@
 import axios, { AxiosInstance } from 'axios';
-import type {
-  AuthResponse,
-  LoginData,
-  RegisterData,
-  User,
-  Class,
-  Booking,
-  PTSession,
-  TrainingProgram,
-  Payment,
-  Tenant
-} from '../types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+// Use the correct API URL based on platform and device type
+const getApiUrl = () => {
+  // For web, always use localhost
+  if (Platform.OS === 'web') {
+    return 'http://localhost:3000/api';
+  }
+
+  // Debug: Log what Constants contains
+  console.log('[API Debug] Constants.expoConfig:', Constants.expoConfig);
+  console.log('[API Debug] Constants.manifest:', Constants.manifest);
+  console.log('[API Debug] Constants.manifest2:', Constants.manifest2);
+
+  // For mobile (iOS/Android)
+  // Try multiple ways to get the dev server host
+  let debuggerHost = null;
+
+  // Method 1: Try manifest (legacy)
+  if (Constants.manifest?.debuggerHost) {
+    debuggerHost = Constants.manifest.debuggerHost;
+  }
+  // Method 2: Try manifest2 (Expo SDK 46+)
+  else if (Constants.manifest2?.extra?.expoGo?.debuggerHost) {
+    debuggerHost = Constants.manifest2.extra.expoGo.debuggerHost;
+  }
+  // Method 3: Try expoConfig
+  else if (Constants.expoConfig?.hostUri) {
+    debuggerHost = Constants.expoConfig.hostUri;
+  }
+
+  console.log('[API Debug] debuggerHost:', debuggerHost);
+
+  // If we have a debuggerHost, we're likely on a physical device connected via Expo Go
+  // Extract the IP address from debuggerHost (format: "192.168.1.1:19000")
+  if (debuggerHost && !debuggerHost.includes('localhost')) {
+    const host = debuggerHost.split(':')[0];
+    console.log('[API Debug] Extracted host:', host);
+    return `http://${host}:3000/api`;
+  }
+
+  // Fallback to localhost for simulator
+  // iOS/Android simulators can reach localhost
+  return 'http://localhost:3000/api';
+};
+
+const API_URL = getApiUrl();
+console.log('[API] Using API URL:', API_URL);
+
+// Storage helper that works on both web and mobile
+const storage = {
+  getItem: async (key: string): Promise<string | null> => {
+    if (Platform.OS === 'web') {
+      return localStorage.getItem(key);
+    }
+    return await AsyncStorage.getItem(key);
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      localStorage.setItem(key, value);
+    } else {
+      await AsyncStorage.setItem(key, value);
+    }
+  },
+  removeItem: async (key: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(key);
+    } else {
+      await AsyncStorage.removeItem(key);
+    }
+  }
+};
 
 class ApiService {
-  private api: AxiosInstance;
+  private axiosInstance: AxiosInstance;
 
   constructor() {
-    this.api = axios.create({
+    this.axiosInstance = axios.create({
       baseURL: API_URL,
+      timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
-    // Add auth token to requests
-    this.api.interceptors.request.use((config) => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+    // Request interceptor to add token
+    this.axiosInstance.interceptors.request.use(
+      async (config) => {
+        const token = await storage.getItem('token');
+        const tenantId = await storage.getItem('tenantId');
+        const viewingAsTenant = await storage.getItem('viewingAsTenant');
 
-      // Debug logging
-      console.log('API Request:', {
-        method: config.method?.toUpperCase(),
-        url: config.url,
-        baseURL: config.baseURL,
-        fullURL: `${config.baseURL}${config.url}`,
-        data: config.data,
-        headers: config.headers
-      });
+        console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+        console.log('  Token from storage:', token ? 'Found (' + token.substring(0, 20) + '...)' : 'NOT FOUND');
+        console.log('  Tenant ID from storage:', tenantId || 'NOT FOUND');
+        console.log('  Viewing As Tenant:', viewingAsTenant || 'NOT SET');
 
-      return config;
-    });
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+          console.log('  Authorization header set: YES');
+        } else {
+          console.log('  Authorization header set: NO (no token)');
+        }
 
-    // Handle token expiration
-    this.api.interceptors.response.use(
-      (response) => {
-        console.log('API Response:', {
-          status: response.status,
-          url: response.config.url,
-          data: response.data
-        });
-        return response;
+        if (tenantId) {
+          config.headers['x-tenant-id'] = tenantId;
+        }
+
+        // Add X-Viewing-As-Tenant header for Super Admin tenant switching
+        if (viewingAsTenant) {
+          config.headers['x-viewing-as-tenant'] = viewingAsTenant;
+          console.log('  X-Viewing-As-Tenant header set:', viewingAsTenant);
+        }
+
+        return config;
       },
       (error) => {
-        console.error('API Error:', {
-          status: error.response?.status,
-          url: error.config?.url,
-          data: error.response?.data,
-          message: error.message
-        });
+        return Promise.reject(error);
+      }
+    );
 
+    // Response interceptor for error handling
+    this.axiosInstance.interceptors.response.use(
+      (response) => response,
+      async (error) => {
         if (error.response?.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+          // Token expired or invalid
+          await storage.removeItem('token');
+          await storage.removeItem('user');
+          // You can dispatch a logout action here if needed
         }
         return Promise.reject(error);
       }
     );
   }
 
-  // ============================================
-  // AUTH
-  // ============================================
-  async login(data: LoginData): Promise<AuthResponse> {
-    const response = await this.api.post<AuthResponse>('/auth/login', data);
+  // Auth endpoints
+  async login(identifier: string, password: string) {
+    // Send identifier which can be either email or username
+    // Backend will handle checking both
+    const loginData: any = { password };
+
+    // Determine if it's an email or username
+    if (identifier.includes('@')) {
+      loginData.email = identifier;
+    } else {
+      loginData.username = identifier;
+    }
+
+    console.log('Attempting login with:', identifier);
+    const response = await this.axiosInstance.post('/auth/login', loginData);
+    console.log('Login response:', JSON.stringify(response.data).substring(0, 200) + '...');
+
+    // Check if response requires tenant selection
+    if (response.data.data && response.data.data.requiresTenantSelection) {
+      console.log('Multi-tenant user detected, tenant selection required');
+      return response.data;
+    }
+
+    // Backend returns { success: true, data: { user, token }, message }
+    if (response.data.data && response.data.data.token) {
+      console.log('Login response received with token:', response.data.data.token.substring(0, 20) + '...');
+      await storage.setItem('token', response.data.data.token);
+      await storage.setItem('user', JSON.stringify(response.data.data.user));
+      if (response.data.data.user.tenantId) {
+        await storage.setItem('tenantId', response.data.data.user.tenantId);
+      }
+      // Verify token was saved
+      const savedToken = await storage.getItem('token');
+      console.log('Token saved to storage:', savedToken ? 'YES (' + savedToken.substring(0, 20) + '...)' : 'NO');
+    } else {
+      console.log('Login response has no token. Response structure:', Object.keys(response.data));
+    }
+    console.log('Login successful');
     return response.data;
   }
 
-  async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await this.api.post<AuthResponse>('/auth/register', data);
+  async selectTenant(identifier: string, tenantId: string) {
+    const selectData: any = { identifier, tenantId };
+
+    console.log('Selecting tenant:', tenantId, 'for user:', identifier);
+    const response = await this.axiosInstance.post('/auth/select-tenant', selectData);
+    console.log('Select tenant response:', JSON.stringify(response.data).substring(0, 200) + '...');
+
+    // Store token and user data after successful tenant selection
+    if (response.data.data && response.data.data.token) {
+      console.log('Tenant selection successful, received token:', response.data.data.token.substring(0, 20) + '...');
+      await storage.setItem('token', response.data.data.token);
+      await storage.setItem('user', JSON.stringify(response.data.data.user));
+      if (response.data.data.user.tenantId) {
+        await storage.setItem('tenantId', response.data.data.user.tenantId);
+      }
+      const savedToken = await storage.getItem('token');
+      console.log('Token saved to storage:', savedToken ? 'YES (' + savedToken.substring(0, 20) + '...)' : 'NO');
+    }
+
     return response.data;
   }
 
-  async getCurrentUser(): Promise<{ success: boolean; data: User }> {
-    const response = await this.api.get('/auth/me');
+  async register(data: any) {
+    const response = await this.axiosInstance.post('/auth/register', data);
     return response.data;
   }
 
-  async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post('/auth/change-password', { currentPassword, newPassword });
+  async logout() {
+    await storage.removeItem('token');
+    await storage.removeItem('user');
+    await storage.removeItem('tenantId');
+  }
+
+  async getCurrentUser() {
+    const response = await this.axiosInstance.get('/auth/me');
     return response.data;
   }
 
-  async resetRateLimits(): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post('/users/reset-rate-limits');
+  async forgotPassword(email: string) {
+    const response = await this.axiosInstance.post('/password-reset/request', { email });
     return response.data;
   }
 
-  async resetUserRateLimit(ip: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post('/users/reset-user-rate-limit', { ip });
+  async resetPassword(token: string, password: string) {
+    const response = await this.axiosInstance.post('/password-reset/reset', { token, password });
     return response.data;
   }
 
-  // ============================================
-  // CLASSES
-  // ============================================
-  async getClassesModuleStatus(): Promise<{ success: boolean; data: { classesEnabled: boolean } }> {
-    const response = await this.api.get('/classes/module-status');
+  // User endpoints
+  async updateProfile(data: any) {
+    const response = await this.axiosInstance.put('/users/profile', data);
     return response.data;
   }
 
-  async toggleClassesModule(enabled: boolean): Promise<{ success: boolean; data: any; message: string }> {
-    const response = await this.api.post('/classes/toggle-module', { enabled });
+  async updatePassword(currentPassword: string, newPassword: string) {
+    const response = await this.axiosInstance.put('/users/password', { currentPassword, newPassword });
     return response.data;
   }
 
-  async getTrainers(): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/pt/trainers');
-    return response.data;
-  }
-
-  async getClasses(params?: {
-    type?: string;
-    startDate?: string;
-    endDate?: string;
-  }): Promise<{ success: boolean; data: Class[] }> {
-    const response = await this.api.get('/classes', { params });
-    return response.data;
-  }
-
-  async getClassById(id: string): Promise<{ success: boolean; data: Class }> {
-    const response = await this.api.get(`/classes/${id}`);
-    return response.data;
-  }
-
-  async createClass(data: Partial<Class>): Promise<{ success: boolean; data: Class }> {
-    const response = await this.api.post('/classes', data);
-    return response.data;
-  }
-
-  async updateClass(
-    id: string,
-    data: Partial<Class>
-  ): Promise<{ success: boolean; data: Class }> {
-    const response = await this.api.patch(`/classes/${id}`, data);
-    return response.data;
-  }
-
-  async deleteClass(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete(`/classes/${id}`);
-    return response.data;
-  }
-
-  // ============================================
-  // BOOKINGS
-  // ============================================
-  async createBooking(data: {
-    classId: string;
-    notes?: string;
-  }): Promise<{ success: boolean; data: Booking }> {
-    const response = await this.api.post('/bookings', data);
-    return response.data;
-  }
-
-  async getMyBookings(params?: {
-    status?: string;
-    upcoming?: boolean;
-  }): Promise<{ success: boolean; data: Booking[] }> {
-    const response = await this.api.get('/bookings/my-bookings', { params });
-    return response.data;
-  }
-
-  async cancelBooking(
-    id: string,
-    reason?: string
-  ): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.patch(`/bookings/${id}/cancel`, { reason });
-    return response.data;
-  }
-
-  // ============================================
-  // PT SESSIONS
-  // ============================================
-  async getPTSessions(params?: {
-    status?: string;
-    startDate?: string;
-    endDate?: string;
-  }): Promise<{ success: boolean; data: PTSession[] }> {
-    const response = await this.api.get('/pt/sessions', { params });
-    return response.data;
-  }
-
-  async createPTSession(data: Partial<PTSession>): Promise<{ success: boolean; data: PTSession }> {
-    const response = await this.api.post('/pt/sessions', data);
-    return response.data;
-  }
-
-  async updatePTSession(
-    id: string,
-    data: Partial<PTSession>
-  ): Promise<{ success: boolean; data: PTSession }> {
-    const response = await this.api.patch(`/pt/sessions/${id}`, data);
-    return response.data;
-  }
-
-  async deletePTSession(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete(`/pt/sessions/${id}`);
-    return response.data;
-  }
-
-  async cancelPTSession(
-    id: string,
-    cancelReason?: string
-  ): Promise<{ success: boolean; data: PTSession; message: string }> {
-    const response = await this.api.post(`/pt/sessions/${id}/cancel`, { cancelReason });
-    return response.data;
-  }
-
-  // ============================================
-  // TRAINING PROGRAMS
-  // ============================================
-  async getTrainingPrograms(params?: {
-    active?: boolean;
-  }): Promise<{ success: boolean; data: TrainingProgram[] }> {
-    const response = await this.api.get('/pt/programs', { params });
-    return response.data;
-  }
-
-  async getTrainingProgramById(
-    id: string
-  ): Promise<{ success: boolean; data: TrainingProgram }> {
-    const response = await this.api.get(`/pt/programs/${id}`);
-    return response.data;
-  }
-
-  async createTrainingProgram(
-    data: Partial<TrainingProgram>
-  ): Promise<{ success: boolean; data: TrainingProgram }> {
-    const response = await this.api.post('/pt/programs', data);
-    return response.data;
-  }
-
-  async updateTrainingProgram(
-    id: string,
-    data: Partial<TrainingProgram>
-  ): Promise<{ success: boolean; data: TrainingProgram }> {
-    const response = await this.api.patch(`/pt/programs/${id}`, data);
-    return response.data;
-  }
-
-  // ============================================
-  // USERS
-  // ============================================
-  async getUsers(params?: {
-    role?: string;
-    search?: string;
-  }): Promise<{ success: boolean; data: User[] }> {
-    const response = await this.api.get('/users', { params });
-    return response.data;
-  }
-
-  async getUserById(id: string): Promise<{ success: boolean; data: User }> {
-    const response = await this.api.get(`/users/${id}`);
-    return response.data;
-  }
-
-  async updateUser(id: string, data: Partial<User>): Promise<{ success: boolean; data: User }> {
-    const response = await this.api.patch(`/users/${id}`, data);
-    return response.data;
-  }
-
-  async updateUsername(id: string, username: string): Promise<{ success: boolean; data: User; message: string }> {
-    const response = await this.api.patch(`/users/${id}/username`, { username });
-    return response.data;
-  }
-
-  async updateAvatar(id: string, avatar: string): Promise<{ success: boolean; data: User; message: string }> {
-    const response = await this.api.patch(`/users/${id}/avatar`, { avatar });
-    return response.data;
-  }
-
-  async removeAvatar(id: string): Promise<{ success: boolean; data: User; message: string }> {
-    const response = await this.api.delete(`/users/${id}/avatar`);
-    return response.data;
-  }
-
-  async deactivateUser(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.patch(`/users/${id}/deactivate`);
-    return response.data;
-  }
-
-  async activateUser(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.patch(`/users/${id}/activate`);
-    return response.data;
-  }
-
-  async deleteUser(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete(`/users/${id}`);
-    return response.data;
-  }
-
-  async updateUserRole(id: string, role: string): Promise<{ success: boolean; data: User; message: string }> {
-    const response = await this.api.patch(`/users/${id}/role`, { role });
-    return response.data;
-  }
-
-  // ============================================
-  // PAYMENTS
-  // ============================================
-  async getPayments(params?: {
-    status?: string;
-    type?: string;
-  }): Promise<{ success: boolean; data: Payment[] }> {
-    const response = await this.api.get('/payments', { params });
-    return response.data;
-  }
-
-  async getPaymentStatistics(params?: {
-    startDate?: string;
-    endDate?: string;
-  }): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/payments/statistics', { params });
-    return response.data;
-  }
-
-  // ============================================
-  // CLIENTS (For Trainers)
-  // ============================================
-  async getClients(): Promise<{ success: boolean; data: User[] }> {
-    const response = await this.api.get('/pt/clients');
-    return response.data;
-  }
-
-  // ============================================
-  // CHAT & MESSAGING
-  // ============================================
-  async getConversations(): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/chat/conversations');
-    return response.data;
-  }
-
-  async createConversation(data: {
-    participantIds: string[];
-    title?: string;
-  }): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post('/chat/conversations', data);
-    return response.data;
-  }
-
-  async getMessages(
-    conversationId: string,
-    params?: { limit?: number; offset?: number }
-  ): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get(`/chat/conversations/${conversationId}/messages`, {
-      params,
+  // Classes endpoints
+  async getClasses(params?: { status?: string; published?: boolean }) {
+    const response = await this.axiosInstance.get('/classes', {
+      params: params || undefined
     });
     return response.data;
   }
 
-  async sendMessage(
-    conversationId: string,
-    data: { content: string; attachments?: any[] }
-  ): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post(
-      `/chat/conversations/${conversationId}/messages`,
-      data
-    );
+  async getClassById(id: string) {
+    const response = await this.axiosInstance.get(`/classes/${id}`);
     return response.data;
   }
 
-  async markMessageAsRead(messageId: string): Promise<{ success: boolean }> {
-    const response = await this.api.patch(`/chat/messages/${messageId}/read`);
+  async createClass(data: any) {
+    const response = await this.axiosInstance.post('/classes', data);
     return response.data;
   }
 
-  async deleteMessage(messageId: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete(`/chat/messages/${messageId}`);
+  async updateClass(id: string, data: any) {
+    const response = await this.axiosInstance.patch(`/classes/${id}`, data);
     return response.data;
   }
 
-  async startSupportChat(): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post('/chat/support');
+  async deleteClass(id: string) {
+    const response = await this.axiosInstance.delete(`/classes/${id}`);
     return response.data;
   }
 
-  async getChatUsers(): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/chat/users');
+  async publishClass(id: string) {
+    const response = await this.axiosInstance.post(`/classes/${id}/publish`);
     return response.data;
   }
 
-  async getUnreadCount(): Promise<{ success: boolean; data: { count: number } }> {
-    const response = await this.api.get('/chat/unread-count');
+  async unpublishClass(id: string) {
+    const response = await this.axiosInstance.post(`/classes/${id}/unpublish`);
     return response.data;
   }
 
-  async markConversationAsRead(conversationId: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.patch(`/chat/conversations/${conversationId}/read`);
+  async cancelClass(id: string, reason?: string) {
+    const response = await this.axiosInstance.post(`/classes/${id}/cancel`, { reason });
     return response.data;
   }
 
-  async getChatModuleStatus(): Promise<{ success: boolean; data: { chatEnabled: boolean } }> {
-    const response = await this.api.get('/chat/module-status');
+  // Bookings endpoints
+  async bookClass(classId: string) {
+    const response = await this.axiosInstance.post('/bookings', { classId });
     return response.data;
   }
 
-  async toggleChatModule(enabled: boolean): Promise<{ success: boolean; data: any; message: string }> {
-    const response = await this.api.post('/chat/toggle-module', { enabled });
+  async getBookings() {
+    const response = await this.axiosInstance.get('/bookings');
+    return response.data;
+  }
+
+  async cancelBooking(id: string) {
+    const response = await this.axiosInstance.patch(`/bookings/${id}/cancel`);
+    return response.data;
+  }
+
+  // PT Sessions endpoints
+  async getPTSessions() {
+    const response = await this.axiosInstance.get('/pt/sessions');
+    return response.data;
+  }
+
+  async createPTSession(data: any) {
+    const response = await this.axiosInstance.post('/pt/sessions', data);
+    return response.data;
+  }
+
+  async updatePTSession(id: string, data: any) {
+    const response = await this.axiosInstance.patch(`/pt/sessions/${id}`, data);
+    return response.data;
+  }
+
+  async completePTSession(id: string) {
+    const response = await this.axiosInstance.post(`/pt/sessions/${id}/complete`);
+    return response.data;
+  }
+
+  async updatePTSessionStatus(id: string, status: string) {
+    const response = await this.axiosInstance.patch(`/pt/sessions/${id}/status`, { status });
+    return response.data;
+  }
+
+  async deletePTSession(id: string) {
+    const response = await this.axiosInstance.delete(`/pt/sessions/${id}`);
+    return response.data;
+  }
+
+  async cancelPTSession(id: string) {
+    const response = await this.axiosInstance.post(`/pt/sessions/${id}/cancel`);
+    return response.data;
+  }
+
+  async getPTSession(sessionId: string) {
+    const response = await this.axiosInstance.get(`/pt/sessions/${sessionId}`);
+    return response.data;
+  }
+
+  async submitPTSessionFeedback(sessionId: string, feedbackData: any) {
+    const response = await this.axiosInstance.post(`/pt/sessions/${sessionId}/feedback`, feedbackData);
+    return response.data;
+  }
+
+  async getPTCredits() {
+    const response = await this.axiosInstance.get('/pt/credits');
+    return response.data;
+  }
+
+  async getPTClients() {
+    const response = await this.axiosInstance.get('/pt/clients');
+    return response.data;
+  }
+
+  async getPTTrainers() {
+    const response = await this.axiosInstance.get('/pt/trainers');
+    return response.data;
+  }
+
+  async getSessionResult(sessionId: string) {
+    const response = await this.axiosInstance.get(`/pt/sessions/${sessionId}/result`);
+    return response.data;
+  }
+
+  async createSessionResult(sessionId: string, data: any) {
+    const response = await this.axiosInstance.post(`/pt/sessions/${sessionId}/result`, data);
+    return response.data;
+  }
+
+  async addClientFeedback(sessionId: string, data: any) {
+    const response = await this.axiosInstance.post(`/pt/sessions/${sessionId}/feedback`, data);
+    return response.data;
+  }
+
+  async approvePTSession(id: string) {
+    const response = await this.axiosInstance.post(`/pt/sessions/${id}/approve`);
+    return response.data;
+  }
+
+  async rejectPTSession(id: string, rejectionReason?: string) {
+    const response = await this.axiosInstance.post(`/pt/sessions/${id}/reject`, { rejectionReason });
+    return response.data;
+  }
+
+  async cancelPTSessionWithReason(id: string, cancellationReason?: string) {
+    const response = await this.axiosInstance.post(`/pt/sessions/${id}/cancel`, { cancellationReason });
+    return response.data;
+  }
+
+  // Notification endpoints
+  async getNotifications(unreadOnly: boolean = false) {
+    const response = await this.axiosInstance.get('/notifications', {
+      params: { unreadOnly }
+    });
+    return response.data;
+  }
+
+  async getNotificationsUnreadCount() {
+    const response = await this.axiosInstance.get('/notifications/unread-count');
+    return response.data;
+  }
+
+  async markNotificationAsRead(notificationId: string) {
+    const response = await this.axiosInstance.patch(`/notifications/${notificationId}/read`);
+    return response.data;
+  }
+
+  async markAllNotificationsAsRead() {
+    const response = await this.axiosInstance.patch('/notifications/mark-all-read');
+    return response.data;
+  }
+
+  async deleteNotification(notificationId: string) {
+    const response = await this.axiosInstance.delete(`/notifications/${notificationId}`);
+    return response.data;
+  }
+
+  async getNotificationPreferences() {
+    const response = await this.axiosInstance.get('/notifications/preferences');
+    return response.data;
+  }
+
+  async updateNotificationPreferences(data: any) {
+    const response = await this.axiosInstance.patch('/notifications/preferences', data);
+    return response.data;
+  }
+
+  // Feedback endpoints
+  async submitClassFeedback(classId: string, data: { rating: number; comment?: string }) {
+    const response = await this.axiosInstance.post(`/feedback/class/${classId}`, data);
+    return response.data;
+  }
+
+  async getClassReviews(classId: string) {
+    const response = await this.axiosInstance.get(`/feedback/class/${classId}/reviews`);
+    return response.data;
+  }
+
+  async getTrainerReviews(trainerId: string) {
+    const response = await this.axiosInstance.get(`/feedback/trainer/${trainerId}/reviews`);
+    return response.data;
+  }
+
+  async getMyFeedback() {
+    const response = await this.axiosInstance.get('/feedback/my-feedback');
+    return response.data;
+  }
+
+  async createFeedback(data: {
+    type: string;
+    rating?: number;
+    title?: string;
+    message: string;
+    classId?: string;
+    trainerId?: string;
+    isAnonymous?: boolean;
+    isPublic?: boolean;
+  }) {
+    const response = await this.axiosInstance.post('/feedback', data);
+    return response.data;
+  }
+
+  // Products endpoints
+  async getProducts(params?: any) {
+    const response = await this.axiosInstance.get('/products', {
+      params: params || undefined
+    });
+    return response.data;
+  }
+
+  async getProductById(id: string) {
+    const response = await this.axiosInstance.get(`/products/${id}`);
+    return response.data;
+  }
+
+  async createProduct(data: any) {
+    const response = await this.axiosInstance.post('/products', data, {
+      headers: data instanceof FormData ? {
+        'Content-Type': 'multipart/form-data',
+      } : undefined,
+    });
+    return response.data;
+  }
+
+  async updateProduct(id: string, data: any) {
+    const response = await this.axiosInstance.put(`/products/${id}`, data, {
+      headers: data instanceof FormData ? {
+        'Content-Type': 'multipart/form-data',
+      } : undefined,
+    });
+    return response.data;
+  }
+
+  async deleteProduct(id: string) {
+    const response = await this.axiosInstance.delete(`/products/${id}`);
+    return response.data;
+  }
+
+  async trackProductView(productId: string) {
+    const response = await this.axiosInstance.post(`/products/${productId}/view`);
+    return response.data;
+  }
+
+  async addProductImage(productId: string, data: { url: string; altText?: string; sortOrder?: number; isPrimary?: boolean }) {
+    const response = await this.axiosInstance.post(`/products/${productId}/images`, data);
+    return response.data;
+  }
+
+  async deleteProductImage(imageId: string) {
+    const response = await this.axiosInstance.delete(`/products/images/${imageId}`);
+    return response.data;
+  }
+
+  async publishProduct(productId: string) {
+    const response = await this.axiosInstance.post(`/products/${productId}/publish`);
+    return response.data;
+  }
+
+  async unpublishProduct(productId: string) {
+    const response = await this.axiosInstance.post(`/products/${productId}/unpublish`);
+    return response.data;
+  }
+
+  // Cart endpoints
+  async getCart() {
+    const response = await this.axiosInstance.get('/cart');
+    return response.data;
+  }
+
+  async addToCart(productId: string, quantity: number) {
+    const response = await this.axiosInstance.post('/cart/items', { productId, quantity });
+    return response.data;
+  }
+
+  async updateCartItem(itemId: string, quantity: number) {
+    const response = await this.axiosInstance.patch(`/cart/items/${itemId}`, { quantity });
+    return response.data;
+  }
+
+  async removeFromCart(itemId: string) {
+    const response = await this.axiosInstance.delete(`/cart/items/${itemId}`);
+    return response.data;
+  }
+
+  async clearCart() {
+    const response = await this.axiosInstance.delete('/cart');
+    return response.data;
+  }
+
+  // Orders endpoints
+  async createOrder(data: any) {
+    const response = await this.axiosInstance.post('/orders', data);
+    return response.data;
+  }
+
+  async getOrders() {
+    const response = await this.axiosInstance.get('/orders');
+    return response.data;
+  }
+
+  async getAllOrders() {
+    const response = await this.axiosInstance.get('/orders/all');
+    return response.data;
+  }
+
+  async getOrderById(id: string) {
+    const response = await this.axiosInstance.get(`/orders/${id}`);
+    return response.data;
+  }
+
+  async updateOrderStatus(id: string, status: string) {
+    const response = await this.axiosInstance.put(`/orders/${id}/status`, { status });
+    return response.data;
+  }
+
+  async updateDeliveryInfo(id: string, data: any) {
+    const response = await this.axiosInstance.put(`/orders/${id}/delivery`, data);
+    return response.data;
+  }
+
+  async markAsShipped(id: string, trackingNumber?: string) {
+    const response = await this.axiosInstance.post(`/orders/${id}/ship`, { trackingNumber });
+    return response.data;
+  }
+
+  async markAsDelivered(id: string) {
+    const response = await this.axiosInstance.post(`/orders/${id}/deliver`);
+    return response.data;
+  }
+
+  // Product Analytics
+  async getProductAnalytics(startDate?: string, endDate?: string) {
+    const response = await this.axiosInstance.get('/product-analytics', {
+      params: { startDate, endDate }
+    });
+    return response.data;
+  }
+
+  // Chat endpoints
+  async getConversations() {
+    const response = await this.axiosInstance.get('/chat/conversations');
+    return response.data;
+  }
+
+  async getMessages(conversationId: string, since?: string) {
+    const response = await this.axiosInstance.get(`/chat/conversations/${conversationId}/messages`, {
+      params: since ? { since } : undefined
+    });
+    return response.data;
+  }
+
+  async sendMessage(conversationId: string, content: string) {
+    const response = await this.axiosInstance.post(`/chat/conversations/${conversationId}/messages`, { content });
+    return response.data;
+  }
+
+  async markAsRead(conversationId: string) {
+    const response = await this.axiosInstance.patch(`/chat/conversations/${conversationId}/read`);
+    return response.data;
+  }
+
+  async getChatUnreadCount() {
+    const response = await this.axiosInstance.get('/chat/unread-count');
+    return response.data;
+  }
+
+  async searchUsers(query: string) {
+    const response = await this.axiosInstance.get('/users/search', {
+      params: { q: query }
+    });
+    return response.data;
+  }
+
+  async createConversation(participantIds: string[]) {
+    const response = await this.axiosInstance.post('/chat/conversations', { participantIds });
+    return response.data;
+  }
+
+  async createGroupConversation(groupName: string, participantIds: string[]) {
+    const response = await this.axiosInstance.post('/chat/conversations/group', {
+      groupName,
+      participantIds
+    });
+    return response.data;
+  }
+
+  async addGroupMember(conversationId: string, userId: string) {
+    const response = await this.axiosInstance.post(`/chat/conversations/${conversationId}/members`, {
+      userId
+    });
+    return response.data;
+  }
+
+  async removeGroupMember(conversationId: string, userId: string) {
+    const response = await this.axiosInstance.delete(`/chat/conversations/${conversationId}/members/${userId}`);
+    return response.data;
+  }
+
+  async leaveGroup(conversationId: string) {
+    const response = await this.axiosInstance.post(`/chat/conversations/${conversationId}/leave`);
+    return response.data;
+  }
+
+  async setTypingIndicator(conversationId: string, isTyping: boolean) {
+    const response = await this.axiosInstance.post(`/chat/conversations/${conversationId}/typing`, { isTyping });
+    return response.data;
+  }
+
+  async getTypingUsers(conversationId: string) {
+    const response = await this.axiosInstance.get(`/chat/conversations/${conversationId}/typing`);
+    return response.data;
+  }
+
+  // Module status endpoints
+  async getAllModuleStatuses() {
+    const response = await this.axiosInstance.get('/tenant-settings/modules');
+    return response.data;
+  }
+
+  async toggleModule(module: string, enabled: boolean) {
+    const response = await this.axiosInstance.post('/tenant-settings/modules/toggle', {
+      module,
+      enabled
+    });
+    return response.data;
+  }
+
+  // Legacy endpoints (for backward compatibility)
+  async getShopModuleStatus() {
+    const response = await this.getAllModuleStatuses();
+    return { success: response.success, data: { enabled: response.data?.shop || false } };
+  }
+
+  async getAccountingModuleStatus() {
+    const response = await this.getAllModuleStatuses();
+    return { success: response.success, data: { enabled: response.data?.accounting || false } };
+  }
+
+  async getClassesModuleStatus() {
+    const response = await this.getAllModuleStatuses();
+    return { success: response.success, data: { enabled: response.data?.classes !== false } };
+  }
+
+  async getChatModuleStatus() {
+    const response = await this.getAllModuleStatuses();
+    return { success: response.success, data: { enabled: response.data?.chat !== false } };
+  }
+
+  async getLandingPageModuleStatus() {
+    const response = await this.getAllModuleStatuses();
+    return { success: response.success, data: { enabled: response.data?.landingPage || false } };
+  }
+
+  // Accounting endpoints
+  async getAccounts() {
+    const response = await this.axiosInstance.get('/accounting/accounts');
+    return response.data;
+  }
+
+  async createAccount(data: any) {
+    const response = await this.axiosInstance.post('/accounting/accounts', data);
+    return response.data;
+  }
+
+  async getTransactions(params?: any) {
+    const response = await this.axiosInstance.get('/accounting/transactions', { params });
+    return response.data;
+  }
+
+  async createTransaction(data: any) {
+    const response = await this.axiosInstance.post('/accounting/transactions', data);
+    return response.data;
+  }
+
+  async getDashboard(params?: any) {
+    const response = await this.axiosInstance.get('/accounting/dashboard', { params });
+    return response.data;
+  }
+
+  async getIncomeStatement(params?: any) {
+    const response = await this.axiosInstance.get('/accounting/income-statement', { params });
+    return response.data;
+  }
+
+  async getVATReport(params?: any) {
+    const response = await this.axiosInstance.get('/accounting/vat-report', { params });
+    return response.data;
+  }
+
+  async getTrialBalance(params?: any) {
+    const response = await this.axiosInstance.get('/accounting/trial-balance', { params });
+    return response.data;
+  }
+
+  // Suppliers
+  async getSuppliers() {
+    const response = await this.axiosInstance.get('/accounting/suppliers');
+    return response.data;
+  }
+
+  async createSupplier(data: any) {
+    const response = await this.axiosInstance.post('/accounting/suppliers', data);
+    return response.data;
+  }
+
+  async updateSupplier(id: string, data: any) {
+    const response = await this.axiosInstance.patch(`/accounting/suppliers/${id}`, data);
+    return response.data;
+  }
+
+  async deleteSupplier(id: string) {
+    const response = await this.axiosInstance.delete(`/accounting/suppliers/${id}`);
+    return response.data;
+  }
+
+  // MVA (VAT) endpoints
+  async calculateMVAPeriod(data: any) {
+    const response = await this.axiosInstance.post('/accounting/mva/calculate', data);
+    return response.data;
+  }
+
+  async getCurrentMVAPeriod() {
+    const response = await this.axiosInstance.get('/accounting/mva/current-period');
+    return response.data;
+  }
+
+  async getMVAPeriods(year: number) {
+    const response = await this.axiosInstance.get(`/accounting/mva/periods/${year}`);
+    return response.data;
+  }
+
+  async saveMVAReport(data: any) {
+    const response = await this.axiosInstance.post('/accounting/mva/save', data);
+    return response.data;
+  }
+
+  async getMVAReports(params?: any) {
+    const response = await this.axiosInstance.get('/accounting/mva/reports', { params });
+    return response.data;
+  }
+
+  async deleteMVAReport(id: string) {
+    const response = await this.axiosInstance.delete(`/accounting/mva/reports/${id}`);
+    return response.data;
+  }
+
+  // Activity logs
+  async getActivityLogs(params?: any) {
+    const response = await this.axiosInstance.get('/activity-logs', { params });
+    return response.data;
+  }
+
+  // Training Programs
+  async getTrainingPrograms(params?: any) {
+    const response = await this.axiosInstance.get('/training-programs', { params });
+    return response.data;
+  }
+
+  async getTrainingProgramById(id: string) {
+    const response = await this.axiosInstance.get(`/training-programs/${id}`);
+    return response.data;
+  }
+
+  async createTrainingProgram(data: any) {
+    const response = await this.axiosInstance.post('/training-programs', data);
+    return response.data;
+  }
+
+  async updateTrainingProgram(id: string, data: any) {
+    const response = await this.axiosInstance.put(`/training-programs/${id}`, data);
+    return response.data;
+  }
+
+  async deleteTrainingProgram(id: string) {
+    const response = await this.axiosInstance.delete(`/training-programs/${id}`);
+    return response.data;
+  }
+
+  // Upload
+  async uploadImage(file: any) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.axiosInstance.post('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
+  // Analytics
+  async getAnalytics(timeRange?: string) {
+    const response = await this.axiosInstance.get('/analytics', {
+      params: timeRange ? { timeRange } : undefined
+    });
+    return response.data;
+  }
+
+  // Tenant Settings
+  async getTenantSettings() {
+    const response = await this.axiosInstance.get('/tenant/settings');
+    return response.data;
+  }
+
+  async updateTenantSettings(data: any) {
+    const response = await this.axiosInstance.put('/tenant/settings', data);
+    return response.data;
+  }
+
+  // User Management
+  async getAllUsers() {
+    const response = await this.axiosInstance.get('/users');
+    return response.data;
+  }
+
+  async getUsers() {
+    const response = await this.axiosInstance.get('/users');
+    return response.data;
+  }
+
+  async updateUserRole(userId: string, role: string) {
+    const response = await this.axiosInstance.put(`/users/${userId}/role`, { role });
+    return response.data;
+  }
+
+  async toggleUserStatus(userId: string) {
+    const response = await this.axiosInstance.put(`/users/${userId}/toggle-status`);
+    return response.data;
+  }
+
+  async activateUser(userId: string) {
+    const response = await this.axiosInstance.put(`/users/${userId}/activate`);
+    return response.data;
+  }
+
+  async deactivateUser(userId: string) {
+    const response = await this.axiosInstance.put(`/users/${userId}/deactivate`);
+    return response.data;
+  }
+
+  async deleteUser(userId: string) {
+    const response = await this.axiosInstance.delete(`/users/${userId}`);
     return response.data;
   }
 
   // ============================================
-  // TENANTS (For Platform Admin)
+  // E-COMMERCE ENDPOINTS
   // ============================================
-  async getTenants(params?: {
-    status?: string;
-    package?: string;
-  }): Promise<{ success: boolean; data: Tenant[] }> {
-    const response = await this.api.get('/platform/tenants', { params });
+
+  // Product Categories
+  async getCategories(activeOnly: boolean = true) {
+    const response = await this.axiosInstance.get('/ecommerce/categories', {
+      params: { activeOnly }
+    });
+    return response.data;
+  }
+
+  async getCategoryBySlug(slug: string) {
+    const response = await this.axiosInstance.get(`/ecommerce/categories/${slug}`);
+    return response.data;
+  }
+
+  async createCategory(data: any) {
+    const response = await this.axiosInstance.post('/ecommerce/categories', data);
+    return response.data;
+  }
+
+  async updateCategory(id: string, data: any) {
+    const response = await this.axiosInstance.patch(`/ecommerce/categories/${id}`, data);
+    return response.data;
+  }
+
+  async deleteCategory(id: string) {
+    const response = await this.axiosInstance.delete(`/ecommerce/categories/${id}`);
+    return response.data;
+  }
+
+  // Product Variants
+  async getProductVariants(productId: string) {
+    const response = await this.axiosInstance.get(`/ecommerce/products/${productId}/variants`);
+    return response.data;
+  }
+
+  async createVariant(data: any) {
+    const response = await this.axiosInstance.post('/ecommerce/variants', data);
+    return response.data;
+  }
+
+  async updateVariant(id: string, data: any) {
+    const response = await this.axiosInstance.patch(`/ecommerce/variants/${id}`, data);
+    return response.data;
+  }
+
+  async deleteVariant(id: string) {
+    const response = await this.axiosInstance.delete(`/ecommerce/variants/${id}`);
+    return response.data;
+  }
+
+  // Product Attributes
+  async getAttributes() {
+    const response = await this.axiosInstance.get('/ecommerce/attributes');
+    return response.data;
+  }
+
+  async createAttribute(data: any) {
+    const response = await this.axiosInstance.post('/ecommerce/attributes', data);
+    return response.data;
+  }
+
+  async createAttributeValue(data: any) {
+    const response = await this.axiosInstance.post('/ecommerce/attributes/values', data);
+    return response.data;
+  }
+
+  // Wishlist
+  async getWishlist() {
+    const response = await this.axiosInstance.get('/ecommerce/wishlist');
+    return response.data;
+  }
+
+  async addToWishlist(productId: string, variantId?: string, notes?: string) {
+    const response = await this.axiosInstance.post('/ecommerce/wishlist', {
+      productId,
+      variantId,
+      notes
+    });
+    return response.data;
+  }
+
+  async removeFromWishlist(itemId: string) {
+    const response = await this.axiosInstance.delete(`/ecommerce/wishlist/${itemId}`);
+    return response.data;
+  }
+
+  // Product Reviews
+  async getProductReviews(productId: string, includeAll: boolean = false) {
+    const response = await this.axiosInstance.get(`/ecommerce/products/${productId}/reviews`, {
+      params: { includeAll }
+    });
+    return response.data;
+  }
+
+  async createReview(data: { productId: string; rating: number; title?: string; comment: string }) {
+    const response = await this.axiosInstance.post('/ecommerce/reviews', data);
+    return response.data;
+  }
+
+  async voteReviewHelpful(reviewId: string, helpful: boolean) {
+    const response = await this.axiosInstance.post(`/ecommerce/reviews/${reviewId}/vote`, { helpful });
+    return response.data;
+  }
+
+  async moderateReview(reviewId: string, status: 'APPROVED' | 'REJECTED' | 'FLAGGED') {
+    const response = await this.axiosInstance.patch(`/ecommerce/reviews/${reviewId}/moderate`, { status });
+    return response.data;
+  }
+
+  // Discount Codes
+  async getDiscountCodes(activeOnly: boolean = true) {
+    const response = await this.axiosInstance.get('/ecommerce/discount-codes', {
+      params: { activeOnly }
+    });
+    return response.data;
+  }
+
+  async createDiscountCode(data: any) {
+    const response = await this.axiosInstance.post('/ecommerce/discount-codes', data);
+    return response.data;
+  }
+
+  async validateDiscountCode(code: string, orderAmount: number, productIds: string[]) {
+    const response = await this.axiosInstance.post('/ecommerce/discount-codes/validate', {
+      code,
+      orderAmount,
+      productIds
+    });
+    return response.data;
+  }
+
+  // Product Collections
+  async getCollections(activeOnly: boolean = true) {
+    const response = await this.axiosInstance.get('/ecommerce/collections', {
+      params: { activeOnly }
+    });
+    return response.data;
+  }
+
+  async createCollection(data: any) {
+    const response = await this.axiosInstance.post('/ecommerce/collections', data);
+    return response.data;
+  }
+
+  async addProductToCollection(collectionId: string, productId: string, sortOrder?: number) {
+    const response = await this.axiosInstance.post('/ecommerce/collections/products', {
+      collectionId,
+      productId,
+      sortOrder
+    });
+    return response.data;
+  }
+
+  async removeProductFromCollection(collectionId: string, productId: string) {
+    const response = await this.axiosInstance.delete(`/ecommerce/collections/${collectionId}/products/${productId}`);
+    return response.data;
+  }
+
+  // ============================================
+  // MEMBERSHIP ENDPOINTS
+  // ============================================
+
+  // Membership Plans
+  async getMembershipPlans(activeOnly: boolean = true) {
+    const response = await this.axiosInstance.get('/memberships/plans', {
+      params: { activeOnly }
+    });
+    return response.data;
+  }
+
+  async createMembershipPlan(data: any) {
+    const response = await this.axiosInstance.post('/memberships/plans', data);
+    return response.data;
+  }
+
+  async updateMembershipPlan(planId: string, data: any) {
+    const response = await this.axiosInstance.patch(`/memberships/plans/${planId}`, data);
+    return response.data;
+  }
+
+  async deleteMembershipPlan(planId: string) {
+    const response = await this.axiosInstance.delete(`/memberships/plans/${planId}`);
+    return response.data;
+  }
+
+  // Memberships
+  async getMemberships(params?: { status?: string; page?: number; limit?: number }) {
+    const response = await this.axiosInstance.get('/memberships', { params });
+    return response.data;
+  }
+
+  async getMembership(membershipId: string) {
+    const response = await this.axiosInstance.get(`/memberships/${membershipId}`);
+    return response.data;
+  }
+
+  async createMembership(data: { userId: string; planId: string; startDate?: string }) {
+    const response = await this.axiosInstance.post('/memberships', data);
+    return response.data;
+  }
+
+  // Membership Actions
+  async freezeMembership(membershipId: string, data: { startDate: string; endDate: string; reason?: string }) {
+    const response = await this.axiosInstance.post(`/memberships/${membershipId}/freeze`, data);
+    return response.data;
+  }
+
+  async unfreezeMembership(membershipId: string) {
+    const response = await this.axiosInstance.post(`/memberships/${membershipId}/unfreeze`);
+    return response.data;
+  }
+
+  async cancelMembership(membershipId: string, reason?: string) {
+    const response = await this.axiosInstance.post(`/memberships/${membershipId}/cancel`, { reason });
+    return response.data;
+  }
+
+  async suspendMembership(membershipId: string, reason: string) {
+    const response = await this.axiosInstance.post(`/memberships/${membershipId}/suspend`, { reason });
+    return response.data;
+  }
+
+  async blacklistMembership(membershipId: string, reason: string) {
+    const response = await this.axiosInstance.post(`/memberships/${membershipId}/blacklist`, { reason });
+    return response.data;
+  }
+
+  async reactivateMembership(membershipId: string) {
+    const response = await this.axiosInstance.post(`/memberships/${membershipId}/reactivate`);
+    return response.data;
+  }
+
+  // Check-In
+  async checkIn(membershipId: string, location?: string, notes?: string) {
+    const response = await this.axiosInstance.post('/memberships/check-in', {
+      membershipId,
+      location,
+      notes
+    });
+    return response.data;
+  }
+
+  async checkOut(checkInId: string) {
+    const response = await this.axiosInstance.post(`/memberships/check-out/${checkInId}`);
+    return response.data;
+  }
+
+  async getActiveCheckIn() {
+    const response = await this.axiosInstance.get('/memberships/active-check-in');
+    return response.data;
+  }
+
+  async getCheckInHistory(membershipId: string, params?: { page?: number; limit?: number }) {
+    const response = await this.axiosInstance.get(`/memberships/${membershipId}/check-ins`, { params });
+    return response.data;
+  }
+
+  // Payments
+  async getMembershipPayments(membershipId: string) {
+    const response = await this.axiosInstance.get(`/memberships/${membershipId}/payments`);
+    return response.data;
+  }
+
+  async markPaymentPaid(paymentId: string) {
+    const response = await this.axiosInstance.post(`/memberships/payments/${paymentId}/mark-paid`);
+    return response.data;
+  }
+
+  async sendPaymentReminder(paymentId: string, type: string, method?: string, message?: string) {
+    const response = await this.axiosInstance.post(`/memberships/payments/${paymentId}/send-reminder`, {
+      type,
+      method,
+      message
+    });
+    return response.data;
+  }
+
+  // Statistics & Activity
+  async getMembershipStats() {
+    const response = await this.axiosInstance.get('/memberships/stats/overview');
+    return response.data;
+  }
+
+  async getMemberActivityOverview(membershipId: string) {
+    const response = await this.axiosInstance.get(`/memberships/${membershipId}/activity`);
+    return response.data;
+  }
+
+  // ============================================
+  // DOOR ACCESS ENDPOINTS
+  // ============================================
+
+  // Door Management
+  async getDoors() {
+    const response = await this.axiosInstance.get('/door-access/doors');
+    return response.data;
+  }
+
+  async getDoorById(doorId: string) {
+    const response = await this.axiosInstance.get(`/door-access/doors/${doorId}`);
+    return response.data;
+  }
+
+  async createDoor(data: {
+    name: string;
+    location: string;
+    ipAddress: string;
+    port: number;
+    macAddress?: string;
+    description?: string;
+  }) {
+    const response = await this.axiosInstance.post('/door-access/doors', data);
+    return response.data;
+  }
+
+  async updateDoor(doorId: string, data: {
+    name?: string;
+    location?: string;
+    ipAddress?: string;
+    port?: number;
+    macAddress?: string;
+    description?: string;
+  }) {
+    const response = await this.axiosInstance.patch(`/door-access/doors/${doorId}`, data);
+    return response.data;
+  }
+
+  async deleteDoor(doorId: string) {
+    const response = await this.axiosInstance.delete(`/door-access/doors/${doorId}`);
+    return response.data;
+  }
+
+  async testDoorConnection(doorId: string) {
+    const response = await this.axiosInstance.post(`/door-access/doors/${doorId}/test-connection`);
+    return response.data;
+  }
+
+  async lockDoor(doorId: string) {
+    const response = await this.axiosInstance.post(`/door-access/doors/${doorId}/lock`);
+    return response.data;
+  }
+
+  async unlockDoor(doorId: string, options?: { proximityData?: any; testMode?: boolean }) {
+    const response = await this.axiosInstance.post(`/door-access/doors/${doorId}/unlock`, options);
+    return response.data;
+  }
+
+  // Access Rules
+  async getDoorAccessRules(doorId: string) {
+    const response = await this.axiosInstance.get(`/door-access/doors/${doorId}/access-rules`);
+    return response.data;
+  }
+
+  async getAccessRuleById(ruleId: string) {
+    const response = await this.axiosInstance.get(`/door-access/access-rules/${ruleId}`);
+    return response.data;
+  }
+
+  async createAccessRule(data: {
+    doorId: string;
+    type: 'USER' | 'GROUP' | 'MEMBERSHIP' | 'TIME_BASED' | 'ROLE';
+    userId?: string;
+    userGroupId?: string;
+    membershipPlanId?: string;
+    priority: number;
+    isActive: boolean;
+    validFrom?: string;
+    validTo?: string;
+    allowedDays?: number[];
+    allowedTimeStart?: string;
+    allowedTimeEnd?: string;
+    description?: string;
+  }) {
+    const response = await this.axiosInstance.post(`/door-access/doors/${data.doorId}/access-rules`, data);
+    return response.data;
+  }
+
+  async updateAccessRule(ruleId: string, data: any) {
+    const response = await this.axiosInstance.put(`/door-access/access-rules/${ruleId}`, data);
+    return response.data;
+  }
+
+  async deleteAccessRule(ruleId: string) {
+    const response = await this.axiosInstance.delete(`/door-access/access-rules/${ruleId}`);
+    return response.data;
+  }
+
+  // Access Logs
+  async getAccessLogs(params?: {
+    doorId?: string;
+    userId?: string;
+    success?: boolean;
+    action?: string;
+    method?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
+  }) {
+    const response = await this.axiosInstance.get('/door-access/access-logs', { params });
+    return response.data;
+  }
+
+  async getAccessLogById(logId: string) {
+    const response = await this.axiosInstance.get(`/door-access/access-logs/${logId}`);
+    return response.data;
+  }
+
+  async exportAccessLogs(params?: {
+    doorId?: string;
+    userId?: string;
+    success?: boolean;
+    action?: string;
+    method?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const response = await this.axiosInstance.get('/door-access/access-logs/export', { params });
+    return response.data;
+  }
+
+  async getAccessLogStats(params?: {
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const response = await this.axiosInstance.get('/door-access/access-logs/stats', { params });
+    return response.data;
+  }
+
+  async getSuspiciousActivity(params?: {
+    timeWindow?: number;
+    threshold?: number;
+  }) {
+    const response = await this.axiosInstance.get('/door-access/access-logs/suspicious', { params });
+    return response.data;
+  }
+
+  //  Customer Door Access Functions
+  async getUserAccessibleDoors() {
+    const response = await this.axiosInstance.get('/door-access/my-accessible-doors');
+    return response.data;
+  }
+
+  async getMembershipStatus() {
+    const response = await this.axiosInstance.get('/memberships/my-status');
+    return response.data;
+  }
+
+  // Door Access Module Status
+  async getDoorAccessModuleStatus() {
+    const response = await this.getAllModuleStatuses();
+    return { success: response.success, data: { enabled: response.data?.doorAccess || false } };
+  }
+
+  // ============================================
+  // SUPER ADMIN ENDPOINTS
+  // ============================================
+
+  // Tenant Management
+  async getAllTenants(params?: {
+    search?: string;
+    active?: boolean;
+    subscriptionStatus?: string;
+    limit?: number;
+    offset?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }) {
+    const response = await this.axiosInstance.get('/super-admin/tenants', { params });
+    return response.data;
+  }
+
+  async getTenantDetails(tenantId: string) {
+    const response = await this.axiosInstance.get(`/super-admin/tenants/${tenantId}`);
     return response.data;
   }
 
   async createTenant(data: {
     name: string;
-    domain: string;
-    package: string;
-    adminEmail: string;
-    adminFirstName: string;
-    adminLastName: string;
-  }): Promise<{ success: boolean; data: Tenant }> {
-    const response = await this.api.post('/platform/tenants', data);
+    subdomain: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    settings?: any;
+    active?: boolean;
+  }) {
+    const response = await this.axiosInstance.post('/super-admin/tenants', data);
     return response.data;
   }
 
-  async getPlatformDashboard(): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/platform/dashboard');
+  async updateTenant(tenantId: string, data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    settings?: any;
+    active?: boolean;
+  }) {
+    const response = await this.axiosInstance.put(`/super-admin/tenants/${tenantId}`, data);
     return response.data;
   }
 
-  // ============================================
-  // PRODUCTS
-  // ============================================
-  async getProducts(params?: {
-    type?: string;
-    status?: string;
-    featured?: boolean;
-    search?: string;
-  }): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/products', { params });
+  async setTenantStatus(tenantId: string, active: boolean) {
+    const response = await this.axiosInstance.patch(`/super-admin/tenants/${tenantId}/status`, { active });
     return response.data;
   }
 
-  async getProduct(id: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get(`/products/${id}`);
+  async deleteTenant(tenantId: string) {
+    const response = await this.axiosInstance.delete(`/super-admin/tenants/${tenantId}`);
     return response.data;
   }
 
-  async createProduct(data: any): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post('/products', data);
-    return response.data;
-  }
-
-  async updateProduct(id: string, data: any): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.patch(`/products/${id}`, data);
-    return response.data;
-  }
-
-  async deleteProduct(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete(`/products/${id}`);
-    return response.data;
-  }
-
-  async publishProduct(id: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post(`/products/${id}/publish`);
-    return response.data;
-  }
-
-  async unpublishProduct(id: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post(`/products/${id}/unpublish`);
-    return response.data;
-  }
-
-  async addProductImage(
-    productId: string,
-    data: { url: string; altText?: string; sortOrder?: number; isPrimary?: boolean }
-  ): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post(`/products/${productId}/images`, data);
-    return response.data;
-  }
-
-  async updateProductImage(
-    imageId: string,
-    data: { url?: string; altText?: string; sortOrder?: number; isPrimary?: boolean }
-  ): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.patch(`/products/images/${imageId}`, data);
-    return response.data;
-  }
-
-  async deleteProductImage(imageId: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete(`/products/images/${imageId}`);
-    return response.data;
-  }
-
-  // ============================================
-  // FILE UPLOAD
-  // ============================================
-  async uploadImage(file: File): Promise<{ success: boolean; data: any }> {
-    const formData = new FormData();
-    formData.append('image', file);
-
-    const response = await this.api.post('/upload/single', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+  async getExpiringTrials(days?: number) {
+    const response = await this.axiosInstance.get('/super-admin/tenants/expiring-trials', {
+      params: { days }
     });
     return response.data;
   }
 
-  async uploadImages(files: File[]): Promise<{ success: boolean; data: any[] }> {
-    const formData = new FormData();
-    files.forEach((file) => {
-      formData.append('images', file);
+  // Tenant User Management
+  async getTenantUsers(tenantId: string) {
+    const response = await this.axiosInstance.get(`/super-admin/tenants/${tenantId}/users`);
+    return response.data;
+  }
+
+  async createUserForTenant(tenantId: string, userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role: 'ADMIN' | 'CUSTOMER';
+    phone?: string;
+  }) {
+    const response = await this.axiosInstance.post(`/super-admin/tenants/${tenantId}/users`, userData);
+    return response.data;
+  }
+
+  async updateTenantUser(tenantId: string, userId: string, userData: {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    role?: 'ADMIN' | 'CUSTOMER';
+    phone?: string;
+    active?: boolean;
+  }) {
+    const response = await this.axiosInstance.put(`/super-admin/tenants/${tenantId}/users/${userId}`, userData);
+    return response.data;
+  }
+
+  async deleteTenantUser(tenantId: string, userId: string) {
+    const response = await this.axiosInstance.delete(`/super-admin/tenants/${tenantId}/users/${userId}`);
+    return response.data;
+  }
+
+  // Feature Management
+  async getAllFeatures(includeInactive?: boolean) {
+    const response = await this.axiosInstance.get('/super-admin/features', {
+      params: { includeInactive }
     });
-
-    const response = await this.api.post('/upload/multiple', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
     return response.data;
   }
 
-  // ============================================
-  // FEEDBACK
-  // ============================================
-  async createFeedback(data: any): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post('/feedback', data);
+  async getFeatureById(featureId: string) {
+    const response = await this.axiosInstance.get(`/super-admin/features/${featureId}`);
     return response.data;
   }
 
-  async getMyFeedback(): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/feedback/my-feedback');
+  async createFeature(data: {
+    key: string;
+    name: string;
+    description?: string;
+    category: string;
+    isCore?: boolean;
+    sortOrder?: number;
+  }) {
+    const response = await this.axiosInstance.post('/super-admin/features', data);
     return response.data;
   }
 
-  async getAllFeedback(params?: {
-    type?: string;
-    status?: string;
-  }): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/feedback', { params });
-    return response.data;
-  }
-
-  async respondToFeedback(
-    id: string,
-    data: { response: string; status?: string }
-  ): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.patch(`/feedback/${id}/respond`, data);
-    return response.data;
-  }
-
-  async getClassReviews(classId: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get(`/feedback/class/${classId}/reviews`);
-    return response.data;
-  }
-
-  async getTrainerReviews(trainerId: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get(`/feedback/trainer/${trainerId}/reviews`);
-    return response.data;
-  }
-
-  // ============================================
-  // EXERCISES
-  // ============================================
-  async getExercises(params?: {
+  async updateFeature(featureId: string, data: {
+    name?: string;
+    description?: string;
     category?: string;
-    muscleGroup?: string;
-    difficulty?: string;
-    search?: string;
-    publishedOnly?: boolean;
-  }): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/exercises', { params });
-    return response.data;
-  }
-
-  async getExercise(id: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get(`/exercises/${id}`);
-    return response.data;
-  }
-
-  async createExercise(data: any): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post('/exercises', data);
-    return response.data;
-  }
-
-  async updateExercise(id: string, data: any): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.patch(`/exercises/${id}`, data);
-    return response.data;
-  }
-
-  async deleteExercise(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete(`/exercises/${id}`);
-    return response.data;
-  }
-
-  async publishExercise(id: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post(`/exercises/${id}/publish`);
-    return response.data;
-  }
-
-  async unpublishExercise(id: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post(`/exercises/${id}/unpublish`);
-    return response.data;
-  }
-
-  // ============================================
-  // ACCOUNTING
-  // ============================================
-  async getAccountingModuleStatus(): Promise<{ success: boolean; data: { accountingEnabled: boolean } }> {
-    const response = await this.api.get('/accounting/module-status');
-    return response.data;
-  }
-
-  async toggleAccountingModule(enabled: boolean): Promise<{ success: boolean; data: any; message: string }> {
-    const response = await this.api.post('/accounting/toggle-module', { enabled });
-    return response.data;
-  }
-
-  async getAccountingDashboard(): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/accounting/dashboard');
-    return response.data;
-  }
-
-  async getIncomeStatement(params?: {
-    startDate?: string;
-    endDate?: string;
-  }): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/accounting/income-statement', { params });
-    return response.data;
-  }
-
-  async getVATReport(params: {
-    startDate: string;
-    endDate: string;
-  }): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/accounting/vat-report', { params });
-    return response.data;
-  }
-
-  async getAccounts(params?: {
-    type?: string;
+    isCore?: boolean;
+    sortOrder?: number;
     active?: boolean;
-  }): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/accounting/accounts', { params });
+  }) {
+    const response = await this.axiosInstance.put(`/super-admin/features/${featureId}`, data);
     return response.data;
   }
 
-  async createAccount(data: any): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post('/accounting/accounts', data);
+  async deleteFeature(featureId: string) {
+    const response = await this.axiosInstance.delete(`/super-admin/features/${featureId}`);
     return response.data;
   }
 
-  async updateAccount(id: string, data: any): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.patch(`/accounting/accounts/${id}`, data);
-    return response.data;
-  }
-
-  async deleteAccount(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete(`/accounting/accounts/${id}`);
-    return response.data;
-  }
-
-  async getSuppliers(params?: {
-    active?: boolean;
-  }): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/accounting/suppliers', { params });
-    return response.data;
-  }
-
-  async createSupplier(data: any): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post('/accounting/suppliers', data);
-    return response.data;
-  }
-
-  async updateSupplier(id: string, data: any): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.patch(`/accounting/suppliers/${id}`, data);
-    return response.data;
-  }
-
-  async deleteSupplier(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete(`/accounting/suppliers/${id}`);
-    return response.data;
-  }
-
-  async getTransactions(params?: {
-    type?: string;
-    accountId?: string;
-    startDate?: string;
-    endDate?: string;
-  }): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/accounting/transactions', { params });
-    return response.data;
-  }
-
-  async createTransaction(data: any): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post('/accounting/transactions', data);
-    return response.data;
-  }
-
-  // ============================================
-  // INVOICES
-  // ============================================
-  async getInvoices(params?: {
-    status?: string;
-    customerId?: string;
-    startDate?: string;
-    endDate?: string;
-  }): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/invoices', { params });
-    return response.data;
-  }
-
-  async getInvoice(id: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get(`/invoices/${id}`);
-    return response.data;
-  }
-
-  async createInvoice(data: any): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post('/invoices', data);
-    return response.data;
-  }
-
-  async updateInvoice(id: string, data: any): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.patch(`/invoices/${id}`, data);
-    return response.data;
-  }
-
-  async sendInvoice(id: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post(`/invoices/${id}/send`);
-    return response.data;
-  }
-
-  async markInvoiceAsPaid(id: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post(`/invoices/${id}/mark-paid`);
-    return response.data;
-  }
-
-  async cancelInvoice(id: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.post(`/invoices/${id}/cancel`);
-    return response.data;
-  }
-
-  async deleteInvoice(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete(`/invoices/${id}`);
-    return response.data;
-  }
-
-  async sendInvoiceReminder(id: string): Promise<{ success: boolean; data: any; message: string }> {
-    const response = await this.api.post(`/invoices/${id}/reminder`);
-    return response.data;
-  }
-
-  // ============================================
-  // PT CREDITS
-  // ============================================
-  async getMyPTCredits(userId?: string): Promise<{ success: boolean; data: { credits: any[]; available: number; total: number; used: number } }> {
-    const response = await this.api.get('/pt/credits', { params: { userId } });
-    return response.data;
-  }
-
-  async addPTCredits(data: {
-    userId: string;
-    credits: number;
-    orderId?: string;
-    expiryDate?: string;
-    notes?: string;
-  }): Promise<{ success: boolean; data: any; message: string }> {
-    const response = await this.api.post('/pt/credits', data);
-    return response.data;
-  }
-
-  // ============================================
-  // CART
-  // ============================================
-  async getCart(): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/cart');
-    return response.data;
-  }
-
-  async addToCart(productId: string, quantity: number = 1): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post('/cart/items', { productId, quantity });
-    return response.data;
-  }
-
-  async updateCartItem(itemId: string, quantity: number): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.patch(`/cart/items/${itemId}`, { quantity });
-    return response.data;
-  }
-
-  async removeFromCart(itemId: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete(`/cart/items/${itemId}`);
-    return response.data;
-  }
-
-  async clearCart(): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete('/cart');
-    return response.data;
-  }
-
-  // ============================================
-  // ORDERS
-  // ============================================
-  async createOrder(data: {
-    items: Array<{ productId: string; quantity: number }>;
-    notes?: string;
-  }): Promise<{ success: boolean; data: any; message: string }> {
-    const response = await this.api.post('/orders', data);
-    return response.data;
-  }
-
-  async getOrders(params?: {
-    status?: string;
-  }): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/orders', { params });
-    return response.data;
-  }
-
-  async getOrder(id: string): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get(`/orders/${id}`);
-    return response.data;
-  }
-
-  async getOrderStatistics(params?: {
-    startDate?: string;
-    endDate?: string;
-  }): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/orders/statistics', { params });
-    return response.data;
-  }
-
-  async updateDeliveryInfo(orderId: string, data: {
-    deliveryAddress: string;
-    deliveryCity: string;
-    deliveryZip: string;
-  }): Promise<{ success: boolean; data: any; message: string }> {
-    const response = await this.api.patch(`/orders/${orderId}/delivery`, data);
-    return response.data;
-  }
-
-  async markOrderAsShipped(orderId: string, trackingNumber?: string): Promise<{ success: boolean; data: any; message: string }> {
-    const response = await this.api.patch(`/orders/${orderId}/ship`, { trackingNumber });
-    return response.data;
-  }
-
-  async markOrderAsDelivered(orderId: string): Promise<{ success: boolean; data: any; message: string }> {
-    const response = await this.api.patch(`/orders/${orderId}/deliver`);
-    return response.data;
-  }
-
-  async updateOrderStatus(orderId: string, status: string): Promise<{ success: boolean; data: any; message: string }> {
-    const response = await this.api.patch(`/orders/${orderId}/status`, { status });
-    return response.data;
-  }
-
-  // ============================================
-  // LANDING PAGE CMS
-  // ============================================
-  async getLandingPageModuleStatus(): Promise<{ success: boolean; data: { landingPageEnabled: boolean } }> {
-    const response = await this.api.get('/landing-page/module-status');
-    return response.data;
-  }
-
-  async toggleLandingPageModule(enabled: boolean): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post('/landing-page/toggle-module', { enabled });
-    return response.data;
-  }
-
-  async getLandingPageContent(): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/landing-page/content');
-    return response.data;
-  }
-
-  async getLandingPageContentBySection(section: string): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get(`/landing-page/content/${section}`);
-    return response.data;
-  }
-
-  async getAllLandingPageContent(): Promise<{ success: boolean; data: any[] }> {
-    const response = await this.api.get('/landing-page/admin/content');
-    return response.data;
-  }
-
-  async createLandingPageContent(data: any): Promise<{ success: boolean; data: any; message: string }> {
-    const response = await this.api.post('/landing-page/admin/content', data);
-    return response.data;
-  }
-
-  async updateLandingPageContent(id: string, data: any): Promise<{ success: boolean; data: any; message: string }> {
-    const response = await this.api.patch(`/landing-page/admin/content/${id}`, data);
-    return response.data;
-  }
-
-  async deleteLandingPageContent(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.delete(`/landing-page/admin/content/${id}`);
-    return response.data;
-  }
-
-  async initializeDefaultLandingPageContent(): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post('/landing-page/admin/content/initialize');
-    return response.data;
-  }
-
-  // ============================================
-  // ACTIVITY LOGS
-  // ============================================
-  async getActivityLogs(params?: {
-    userId?: string;
-    action?: string;
-    resource?: string;
-    startDate?: string;
-    endDate?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/activity-logs', { params });
-    return response.data;
-  }
-
-  async getUserActivityLogs(userId: string, params?: {
-    limit?: number;
-    offset?: number;
-  }): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get(`/activity-logs/user/${userId}`, { params });
-    return response.data;
-  }
-
-  async getActivityStats(params?: {
-    startDate?: string;
-    endDate?: string;
-  }): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/activity-logs/stats', { params });
-    return response.data;
-  }
-
-  // ============================================
-  // PASSWORD RESET
-  // ============================================
-  async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post('/password-reset/request', { email });
-    return response.data;
-  }
-
-  async verifyResetToken(token: string): Promise<{ success: boolean; data: { email: string; valid: boolean } }> {
-    const response = await this.api.get(`/password-reset/verify/${token}`);
-    return response.data;
-  }
-
-  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post('/password-reset/reset', { token, newPassword });
-    return response.data;
-  }
-
-  // ============================================
-  // PRODUCT ANALYTICS
-  // ============================================
-  async trackProductView(productId: string): Promise<{ success: boolean; message: string }> {
-    const response = await this.api.post(`/product-analytics/track/${productId}`, {});
-    return response.data;
-  }
-
-  async getDashboardAnalytics(params?: { period?: string }): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/product-analytics/dashboard', { params });
-    return response.data;
-  }
-
-  async getSalesAnalytics(params?: { startDate?: string; endDate?: string }): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/product-analytics/sales', { params });
-    return response.data;
-  }
-
-  async getMostViewedProducts(params?: { startDate?: string; endDate?: string; limit?: number }): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/product-analytics/most-viewed', { params });
-    return response.data;
-  }
-
-  async getConversionRates(params?: { startDate?: string; endDate?: string }): Promise<{ success: boolean; data: any }> {
-    const response = await this.api.get('/product-analytics/conversion', { params });
-    return response.data;
-  }
-
-  async exportActivityLogs(params?: {
-    action?: string;
-    resource?: string;
-    userId?: string;
-    dateFrom?: string;
-    dateTo?: string;
-    search?: string;
-  }): Promise<Blob> {
-    const response = await this.api.get('/activity-logs/export', {
-      params,
-      responseType: 'blob'
+  // Feature Pack Management
+  async getAllFeaturePacks(includeInactive?: boolean) {
+    const response = await this.axiosInstance.get('/super-admin/feature-packs', {
+      params: { includeInactive }
     });
+    return response.data;
+  }
+
+  async getFeaturePackById(packId: string) {
+    const response = await this.axiosInstance.get(`/super-admin/feature-packs/${packId}`);
+    return response.data;
+  }
+
+  async createFeaturePack(data: {
+    name: string;
+    slug: string;
+    description?: string;
+    price: number;
+    currency?: string;
+    interval: string;
+    trialDays?: number;
+    isPopular?: boolean;
+    sortOrder?: number;
+    featureIds: string[];
+    metadata?: any;
+  }) {
+    const response = await this.axiosInstance.post('/super-admin/feature-packs', data);
+    return response.data;
+  }
+
+  async updateFeaturePack(packId: string, data: {
+    name?: string;
+    slug?: string;
+    description?: string;
+    price?: number;
+    currency?: string;
+    interval?: string;
+    trialDays?: number;
+    isPopular?: boolean;
+    sortOrder?: number;
+    featureIds?: string[];
+    active?: boolean;
+    metadata?: any;
+  }) {
+    const response = await this.axiosInstance.put(`/super-admin/feature-packs/${packId}`, data);
+    return response.data;
+  }
+
+  async deleteFeaturePack(packId: string) {
+    const response = await this.axiosInstance.delete(`/super-admin/feature-packs/${packId}`);
+    return response.data;
+  }
+
+  // Tenant Feature Management
+  async getTenantFeatures(tenantId: string) {
+    const response = await this.axiosInstance.get(`/super-admin/tenants/${tenantId}/features`);
+    return response.data;
+  }
+
+  async setTenantFeatures(tenantId: string, featureIds: string[]) {
+    const response = await this.axiosInstance.post(`/super-admin/tenants/${tenantId}/features`, {
+      featureIds
+    });
+    return response.data;
+  }
+
+  async enableTenantFeature(tenantId: string, featureId: string) {
+    const response = await this.axiosInstance.post(
+      `/super-admin/tenants/${tenantId}/features/${featureId}/enable`
+    );
+    return response.data;
+  }
+
+  async disableTenantFeature(tenantId: string, featureId: string) {
+    const response = await this.axiosInstance.post(
+      `/super-admin/tenants/${tenantId}/features/${featureId}/disable`
+    );
+    return response.data;
+  }
+
+  async applyFeaturePackToTenant(tenantId: string, packId: string) {
+    const response = await this.axiosInstance.post(
+      `/super-admin/tenants/${tenantId}/apply-pack/${packId}`
+    );
+    return response.data;
+  }
+
+  // Subscription Management
+  async createSubscription(data: {
+    tenantId: string;
+    featurePackId?: string;
+    tier?: string;
+    interval: string;
+    price: number;
+    currency?: string;
+    trialDays?: number;
+    customFeatures?: any;
+    billingEmail?: string;
+    billingName?: string;
+    billingAddress?: string;
+    billingPhone?: string;
+    vatNumber?: string;
+    notes?: string;
+  }) {
+    const response = await this.axiosInstance.post('/super-admin/subscriptions', data);
+    return response.data;
+  }
+
+  async updateSubscription(subscriptionId: string, data: {
+    featurePackId?: string;
+    tier?: string;
+    interval?: string;
+    price?: number;
+    currency?: string;
+    customFeatures?: any;
+    billingEmail?: string;
+    billingName?: string;
+    billingAddress?: string;
+    billingPhone?: string;
+    vatNumber?: string;
+    notes?: string;
+  }) {
+    const response = await this.axiosInstance.put(`/super-admin/subscriptions/${subscriptionId}`, data);
+    return response.data;
+  }
+
+  async changeSubscriptionStatus(subscriptionId: string, status: string) {
+    const response = await this.axiosInstance.patch(
+      `/super-admin/subscriptions/${subscriptionId}/status`,
+      { status }
+    );
+    return response.data;
+  }
+
+  async cancelSubscription(subscriptionId: string, data?: {
+    cancelAtPeriodEnd?: boolean;
+    cancellationReason?: string;
+  }) {
+    const response = await this.axiosInstance.post(
+      `/super-admin/subscriptions/${subscriptionId}/cancel`,
+      data
+    );
+    return response.data;
+  }
+
+  async reactivateSubscription(subscriptionId: string) {
+    const response = await this.axiosInstance.post(
+      `/super-admin/subscriptions/${subscriptionId}/reactivate`
+    );
+    return response.data;
+  }
+
+  // Invoice Management
+  async getSubscriptionInvoices(subscriptionId: string) {
+    const response = await this.axiosInstance.get(
+      `/super-admin/subscriptions/${subscriptionId}/invoices`
+    );
+    return response.data;
+  }
+
+  async getInvoiceById(invoiceId: string) {
+    const response = await this.axiosInstance.get(`/super-admin/invoices/${invoiceId}`);
+    return response.data;
+  }
+
+  async markInvoiceSent(invoiceId: string) {
+    const response = await this.axiosInstance.post(`/super-admin/invoices/${invoiceId}/mark-sent`);
+    return response.data;
+  }
+
+  async markInvoicePaid(invoiceId: string, data?: {
+    paymentMethod?: string;
+    paymentId?: string;
+  }) {
+    const response = await this.axiosInstance.post(
+      `/super-admin/invoices/${invoiceId}/mark-paid`,
+      data
+    );
+    return response.data;
+  }
+
+  async getOverdueInvoices() {
+    const response = await this.axiosInstance.get('/super-admin/invoices/overdue');
+    return response.data;
+  }
+
+  // Statistics
+  async getTenantStats() {
+    const response = await this.axiosInstance.get('/super-admin/stats/tenants');
+    return response.data;
+  }
+
+  async getFeatureStats() {
+    const response = await this.axiosInstance.get('/super-admin/stats/features');
+    return response.data;
+  }
+
+  async getSubscriptionStats() {
+    const response = await this.axiosInstance.get('/super-admin/stats/subscriptions');
     return response.data;
   }
 }
 
 export const api = new ApiService();
+export default api;
+export { storage };

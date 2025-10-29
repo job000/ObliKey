@@ -29,6 +29,17 @@ export const rateLimitMiddleware = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
+  // Exclude lightweight polling endpoints from rate limiting
+  const excludedPaths = [
+    '/api/chat/unread-count',
+    '/health'
+  ];
+
+  const shouldSkip = excludedPaths.some(path => req.path === path);
+  if (shouldSkip) {
+    return next();
+  }
+
   try {
     const key = req.ip || 'unknown';
     await rateLimiter.consume(key);
@@ -219,7 +230,16 @@ export const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+    // Allow localtunnel and ngrok domains
+    const tunnelDomains = [
+      /^https:\/\/.*\.loca\.lt$/,
+      /^https:\/\/.*\.ngrok-free\.app$/,
+      /^https:\/\/.*\.ngrok\.io$/,
+    ];
+
+    const isTunnelDomain = tunnelDomains.some(pattern => origin && pattern.test(origin));
+
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development' || isTunnelDomain) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -228,7 +248,7 @@ export const corsOptions = {
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id'],
 };
 
 // ============================================

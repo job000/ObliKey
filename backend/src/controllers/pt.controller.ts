@@ -143,6 +143,22 @@ export class PTController {
               lastName: true,
               avatar: true
             }
+          },
+          program: {
+            select: {
+              id: true,
+              name: true,
+              description: true
+            }
+          },
+          sessionResult: {
+            select: {
+              id: true,
+              trainerFeedback: true,
+              clientFeedback: true,
+              rating: true,
+              completedAt: true
+            }
           }
         },
         orderBy: { startTime: 'asc' }
@@ -152,6 +168,81 @@ export class PTController {
     } catch (error) {
       console.error('Get sessions error:', error);
       res.status(500).json({ success: false, error: 'Kunne ikke hente PT-økter' });
+    }
+  }
+
+  // Get single PT session by ID
+  async getSessionById(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const tenantId = req.tenantId!;
+      const userId = req.user!.userId;
+      const userRole = req.user!.role;
+
+      const session = await prisma.pTSession.findFirst({
+        where: { id, tenantId },
+        include: {
+          trainer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phoneNumber: true,
+              avatar: true
+            }
+          },
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phoneNumber: true,
+              avatar: true
+            }
+          },
+          program: {
+            select: {
+              id: true,
+              name: true,
+              description: true
+            }
+          },
+          sessionResult: {
+            select: {
+              id: true,
+              trainerFeedback: true,
+              clientFeedback: true,
+              rating: true,
+              completedAt: true,
+              exercises: true
+            }
+          }
+        }
+      });
+
+      if (!session) {
+        res.status(404).json({ success: false, error: 'PT-økt ikke funnet' });
+        return;
+      }
+
+      // Check user has permission to view this session
+      const hasAccess =
+        userRole === 'ADMIN' ||
+        userRole === 'SUPER_ADMIN' ||
+        session.trainerId === userId ||
+        session.customerId === userId;
+
+      if (!hasAccess) {
+        res.status(403).json({ success: false, error: 'Ingen tilgang til denne økten' });
+        return;
+      }
+
+      res.json({ success: true, data: session });
+    } catch (error) {
+      console.error('Get session by ID error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke hente PT-økt' });
     }
   }
 
@@ -855,6 +946,437 @@ export class PTController {
         console.error('Add credits error:', error);
         res.status(500).json({ success: false, error: 'Kunne ikke legge til PT-timer' });
       }
+    }
+  }
+
+  // ============================================
+  // SESSION RESULTS & FEEDBACK
+  // ============================================
+
+  // Create or update session result (trainer adds feedback and exercises performed)
+  async createSessionResult(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { sessionId } = req.params;
+      const { trainerFeedback, exercises } = req.body;
+      const userId = req.user!.userId;
+      const userRole = req.user!.role;
+
+      // Check if session exists
+      const session = await prisma.pTSession.findUnique({
+        where: { id: sessionId }
+      });
+
+      if (!session) {
+        res.status(404).json({ success: false, error: 'PT-økt ikke funnet' });
+        return;
+      }
+
+      // Only trainer or admin can add session results
+      if (userRole === 'CUSTOMER' || (userRole === 'TRAINER' && session.trainerId !== userId)) {
+        res.status(403).json({ success: false, error: 'Ingen tilgang til å legge til øktresultat' });
+        return;
+      }
+
+      // Check if result already exists
+      let sessionResult = await prisma.sessionResult.findUnique({
+        where: { sessionId }
+      });
+
+      if (sessionResult) {
+        // Update existing result
+        sessionResult = await prisma.sessionResult.update({
+          where: { id: sessionResult.id },
+          data: { trainerFeedback },
+          include: {
+            sessionExercises: {
+              orderBy: { sortOrder: 'asc' }
+            }
+          }
+        });
+
+        // Delete existing exercises if new ones provided
+        if (exercises && Array.isArray(exercises)) {
+          await prisma.sessionExercise.deleteMany({
+            where: { sessionResultId: sessionResult.id }
+          });
+        }
+      } else {
+        // Create new result
+        sessionResult = await prisma.sessionResult.create({
+          data: {
+            sessionId,
+            trainerFeedback
+          },
+          include: {
+            sessionExercises: {
+              orderBy: { sortOrder: 'asc' }
+            }
+          }
+        });
+
+        // Mark session as completed
+        await prisma.pTSession.update({
+          where: { id: sessionId },
+          data: { status: 'COMPLETED' }
+        });
+      }
+
+      // Add exercises if provided
+      if (exercises && Array.isArray(exercises) && exercises.length > 0) {
+        await prisma.sessionExercise.createMany({
+          data: exercises.map((ex: any, index: number) => ({
+            sessionResultId: sessionResult!.id,
+            exerciseName: ex.exerciseName,
+            exerciseId: ex.exerciseId || null,
+            sets: ex.sets,
+            reps: ex.reps,
+            weight: ex.weight || null,
+            notes: ex.notes || null,
+            sortOrder: index
+          }))
+        });
+
+        // Refetch with exercises
+        sessionResult = await prisma.sessionResult.findUnique({
+          where: { id: sessionResult!.id },
+          include: {
+            sessionExercises: {
+              include: {
+                exercise: true
+              },
+              orderBy: { sortOrder: 'asc' }
+            }
+          }
+        });
+      }
+
+      res.json({
+        success: true,
+        data: sessionResult,
+        message: 'Øktresultat lagret'
+      });
+    } catch (error) {
+      console.error('Create session result error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke lagre øktresultat' });
+    }
+  }
+
+  // Get session result
+  async getSessionResult(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { sessionId } = req.params;
+      const userId = req.user!.userId;
+      const userRole = req.user!.role;
+
+      // Check if session exists and user has permission
+      const session = await prisma.pTSession.findUnique({
+        where: { id: sessionId }
+      });
+
+      if (!session) {
+        res.status(404).json({ success: false, error: 'PT-økt ikke funnet' });
+        return;
+      }
+
+      // Check permission
+      if (
+        userRole !== 'ADMIN' &&
+        userRole !== 'SUPER_ADMIN' &&
+        session.trainerId !== userId &&
+        session.customerId !== userId
+      ) {
+        res.status(403).json({ success: false, error: 'Ingen tilgang til dette øktresultatet' });
+        return;
+      }
+
+      const sessionResult = await prisma.sessionResult.findUnique({
+        where: { sessionId },
+        include: {
+          sessionExercises: {
+            include: {
+              exercise: true
+            },
+            orderBy: { sortOrder: 'asc' }
+          }
+        }
+      });
+
+      if (!sessionResult) {
+        res.status(404).json({ success: false, error: 'Ingen resultat funnet for denne økten' });
+        return;
+      }
+
+      res.json({ success: true, data: sessionResult });
+    } catch (error) {
+      console.error('Get session result error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke hente øktresultat' });
+    }
+  }
+
+  // Add client feedback to session result
+  async addClientFeedback(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { sessionId } = req.params;
+      const { clientFeedback, rating } = req.body;
+      const userId = req.user!.userId;
+
+      // Check if session exists and belongs to customer
+      const session = await prisma.pTSession.findUnique({
+        where: { id: sessionId }
+      });
+
+      if (!session) {
+        res.status(404).json({ success: false, error: 'PT-økt ikke funnet' });
+        return;
+      }
+
+      if (session.customerId !== userId) {
+        res.status(403).json({ success: false, error: 'Du kan kun gi tilbakemelding på dine egne økter' });
+        return;
+      }
+
+      // Get or create session result
+      let sessionResult = await prisma.sessionResult.findUnique({
+        where: { sessionId }
+      });
+
+      if (!sessionResult) {
+        res.status(404).json({ success: false, error: 'Ingen resultat funnet. Treneren må først fullføre økten.' });
+        return;
+      }
+
+      // Update with client feedback
+      sessionResult = await prisma.sessionResult.update({
+        where: { id: sessionResult.id },
+        data: {
+          clientFeedback,
+          rating: rating ? Number(rating) : null
+        },
+        include: {
+          sessionExercises: {
+            include: {
+              exercise: true
+            },
+            orderBy: { sortOrder: 'asc' }
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        data: sessionResult,
+        message: 'Tilbakemelding lagret'
+      });
+    } catch (error) {
+      console.error('Add client feedback error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke lagre tilbakemelding' });
+    }
+  }
+
+  // Approve PT session (customer accepts)
+  async approveSession(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { sessionId } = req.params;
+      const tenantId = req.tenantId!;
+      const userId = req.user!.userId;
+
+      const session = await prisma.pTSession.findFirst({
+        where: { id: sessionId, tenantId },
+        include: {
+          trainer: true,
+          customer: true
+        }
+      });
+
+      if (!session) {
+        res.status(404).json({ success: false, error: 'PT-økt ikke funnet' });
+        return;
+      }
+
+      if (session.customerId !== userId) {
+        res.status(403).json({ success: false, error: 'Kun kunde kan godta økten' });
+        return;
+      }
+
+      if (session.status !== 'PENDING_APPROVAL') {
+        res.status(400).json({ success: false, error: 'Økten kan ikke godtas i nåværende status' });
+        return;
+      }
+
+      const updatedSession = await prisma.pTSession.update({
+        where: { id: sessionId },
+        data: { status: 'SCHEDULED' },
+        include: {
+          trainer: true,
+          customer: true
+        }
+      });
+
+      // Send notifications
+      const notificationService = (await import('../services/notification.service')).default;
+      await notificationService.notifyPTSessionParticipants({
+        tenantId,
+        trainerId: session.trainerId,
+        customerId: session.customerId,
+        ptSessionId: sessionId,
+        type: 'PT_SESSION_APPROVED',
+        trainerTitle: 'PT-økt godkjent',
+        trainerMessage: `${session.customer.firstName} ${session.customer.lastName} har godtatt PT-økten "${session.title}"`,
+        customerTitle: 'PT-økt godkjent',
+        customerMessage: `Du har godtatt PT-økten "${session.title}" med ${session.trainer.firstName} ${session.trainer.lastName}`
+      });
+
+      res.json({
+        success: true,
+        data: updatedSession,
+        message: 'PT-økt godkjent'
+      });
+    } catch (error) {
+      console.error('Approve session error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke godta PT-økt' });
+    }
+  }
+
+  // Reject PT session (customer rejects)
+  async rejectSession(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { sessionId } = req.params;
+      const { rejectionReason } = req.body;
+      const tenantId = req.tenantId!;
+      const userId = req.user!.userId;
+
+      const session = await prisma.pTSession.findFirst({
+        where: { id: sessionId, tenantId },
+        include: {
+          trainer: true,
+          customer: true
+        }
+      });
+
+      if (!session) {
+        res.status(404).json({ success: false, error: 'PT-økt ikke funnet' });
+        return;
+      }
+
+      if (session.customerId !== userId) {
+        res.status(403).json({ success: false, error: 'Kun kunde kan avslå økten' });
+        return;
+      }
+
+      if (session.status !== 'PENDING_APPROVAL') {
+        res.status(400).json({ success: false, error: 'Økten kan ikke avslås i nåværende status' });
+        return;
+      }
+
+      const updatedSession = await prisma.pTSession.update({
+        where: { id: sessionId },
+        data: {
+          status: 'REJECTED',
+          rejectionReason: rejectionReason || 'Ingen grunn oppgitt'
+        },
+        include: {
+          trainer: true,
+          customer: true
+        }
+      });
+
+      // Send notifications
+      const notificationService = (await import('../services/notification.service')).default;
+      await notificationService.notifyPTSessionParticipants({
+        tenantId,
+        trainerId: session.trainerId,
+        customerId: session.customerId,
+        ptSessionId: sessionId,
+        type: 'PT_SESSION_REJECTED',
+        trainerTitle: 'PT-økt avslått',
+        trainerMessage: `${session.customer.firstName} ${session.customer.lastName} har avslått PT-økten "${session.title}". Grunn: ${rejectionReason || 'Ingen grunn oppgitt'}`,
+        customerTitle: 'PT-økt avslått',
+        customerMessage: `Du har avslått PT-økten "${session.title}"`
+      });
+
+      res.json({
+        success: true,
+        data: updatedSession,
+        message: 'PT-økt avslått'
+      });
+    } catch (error) {
+      console.error('Reject session error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke avslå PT-økt' });
+    }
+  }
+
+  // Cancel PT session
+  async cancelSession(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { sessionId } = req.params;
+      const { cancellationReason } = req.body;
+      const tenantId = req.tenantId!;
+      const userId = req.user!.userId;
+
+      const session = await prisma.pTSession.findFirst({
+        where: { id: sessionId, tenantId },
+        include: {
+          trainer: true,
+          customer: true
+        }
+      });
+
+      if (!session) {
+        res.status(404).json({ success: false, error: 'PT-økt ikke funnet' });
+        return;
+      }
+
+      // Both trainer and customer can cancel
+      if (session.trainerId !== userId && session.customerId !== userId) {
+        res.status(403).json({ success: false, error: 'Du har ikke tilgang til å avlyse denne økten' });
+        return;
+      }
+
+      if (session.status === 'COMPLETED' || session.status === 'CANCELLED') {
+        res.status(400).json({ success: false, error: 'Økten kan ikke avlyses i nåværende status' });
+        return;
+      }
+
+      const updatedSession = await prisma.pTSession.update({
+        where: { id: sessionId },
+        data: {
+          status: 'CANCELLED',
+          cancellationReason: cancellationReason || 'Ingen grunn oppgitt'
+        },
+        include: {
+          trainer: true,
+          customer: true
+        }
+      });
+
+      // Determine who cancelled
+      const cancelledBy = session.trainerId === userId ? 'PT' : 'kunde';
+      const cancellerName = session.trainerId === userId
+        ? `${session.trainer.firstName} ${session.trainer.lastName}`
+        : `${session.customer.firstName} ${session.customer.lastName}`;
+
+      // Send notifications
+      const notificationService = (await import('../services/notification.service')).default;
+      await notificationService.notifyPTSessionParticipants({
+        tenantId,
+        trainerId: session.trainerId,
+        customerId: session.customerId,
+        ptSessionId: sessionId,
+        type: 'PT_SESSION_CANCELLED',
+        trainerTitle: 'PT-økt avlyst',
+        trainerMessage: `PT-økten "${session.title}" har blitt avlyst av ${cancelledBy}. Grunn: ${cancellationReason || 'Ingen grunn oppgitt'}`,
+        customerTitle: 'PT-økt avlyst',
+        customerMessage: `PT-økten "${session.title}" har blitt avlyst av ${cancelledBy}. Grunn: ${cancellationReason || 'Ingen grunn oppgitt'}`
+      });
+
+      res.json({
+        success: true,
+        data: updatedSession,
+        message: 'PT-økt avlyst'
+      });
+    } catch (error) {
+      console.error('Cancel session error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke avlyse PT-økt' });
     }
   }
 }

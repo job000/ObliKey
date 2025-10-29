@@ -1,16 +1,19 @@
 import { Router } from 'express';
 import { OrderController } from '../controllers/order.controller';
 import { authenticate, authorize } from '../middleware/auth';
+// import { requireEcommerceModule } from '../middleware/moduleCheck';
 
 const router = Router();
 const orderController = new OrderController();
 
 // All routes require authentication
 router.use(authenticate);
+// TEMPORARILY DISABLED: router.use(requireEcommerceModule);
 
 // Order routes
 router.post('/', (req, res) => orderController.createOrder(req, res)); // All authenticated users can create orders
 router.get('/', (req, res) => orderController.getOrders(req, res));
+router.get('/all', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => orderController.getAllOrders(req, res));
 router.get('/statistics', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => orderController.getOrderStatistics(req, res));
 router.get('/:id', (req, res) => orderController.getOrderById(req, res));
 router.patch('/:id/status', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => orderController.updateOrderStatus(req, res));

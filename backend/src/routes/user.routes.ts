@@ -8,8 +8,12 @@ const userController = new UserController();
 // All routes require authentication
 router.use(authenticate);
 
+// Module status endpoint (must be before /:id to avoid route conflicts)
+router.get('/module-status/door-access', (req, res) => userController.getDoorAccessModuleStatus(req, res));
+
 // Routes
 router.get('/', authorize('ADMIN', 'TRAINER'), (req, res) => userController.getUsers(req, res));
+router.get('/search', (req, res) => userController.searchUsers(req, res)); // Must be before /:id
 router.get('/:id', (req, res) => userController.getUserById(req, res));
 router.patch('/:id', (req, res) => userController.updateUser(req, res));
 router.patch('/:id/username', (req, res) => userController.updateUsername(req, res));

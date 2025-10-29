@@ -37,7 +37,10 @@ export class CartController {
       // Get product details for cart items
       const productIds = cart.items.map(item => item.productId);
       const products = await prisma.product.findMany({
-        where: { id: { in: productIds } },
+        where: {
+          id: { in: productIds },
+          tenantId
+        },
         include: { images: true }
       });
 
@@ -97,8 +100,11 @@ export class CartController {
       }
 
       // Verify product exists and is available
-      const product = await prisma.product.findUnique({
-        where: { id: productId }
+      const product = await prisma.product.findFirst({
+        where: {
+          id: productId,
+          tenantId
+        }
       });
 
       if (!product) {
@@ -179,6 +185,7 @@ export class CartController {
   async updateItem(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.userId;
+      const tenantId = req.tenantId!;
       const { itemId } = req.params;
       const { quantity } = req.body;
 
@@ -199,8 +206,11 @@ export class CartController {
       }
 
       // Check product stock
-      const product = await prisma.product.findUnique({
-        where: { id: item.productId }
+      const product = await prisma.product.findFirst({
+        where: {
+          id: item.productId,
+          tenantId
+        }
       });
 
       if (product && product.trackInventory && product.stock !== null && product.stock < quantity) {
@@ -282,6 +292,94 @@ export class CartController {
     } catch (error) {
       console.error('Clear cart error:', error);
       res.status(500).json({ success: false, error: 'Kunne ikke tømme handlekurven' });
+    }
+  }
+
+  // Check cart reminder
+  async checkReminder(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+
+      // Find user's cart
+      const cart = await prisma.cart.findUnique({
+        where: { userId },
+        include: {
+          items: true
+        }
+      });
+
+      // No cart or empty cart - no reminder needed
+      if (!cart || cart.items.length === 0) {
+        res.json({
+          success: true,
+          data: {
+            shouldRemind: false,
+            itemCount: 0
+          }
+        });
+        return;
+      }
+
+      // Check if cart has items and if reminder should be sent
+      const now = new Date();
+      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+      // Should remind if:
+      // 1. Cart has items
+      // 2. Cart was created more than 24 hours ago
+      // 3. No reminder sent in last 24 hours (or never sent)
+      const shouldRemind = cart.items.length > 0 &&
+        cart.createdAt < twentyFourHoursAgo &&
+        (!cart.lastReminderSent || cart.lastReminderSent < twentyFourHoursAgo);
+
+      res.json({
+        success: true,
+        data: {
+          shouldRemind,
+          itemCount: cart.items.length,
+          cartAge: now.getTime() - cart.createdAt.getTime(),
+          lastReminderSent: cart.lastReminderSent
+        }
+      });
+    } catch (error) {
+      console.error('Check reminder error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke sjekke påminnelse' });
+    }
+  }
+
+  // Update reminder timestamp
+  async updateReminder(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+
+      // Find user's cart
+      const cart = await prisma.cart.findUnique({
+        where: { userId }
+      });
+
+      if (!cart) {
+        throw new AppError('Handlekurv ikke funnet', 404);
+      }
+
+      // Update lastReminderSent timestamp
+      await prisma.cart.update({
+        where: { userId },
+        data: {
+          lastReminderSent: new Date()
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Påminnelse oppdatert'
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Update reminder error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke oppdatere påminnelse' });
+      }
     }
   }
 }

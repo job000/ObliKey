@@ -2,6 +2,17 @@ import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { prisma } from '../utils/prisma';
 import { AppError } from '../middleware/errorHandler';
+import { suggestPosting, getPostingSuggestion, calculateVAT, calculateAmountExVAT } from '../services/accountingRules.service';
+import { seedAccountsForTenant } from '../seeds/seedAccounts';
+import {
+  calculateMVA,
+  validateMVACalculation,
+  saveVATReport,
+  getCurrentMVAPeriod,
+  generateMVAPeriods,
+  formatMVAReportText,
+  MVAPeriod
+} from '../services/mva.service';
 
 export class AccountingController {
   // ============================================
@@ -704,6 +715,495 @@ export class AccountingController {
     } catch (error) {
       console.error('Get module status error:', error);
       res.status(500).json({ success: false, error: 'Kunne ikke hente modulstatus' });
+    }
+  }
+
+  // ============================================
+  // AUTOMATIC POSTING SUGGESTIONS
+  // ============================================
+
+  /**
+   * Get posting suggestion based on transaction description
+   * POST /api/accounting/suggest-posting
+   */
+  async suggestPostingAccounts(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { description, amount, supplierName } = req.body;
+
+      if (!description) {
+        throw new AppError('Beskrivelse er påkrevd', 400);
+      }
+
+      const suggestion = await getPostingSuggestion(
+        description,
+        amount || 0,
+        supplierName
+      );
+
+      if (!suggestion) {
+        res.json({
+          success: true,
+          data: null,
+          message: 'Ingen automatisk forslag funnet'
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: suggestion
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Suggest posting error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke hente posteringsforslag' });
+      }
+    }
+  }
+
+  // ============================================
+  // NORWEGIAN CHART OF ACCOUNTS
+  // ============================================
+
+  /**
+   * Seed Norwegian chart of accounts for a tenant
+   * POST /api/accounting/seed-norwegian-accounts
+   */
+  async seedNorwegianAccounts(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+      const userRole = req.user!.role;
+
+      // Only admins can seed accounts
+      if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+        throw new AppError('Kun administratorer kan initialisere kontoplan', 403);
+      }
+
+      // Check if accounts already exist
+      const existingCount = await prisma.account.count({
+        where: { tenantId }
+      });
+
+      if (existingCount > 50) {
+        throw new AppError('Kontoplanen er allerede initialisert', 400);
+      }
+
+      // Seed the accounts
+      await seedAccountsForTenant(tenantId);
+
+      const newCount = await prisma.account.count({
+        where: { tenantId }
+      });
+
+      res.json({
+        success: true,
+        message: `Norsk kontoplan initialisert med ${newCount} kontoer`
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Seed Norwegian accounts error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke initialisere kontoplan' });
+      }
+    }
+  }
+
+  // ============================================
+  // ACCOUNT BALANCES
+  // ============================================
+
+  /**
+   * Get account balances
+   * GET /api/accounting/account-balances
+   */
+  async getAccountBalances(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+      const { asOfDate } = req.query;
+
+      const endDate = asOfDate ? new Date(asOfDate as string) : new Date();
+
+      // Get all accounts
+      const accounts = await prisma.account.findMany({
+        where: { tenantId, active: true },
+        orderBy: { accountNumber: 'asc' }
+      });
+
+      // Calculate balance for each account based on transactions
+      const accountBalances = await Promise.all(
+        accounts.map(async (account) => {
+          const transactions = await prisma.transaction.findMany({
+            where: {
+              accountId: account.id,
+              transactionDate: { lte: endDate }
+            }
+          });
+
+          // Calculate balance based on account type
+          let balance = 0;
+          transactions.forEach(tx => {
+            if (account.type === 'ASSET' || account.type === 'EXPENSE') {
+              // Debit increases, credit decreases
+              balance += tx.type === 'EXPENSE' ? tx.amount : -tx.amount;
+            } else {
+              // Credit increases, debit decreases
+              balance += tx.type === 'INCOME' ? tx.amount : -tx.amount;
+            }
+          });
+
+          return {
+            id: account.id,
+            accountNumber: account.accountNumber,
+            name: account.name,
+            type: account.type,
+            balance,
+            transactionCount: transactions.length
+          };
+        })
+      );
+
+      // Group by type
+      const grouped = {
+        ASSET: accountBalances.filter(a => a.type === 'ASSET'),
+        LIABILITY: accountBalances.filter(a => a.type === 'LIABILITY'),
+        EQUITY: accountBalances.filter(a => a.type === 'EQUITY'),
+        INCOME: accountBalances.filter(a => a.type === 'INCOME'),
+        EXPENSE: accountBalances.filter(a => a.type === 'EXPENSE')
+      };
+
+      const summary = {
+        totalAssets: grouped.ASSET.reduce((sum, a) => sum + a.balance, 0),
+        totalLiabilities: grouped.LIABILITY.reduce((sum, a) => sum + a.balance, 0),
+        totalEquity: grouped.EQUITY.reduce((sum, a) => sum + a.balance, 0),
+        totalIncome: grouped.INCOME.reduce((sum, a) => sum + a.balance, 0),
+        totalExpenses: grouped.EXPENSE.reduce((sum, a) => sum + a.balance, 0)
+      };
+
+      res.json({
+        success: true,
+        data: {
+          accounts: accountBalances,
+          grouped,
+          summary,
+          asOfDate: endDate
+        }
+      });
+    } catch (error) {
+      console.error('Get account balances error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke hente kontosaldoer' });
+    }
+  }
+
+  // ============================================
+  // TRIAL BALANCE
+  // ============================================
+
+  /**
+   * Get trial balance (Råbalanse)
+   * GET /api/accounting/trial-balance
+   */
+  async getTrialBalance(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+      const { startDate, endDate } = req.query;
+
+      const start = startDate ? new Date(startDate as string) : new Date(new Date().getFullYear(), 0, 1);
+      const end = endDate ? new Date(endDate as string) : new Date();
+
+      const accounts = await prisma.account.findMany({
+        where: { tenantId, active: true },
+        include: {
+          transactions: {
+            where: {
+              transactionDate: { gte: start, lte: end }
+            }
+          }
+        },
+        orderBy: { accountNumber: 'asc' }
+      });
+
+      const trialBalance = accounts.map(account => {
+        let debit = 0;
+        let credit = 0;
+
+        account.transactions.forEach(tx => {
+          // Simplified double-entry simulation
+          if (account.type === 'ASSET' || account.type === 'EXPENSE') {
+            if (tx.type === 'EXPENSE') {
+              debit += tx.amount;
+            } else {
+              credit += tx.amount;
+            }
+          } else {
+            if (tx.type === 'INCOME') {
+              credit += tx.amount;
+            } else {
+              debit += tx.amount;
+            }
+          }
+        });
+
+        const balance = debit - credit;
+
+        return {
+          accountNumber: account.accountNumber,
+          accountName: account.name,
+          type: account.type,
+          debit: debit > 0 ? debit : 0,
+          credit: credit > 0 ? credit : 0,
+          balance
+        };
+      }).filter(item => item.debit !== 0 || item.credit !== 0);
+
+      const totalDebit = trialBalance.reduce((sum, item) => sum + item.debit, 0);
+      const totalCredit = trialBalance.reduce((sum, item) => sum + item.credit, 0);
+
+      res.json({
+        success: true,
+        data: {
+          period: { start, end },
+          accounts: trialBalance,
+          totals: {
+            debit: totalDebit,
+            credit: totalCredit,
+            difference: totalDebit - totalCredit
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get trial balance error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke hente råbalanse' });
+    }
+  }
+
+  // ============================================
+  // MVA (VAT) MODULE
+  // ============================================
+
+  /**
+   * Calculate MVA for a period
+   * POST /api/accounting/mva/calculate
+   */
+  async calculateMVAPeriod(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+      const { startDate, endDate } = req.body;
+
+      if (!startDate || !endDate) {
+        throw new AppError('Start- og sluttdato er påkrevd', 400);
+      }
+
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      // Calculate MVA
+      const calculation = await calculateMVA(tenantId, start, end);
+
+      // Validate calculation
+      const validation = validateMVACalculation(calculation);
+
+      res.json({
+        success: true,
+        data: {
+          calculation,
+          validation,
+          formattedReport: formatMVAReportText(calculation)
+        }
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Calculate MVA error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke beregne MVA' });
+      }
+    }
+  }
+
+  /**
+   * Get current MVA period
+   * GET /api/accounting/mva/current-period
+   */
+  async getCurrentMVAPeriodEndpoint(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { periodType = 'BIMONTHLY' } = req.query;
+
+      const period = getCurrentMVAPeriod(periodType as MVAPeriod);
+
+      res.json({
+        success: true,
+        data: period
+      });
+    } catch (error) {
+      console.error('Get current MVA period error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke hente MVA-periode' });
+    }
+  }
+
+  /**
+   * Generate MVA periods for a year
+   * GET /api/accounting/mva/periods/:year
+   */
+  async getMVAPeriods(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { year } = req.params;
+      const { periodType = 'BIMONTHLY' } = req.query;
+
+      const periods = generateMVAPeriods(
+        parseInt(year),
+        periodType as MVAPeriod
+      );
+
+      res.json({
+        success: true,
+        data: periods
+      });
+    } catch (error) {
+      console.error('Get MVA periods error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke generere MVA-perioder' });
+    }
+  }
+
+  /**
+   * Save or submit VAT report
+   * POST /api/accounting/mva/save
+   */
+  async saveMVAReport(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+      const userId = req.user!.userId;
+      const { startDate, endDate, submit = false } = req.body;
+
+      if (!startDate || !endDate) {
+        throw new AppError('Start- og sluttdato er påkrevd', 400);
+      }
+
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      // Calculate MVA
+      const calculation = await calculateMVA(tenantId, start, end);
+
+      // Validate before saving
+      const validation = validateMVACalculation(calculation);
+
+      if (!validation.valid && submit) {
+        throw new AppError(
+          `Kan ikke sende inn ugyldig MVA-oppgave: ${validation.errors.join(', ')}`,
+          400
+        );
+      }
+
+      // Save to database
+      const report = await saveVATReport(
+        tenantId,
+        userId,
+        calculation,
+        submit
+      );
+
+      res.json({
+        success: true,
+        data: report,
+        message: submit ? 'MVA-oppgave sendt inn' : 'MVA-oppgave lagret som utkast'
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Save MVA report error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke lagre MVA-oppgave' });
+      }
+    }
+  }
+
+  /**
+   * Get all VAT reports for tenant
+   * GET /api/accounting/mva/reports
+   */
+  async getMVAReports(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+      const { status, year } = req.query;
+
+      const where: any = { tenantId };
+
+      if (status) {
+        where.status = status;
+      }
+
+      if (year) {
+        const yearInt = parseInt(year as string);
+        where.periodStart = {
+          gte: new Date(yearInt, 0, 1)
+        };
+        where.periodEnd = {
+          lte: new Date(yearInt, 11, 31)
+        };
+      }
+
+      const reports = await prisma.vATReport.findMany({
+        where,
+        include: {
+          submitter: {
+            select: {
+              firstName: true,
+              lastName: true
+            }
+          }
+        },
+        orderBy: { periodStart: 'desc' }
+      });
+
+      res.json({
+        success: true,
+        data: reports
+      });
+    } catch (error) {
+      console.error('Get MVA reports error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke hente MVA-rapporter' });
+    }
+  }
+
+  /**
+   * Delete VAT report
+   * DELETE /api/accounting/mva/reports/:id
+   */
+  async deleteMVAReport(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const tenantId = req.tenantId!;
+
+      const report = await prisma.vATReport.findFirst({
+        where: { id, tenantId }
+      });
+
+      if (!report) {
+        throw new AppError('MVA-rapport ikke funnet', 404);
+      }
+
+      if (report.status === 'SUBMITTED') {
+        throw new AppError('Kan ikke slette innsendt MVA-rapport', 400);
+      }
+
+      await prisma.vATReport.delete({
+        where: { id }
+      });
+
+      res.json({
+        success: true,
+        message: 'MVA-rapport slettet'
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Delete MVA report error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke slette MVA-rapport' });
+      }
     }
   }
 }

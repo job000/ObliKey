@@ -21,6 +21,7 @@ export enum ModuleKey {
   ACCOUNTING = 'accounting',
   LANDING_PAGE = 'landingPage',
   ADMIN = 'admin',
+  MEMBERSHIP = 'membership',
 }
 
 export interface ModuleDefinition {
@@ -158,6 +159,18 @@ export const MODULE_DEFINITIONS: Record<ModuleKey, ModuleDefinition> = {
     routes: ['/admin', '/admin/activity-logs', '/profile'],
     apiEndpoints: ['/api/users/*', '/api/tenants/*', '/api/activity-logs/*'],
   },
+
+  [ModuleKey.MEMBERSHIP]: {
+    key: ModuleKey.MEMBERSHIP,
+    name: 'Medlemskap',
+    description: 'Medlemskapssystem med automatisk fakturering',
+    icon: 'Users',
+    category: 'business',
+    requiredRoles: ['ADMIN', 'SUPER_ADMIN', 'CUSTOMER'],
+    defaultEnabled: false,
+    routes: ['/memberships', '/admin/memberships'],
+    apiEndpoints: ['/api/memberships/*'],
+  },
 };
 
 /**
@@ -214,6 +227,7 @@ export function getModuleConfig(tenantSettings: any): Set<ModuleKey> {
     chatEnabled: ModuleKey.CHAT,
     accountingEnabled: ModuleKey.ACCOUNTING,
     landingPageEnabled: ModuleKey.LANDING_PAGE,
+    membershipEnabled: ModuleKey.MEMBERSHIP,
   };
 
   // Always enable core modules
@@ -251,4 +265,5 @@ export const DEFAULT_MODULE_CONFIG = {
   chatEnabled: false,
   accountingEnabled: false,
   landingPageEnabled: false,
+  membershipEnabled: false,
 };

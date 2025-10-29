@@ -16,6 +16,9 @@ router.get('/my-feedback', (req, res) => feedbackController.getMyFeedback(req, r
 router.get('/class/:classId/reviews', (req, res) => feedbackController.getClassReviews(req, res));
 router.get('/trainer/:trainerId/reviews', (req, res) => feedbackController.getTrainerReviews(req, res));
 
+// Submit feedback for a specific class (requires attendance)
+router.post('/class/:classId', (req, res) => feedbackController.submitClassFeedback(req, res));
+
 // Admin routes
 router.get('/', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => feedbackController.getAllFeedback(req, res));
 router.patch('/:id/respond', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => feedbackController.respondToFeedback(req, res));

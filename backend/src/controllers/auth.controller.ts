@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { AuthRequest, RegisterDto, LoginDto } from '../types';
+import { AuthRequest, RegisterDto, LoginDto, SelectTenantDto } from '../types';
 import { prisma } from '../utils/prisma';
 import { generateToken } from '../utils/jwt';
 import { emailService } from '../utils/email';
@@ -14,28 +14,33 @@ export class AuthController {
     try {
       const { email, password, firstName, lastName, phone, dateOfBirth, username: requestedUsername, tenantId }: RegisterDto = req.body;
 
+      // Find tenant by subdomain (frontend sends subdomain as tenantId)
+      let tenant = await prisma.tenant.findUnique({
+        where: { subdomain: tenantId }
+      });
+
+      if (!tenant) {
+        // If tenant doesn't exist, create it (for development)
+        tenant = await prisma.tenant.create({
+          data: {
+            name: tenantId, // Use subdomain as default name
+            subdomain: tenantId,
+            email: `admin@${tenantId}.com`,
+            active: true
+          }
+        });
+      }
+
+      // Use the actual tenant ID from database
+      const actualTenantId = tenant.id;
+
       // Check if user already exists
       const existingUser = await prisma.user.findUnique({
-        where: { tenantId_email: { tenantId, email } }
+        where: { tenantId_email: { tenantId: actualTenantId, email } }
       });
 
       if (existingUser) {
         throw new AppError('Bruker med denne e-posten eksisterer allerede', 400);
-      }
-
-      // Auto-create tenant if it doesn't exist (for development)
-      let tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-
-      if (!tenant) {
-        tenant = await prisma.tenant.create({
-          data: {
-            id: tenantId,
-            name: tenantId, // Use tenantId as default name
-            subdomain: tenantId, // Use tenantId as subdomain
-            email: `admin@${tenantId}.com`, // Default admin email
-            active: true
-          }
-        });
       }
 
       // Handle username
@@ -49,7 +54,7 @@ export class AuthController {
 
         // Check if username is already taken
         const existingUsername = await prisma.user.findFirst({
-          where: { tenantId, username: requestedUsername }
+          where: { tenantId: actualTenantId, username: requestedUsername }
         });
 
         if (existingUsername) {
@@ -59,7 +64,7 @@ export class AuthController {
         username = requestedUsername;
       } else {
         // Generate unique username from email
-        username = await generateUsername(email, tenantId);
+        username = await generateUsername(email, actualTenantId);
       }
 
       // Hash password
@@ -68,7 +73,7 @@ export class AuthController {
       // Create user
       const user = await prisma.user.create({
         data: {
-          tenantId,
+          tenantId: actualTenantId,
           email,
           password: hashedPassword,
           firstName,
@@ -147,6 +152,14 @@ export class AuthController {
     try {
       const { email, username, identifier, password, tenantId }: LoginDto = req.body;
 
+      console.log('Login request received:', {
+        email,
+        username,
+        identifier,
+        tenantId,
+        hasPassword: !!password
+      });
+
       // Validate input
       if (!password) {
         throw new AppError('Passord er påkrevd', 400);
@@ -163,6 +176,8 @@ export class AuthController {
 
       // Determine if identifier is email or username (email contains @)
       const isEmail = loginIdentifier.includes('@');
+
+      console.log(`Login type: ${isEmail ? 'email' : 'username'}, identifier: ${loginIdentifier}, tenantId: ${tenantId || 'not provided'}`);
 
       // Find user based on identifier type
       let user;
@@ -183,32 +198,109 @@ export class AuthController {
         }
       } else {
         // If no tenantId, search across all tenants
+        // First, check if user exists in multiple tenants
+        let users;
         if (isEmail) {
-          user = await prisma.user.findFirst({
-            where: { email: loginIdentifier }
+          users = await prisma.user.findMany({
+            where: { email: loginIdentifier },
+            include: {
+              tenant: {
+                select: {
+                  id: true,
+                  name: true,
+                  subdomain: true,
+                  active: true
+                }
+              }
+            }
           });
         } else {
-          user = await prisma.user.findFirst({
-            where: { username: loginIdentifier }
+          users = await prisma.user.findMany({
+            where: { username: loginIdentifier },
+            include: {
+              tenant: {
+                select: {
+                  id: true,
+                  name: true,
+                  subdomain: true,
+                  active: true
+                }
+              }
+            }
           });
         }
+
+        // Filter out inactive tenants
+        const activeUsers = users.filter(u => u.tenant.active);
+
+        if (activeUsers.length === 0) {
+          console.log(`Login failed: No active users found for identifier: ${loginIdentifier}`);
+          throw new AppError('Ugyldig brukernavn/e-post eller passord', 401);
+        }
+
+        if (activeUsers.length > 1) {
+          // User exists in multiple tenants - verify password first
+          const isPasswordValid = await bcrypt.compare(password, activeUsers[0].password);
+          if (!isPasswordValid) {
+            console.log(`Login failed: Invalid password for multi-tenant user: ${loginIdentifier}`);
+            throw new AppError('Ugyldig brukernavn/e-post eller passord', 401);
+          }
+
+          // Return tenant selection response
+          console.log(`Multi-tenant user detected: ${loginIdentifier} exists in ${activeUsers.length} tenants`);
+          const tenantOptions = activeUsers.map(u => ({
+            id: u.tenant.id,
+            name: u.tenant.name,
+            subdomain: u.tenant.subdomain
+          }));
+
+          res.json({
+            success: true,
+            data: {
+              requiresTenantSelection: true,
+              tenants: tenantOptions,
+              identifier: loginIdentifier
+            },
+            message: 'Velg organisasjon'
+          });
+          return;
+        }
+
+        // Single user found - continue with normal login
+        user = activeUsers[0];
       }
 
       if (!user) {
+        console.log(`Login failed: User not found for identifier: ${loginIdentifier}`);
+        throw new AppError('Ugyldig brukernavn/e-post eller passord', 401);
+      }
+
+      console.log(`Login attempt for user: ${user.email} (ID: ${user.id})`);
+
+      // Verify password hash exists
+      if (!user.password) {
+        console.error(`Critical error: User ${user.email} has no password hash in database`);
         throw new AppError('Ugyldig brukernavn/e-post eller passord', 401);
       }
 
       // Check password
+      console.log(`Comparing password for user: ${user.email}`);
       const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
+        console.log(`Login failed: Invalid password for user: ${user.email}`);
         throw new AppError('Ugyldig brukernavn/e-post eller passord', 401);
       }
 
+      console.log(`Password validation successful for user: ${user.email}`);
+
       // Check if user is active
       if (!user.active) {
+        console.log(`Login failed: User account is inactive: ${user.email}`);
         throw new AppError('Kontoen er deaktivert. Kontakt administrator.', 403);
       }
+
+      console.log(`User account is active: ${user.email}`);
 
       // Check if tenant is active
       const tenant = await prisma.tenant.findUnique({
@@ -216,8 +308,11 @@ export class AuthController {
       });
 
       if (!tenant || !tenant.active) {
+        console.log(`Login failed: Tenant is inactive or not found: ${user.tenantId}`);
         throw new AppError('Denne organisasjonen er deaktivert', 403);
       }
+
+      console.log(`Tenant is active: ${tenant.name} (ID: ${tenant.id})`);
 
       // Update lastLoginAt
       await prisma.user.update({
@@ -262,6 +357,8 @@ export class AuthController {
       } catch (logError) {
         console.error('Failed to log login:', logError);
       }
+
+      console.log(`Login successful for user: ${user.email} (ID: ${user.id})`);
 
       res.json({
         success: true,
@@ -329,6 +426,130 @@ export class AuthController {
         res.status(error.statusCode).json({ success: false, error: error.message });
       } else {
         res.status(500).json({ success: false, error: 'Kunne ikke hente bruker' });
+      }
+    }
+  }
+
+  // Select tenant (for multi-tenant users)
+  async selectTenant(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { identifier, email, username, tenantId }: SelectTenantDto = req.body;
+
+      if (!tenantId) {
+        throw new AppError('tenantId er påkrevd', 400);
+      }
+
+      // Determine what identifier to use
+      let loginIdentifier = identifier || email || username;
+      if (!loginIdentifier) {
+        throw new AppError('E-post eller brukernavn er påkrevd', 400);
+      }
+
+      loginIdentifier = loginIdentifier.trim().toLowerCase();
+      const isEmail = loginIdentifier.includes('@');
+
+      console.log(`Tenant selection: ${loginIdentifier} selecting tenant: ${tenantId}`);
+
+      // Find the specific user in the selected tenant
+      let user;
+      if (isEmail) {
+        user = await prisma.user.findUnique({
+          where: { tenantId_email: { tenantId, email: loginIdentifier } }
+        });
+      } else {
+        user = await prisma.user.findFirst({
+          where: {
+            tenantId,
+            username: loginIdentifier
+          }
+        });
+      }
+
+      if (!user) {
+        throw new AppError('Bruker ikke funnet i valgt organisasjon', 404);
+      }
+
+      // Check if user is active
+      if (!user.active) {
+        throw new AppError('Kontoen er deaktivert. Kontakt administrator.', 403);
+      }
+
+      // Check if tenant is active
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId }
+      });
+
+      if (!tenant || !tenant.active) {
+        throw new AppError('Denne organisasjonen er deaktivert', 403);
+      }
+
+      // Update lastLoginAt
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() }
+      });
+
+      // Generate JWT token
+      const token = generateToken({
+        userId: user.id,
+        tenantId: user.tenantId,
+        email: user.email,
+        role: user.role
+      });
+
+      // Log login activity
+      try {
+        await prisma.activityLog.create({
+          data: {
+            tenantId: user.tenantId,
+            userId: user.id,
+            action: 'LOGIN',
+            resource: 'Auth',
+            resourceId: user.id,
+            description: `${user.firstName} ${user.lastName} logget inn (valgte tenant)`,
+            ipAddress: (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'Unknown',
+            userAgent: req.headers['user-agent'] || 'Unknown',
+            metadata: {
+              loginMethod: isEmail ? 'email' : 'username',
+              identifier: loginIdentifier,
+              tenantSelected: true
+            }
+          }
+        });
+      } catch (logError) {
+        console.error('Failed to log tenant selection:', logError);
+      }
+
+      console.log(`Tenant selection successful: ${user.email} -> ${tenant.name}`);
+
+      res.json({
+        success: true,
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            phone: user.phone,
+            dateOfBirth: user.dateOfBirth,
+            avatar: user.avatar,
+            username: user.username,
+            role: user.role,
+            tenantId: user.tenantId,
+            active: user.active,
+            lastLoginAt: user.lastLoginAt,
+            createdAt: user.createdAt
+          },
+          token
+        },
+        message: 'Innlogging vellykket'
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Select tenant error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke velge organisasjon' });
       }
     }
   }

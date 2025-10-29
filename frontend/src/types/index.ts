@@ -66,6 +66,7 @@ export interface Class {
   endTime: string;
   recurring: boolean;
   active: boolean;
+  trainerId?: string;
   trainer: {
     id: string;
     firstName: string;
@@ -100,6 +101,8 @@ export interface PTSession {
   location?: string;
   status: PTSessionStatus;
   notes?: string;
+  trainerId?: string;
+  clientId?: string;
   trainer: {
     id: string;
     firstName: string;
@@ -132,6 +135,56 @@ export interface TrainingProgram {
     id: string;
     firstName: string;
     lastName: string;
+  };
+}
+
+// ============================================
+// PRODUCT & SHOP TYPES
+// ============================================
+export interface Product {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  imageUrl?: string;
+  images?: string[];
+  category: string;
+  stock: number;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface CartItem {
+  id: string;
+  productId: string;
+  product: Product;
+  quantity: number;
+  price: number;
+}
+
+export interface OrderItem {
+  id: string;
+  productId: string;
+  productName: string;
+  productType: string;
+  quantity: number;
+  price: number;
+  subtotal: number;
+  sessionCount: number | null;
+}
+
+export interface Order {
+  id: string;
+  orderNumber: string;
+  items: OrderItem[];
+  total: number;
+  status: string;
+  createdAt: string;
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
   };
 }
 
@@ -174,11 +227,20 @@ export interface Tenant {
 
 export interface TenantSettings {
   id: string;
+  businessName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  organizationNumber?: string;
+  website?: string;
   businessHoursStart: string;
   businessHoursEnd: string;
   bookingCancellation: number;
   maxBookingsPerUser: number;
   requirePayment: boolean;
+  allowRegistration?: boolean;
+  requireEmailVerification?: boolean;
+  enableNotifications?: boolean;
   currency: string;
   timezone: string;
   emailNotifications: boolean;

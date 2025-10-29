@@ -11,9 +11,17 @@ router.use(authenticate);
 // PT Session routes
 router.post('/sessions', (req, res) => ptController.createSession(req, res)); // Customers can book their own sessions
 router.get('/sessions', (req, res) => ptController.getSessions(req, res));
+router.get('/sessions/:id', (req, res) => ptController.getSessionById(req, res)); // Get single session by ID
 router.patch('/sessions/:id', (req, res) => ptController.updateSession(req, res)); // All authenticated users can update (with permission checks in controller)
 router.delete('/sessions/:id', authorize('TRAINER', 'ADMIN'), (req, res) => ptController.deleteSession(req, res)); // Only trainers and admins can delete
 router.post('/sessions/:id/cancel', (req, res) => ptController.cancelSession(req, res)); // All users can cancel (with permission checks in controller)
+router.post('/sessions/:id/approve', (req, res) => ptController.approveSession(req, res)); // Customers can approve sessions
+router.post('/sessions/:id/reject', (req, res) => ptController.rejectSession(req, res)); // Customers can reject sessions
+
+// Session Results & Feedback
+router.post('/sessions/:sessionId/result', authorize('TRAINER', 'ADMIN'), (req, res) => ptController.createSessionResult(req, res)); // Trainer adds session results
+router.get('/sessions/:sessionId/result', (req, res) => ptController.getSessionResult(req, res)); // All can view results
+router.post('/sessions/:sessionId/feedback', (req, res) => ptController.addClientFeedback(req, res)); // Customers can add feedback
 
 // Training Program routes
 router.post('/programs', authorize('TRAINER', 'ADMIN'), (req, res) => ptController.createProgram(req, res));

@@ -16,12 +16,41 @@ export class FeedbackController {
         message,
         classId,
         trainerId,
-        isAnonymous
+        isAnonymous,
+        isPublic
       } = req.body;
 
       // Validate rating (1-5)
       if (rating && (rating < 1 || rating > 5)) {
         throw new AppError('Rating må være mellom 1 og 5', 400);
+      }
+
+      // If this is class feedback, validate that user attended the class
+      if (type === 'CLASS_REVIEW' && classId) {
+        const booking = await prisma.booking.findFirst({
+          where: {
+            userId,
+            classId,
+            status: 'COMPLETED'
+          }
+        });
+
+        if (!booking) {
+          throw new AppError('Du må ha deltatt i klassen for å gi tilbakemelding', 403);
+        }
+
+        // Check if user already gave feedback for this class
+        const existingFeedback = await prisma.feedback.findFirst({
+          where: {
+            userId,
+            classId,
+            type: 'CLASS_REVIEW'
+          }
+        });
+
+        if (existingFeedback) {
+          throw new AppError('Du har allerede gitt tilbakemelding for denne klassen', 400);
+        }
       }
 
       // Create feedback
@@ -36,6 +65,7 @@ export class FeedbackController {
           classId,
           trainerId,
           isAnonymous: isAnonymous || false,
+          isPublic: isPublic || false,
           status: 'OPEN'
         },
         include: {
@@ -251,6 +281,97 @@ export class FeedbackController {
       });
     } catch (error) {
       res.status(500).json({ success: false, error: 'Kunne ikke hente vurderinger' });
+    }
+  }
+
+  // Submit feedback for a specific class
+  async submitClassFeedback(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { classId } = req.params;
+      const tenantId = req.tenantId!;
+      const userId = req.user!.userId;
+      const { rating, comment } = req.body;
+
+      // Validate rating (1-5)
+      if (!rating || rating < 1 || rating > 5) {
+        throw new AppError('Rating må være mellom 1 og 5', 400);
+      }
+
+      // Verify that user attended the class
+      const booking = await prisma.booking.findFirst({
+        where: {
+          userId,
+          classId,
+          status: 'COMPLETED'
+        },
+        include: {
+          class: {
+            select: {
+              name: true,
+              trainerId: true
+            }
+          }
+        }
+      });
+
+      if (!booking) {
+        throw new AppError('Du må ha deltatt i klassen for å gi tilbakemelding', 403);
+      }
+
+      // Check if user already gave feedback for this class
+      const existingFeedback = await prisma.feedback.findFirst({
+        where: {
+          userId,
+          classId,
+          type: 'CLASS_REVIEW'
+        }
+      });
+
+      if (existingFeedback) {
+        throw new AppError('Du har allerede gitt tilbakemelding for denne klassen', 400);
+      }
+
+      // Create feedback
+      const feedback = await prisma.feedback.create({
+        data: {
+          tenantId,
+          userId,
+          type: 'CLASS_REVIEW',
+          rating,
+          message: comment || '',
+          classId,
+          trainerId: booking.class.trainerId,
+          isPublic: true,
+          status: 'OPEN'
+        },
+        include: {
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              avatar: true
+            }
+          },
+          class: {
+            select: {
+              name: true
+            }
+          }
+        }
+      });
+
+      res.status(201).json({
+        success: true,
+        data: feedback,
+        message: 'Takk for tilbakemeldingen!'
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Submit class feedback error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke sende tilbakemelding' });
+      }
     }
   }
 }

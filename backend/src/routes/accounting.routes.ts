@@ -41,4 +41,22 @@ router.delete('/suppliers/:id', (req, res) => accountingController.deleteSupplie
 router.get('/transactions', (req, res) => accountingController.getTransactions(req, res));
 router.post('/transactions', (req, res) => accountingController.createTransaction(req, res));
 
+// Automatic Posting Suggestions
+router.post('/suggest-posting', (req, res) => accountingController.suggestPostingAccounts(req, res));
+
+// Norwegian Chart of Accounts
+router.post('/seed-norwegian-accounts', (req, res) => accountingController.seedNorwegianAccounts(req, res));
+
+// Account Balances & Reports
+router.get('/account-balances', (req, res) => accountingController.getAccountBalances(req, res));
+router.get('/trial-balance', (req, res) => accountingController.getTrialBalance(req, res));
+
+// MVA (VAT) Module
+router.post('/mva/calculate', (req, res) => accountingController.calculateMVAPeriod(req, res));
+router.get('/mva/current-period', (req, res) => accountingController.getCurrentMVAPeriodEndpoint(req, res));
+router.get('/mva/periods/:year', (req, res) => accountingController.getMVAPeriods(req, res));
+router.post('/mva/save', (req, res) => accountingController.saveMVAReport(req, res));
+router.get('/mva/reports', (req, res) => accountingController.getMVAReports(req, res));
+router.delete('/mva/reports/:id', (req, res) => accountingController.deleteMVAReport(req, res));
+
 export default router;

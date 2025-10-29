@@ -65,6 +65,26 @@ export interface LoginDto {
   tenantId?: string;
 }
 
+export interface SelectTenantDto {
+  email?: string;
+  username?: string;
+  identifier?: string; // Can be either email or username
+  tenantId: string; // Required - the tenant user selected
+}
+
+export interface TenantOption {
+  id: string;
+  name: string;
+  subdomain: string;
+}
+
+// Multi-tenant login response when user exists in multiple tenants
+export interface MultiTenantLoginResponse {
+  requiresTenantSelection: true;
+  tenants: TenantOption[];
+  identifier: string; // The email/username used for login
+}
+
 export interface CreateTenantDto {
   name: string;
   subdomain: string;
@@ -86,6 +106,16 @@ export interface CreateClassDto {
   startTime: string;
   recurring?: boolean;
   recurringPattern?: string;
+  trainerId?: string;
+}
+
+export interface SaveAsTemplateDto {
+  templateName: string;
+}
+
+export interface CreateFromTemplateDto {
+  startTime: string;
+  trainerId?: string;
 }
 
 export interface CreateBookingDto {

@@ -92,13 +92,18 @@ export class ProductController {
   async getProducts(req: AuthRequest, res: Response): Promise<void> {
     try {
       const tenantId = req.tenantId!;
+      const userRole = req.user?.role;
       const { type, status, featured, search } = req.query;
+
+      // For customers, only show published products. For admins/trainers, show all.
+      const isCustomer = userRole === 'CUSTOMER';
+      const statusFilter = isCustomer ? 'PUBLISHED' : (status || undefined);
 
       const products = await prisma.product.findMany({
         where: {
           tenantId,
           ...(type && { type: type as any }),
-          ...(status && { status: status as any }),
+          ...(statusFilter && { status: statusFilter as any }),
           ...(featured !== undefined && { featured: featured === 'true' }),
           ...(search && {
             OR: [
@@ -110,6 +115,14 @@ export class ProductController {
         include: {
           images: {
             orderBy: { sortOrder: 'asc' }
+          },
+          _count: {
+            select: {
+              wishlistItems: true,
+              reviews: {
+                where: { status: 'APPROVED' }
+              }
+            }
           }
         },
         orderBy: [
@@ -130,17 +143,31 @@ export class ProductController {
   async getProduct(req: AuthRequest, res: Response): Promise<void> {
     try {
       const tenantId = req.tenantId!;
+      const userRole = req.user?.role;
       const { id } = req.params;
+
+      // For customers, only show published products
+      const isCustomer = userRole === 'CUSTOMER';
+      const whereClause = isCustomer ? { status: 'PUBLISHED' as any } : {};
 
       // Try to find by ID first, then by slug
       let product = await prisma.product.findFirst({
         where: {
           id,
-          tenantId
+          tenantId,
+          ...whereClause
         },
         include: {
           images: {
             orderBy: { sortOrder: 'asc' }
+          },
+          _count: {
+            select: {
+              wishlistItems: true,
+              reviews: {
+                where: { status: 'APPROVED' }
+              }
+            }
           }
         }
       });
@@ -149,11 +176,20 @@ export class ProductController {
         product = await prisma.product.findFirst({
           where: {
             slug: id,
-            tenantId
+            tenantId,
+            ...whereClause
           },
           include: {
             images: {
               orderBy: { sortOrder: 'asc' }
+            },
+            _count: {
+              select: {
+                wishlistItems: true,
+                reviews: {
+                  where: { status: 'APPROVED' }
+                }
+              }
             }
           }
         });

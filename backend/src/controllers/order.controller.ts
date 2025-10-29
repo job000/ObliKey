@@ -9,10 +9,16 @@ export class OrderController {
     try {
       const tenantId = req.tenantId!;
       const userId = req.user!.userId;
-      const { items, notes, paymentMethod } = req.body;
+      const { items, notes, paymentMethod, deliveryAddress, deliveryCity, deliveryZip, deliveryCountry } = req.body;
 
       if (!items || !Array.isArray(items) || items.length === 0) {
         throw new AppError('Ingen produkter i bestillingen', 400);
+      }
+
+      // Validate payment method
+      const validPaymentMethods = ['CARD', 'VIPPS', 'KLARNA'];
+      if (paymentMethod && !validPaymentMethods.includes(paymentMethod)) {
+        throw new AppError('Ugyldig betalingsmetode', 400);
       }
 
       // Fetch product details and calculate totals
@@ -59,6 +65,13 @@ export class OrderController {
       // Check if any items require physical delivery
       const requiresDelivery = orderItems.some(item => item.productType === 'PHYSICAL_PRODUCT');
 
+      // Validate delivery information if physical products
+      if (requiresDelivery) {
+        if (!deliveryAddress || !deliveryCity || !deliveryZip) {
+          throw new AppError('Leveringsinformasjon er påkrevd for fysiske produkter', 400);
+        }
+      }
+
       // Generate order number
       const orderCount = await prisma.order.count({ where: { tenantId } });
       const orderNumber = `ORD-${Date.now()}-${String(orderCount + 1).padStart(4, '0')}`;
@@ -77,6 +90,10 @@ export class OrderController {
             notes,
             paymentMethod: paymentMethod || 'CARD', // Default to CARD if not specified
             requiresDelivery,
+            deliveryAddress: requiresDelivery ? deliveryAddress : null,
+            deliveryCity: requiresDelivery ? deliveryCity : null,
+            deliveryZip: requiresDelivery ? deliveryZip : null,
+            deliveryCountry: requiresDelivery ? (deliveryCountry || 'Norway') : null,
             completedAt: requiresDelivery ? null : new Date(),
             items: {
               create: orderItems
@@ -218,6 +235,41 @@ export class OrderController {
     } catch (error) {
       console.error('Get orders error:', error);
       res.status(500).json({ success: false, error: 'Kunne ikke hente bestillinger' });
+    }
+  }
+
+  // Get all orders (admin only - for order management screen)
+  async getAllOrders(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+      const { status } = req.query;
+
+      const whereClause: any = { tenantId };
+
+      if (status) {
+        whereClause.status = status as any;
+      }
+
+      const orders = await prisma.order.findMany({
+        where: whereClause,
+        include: {
+          items: true,
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      res.json({ success: true, data: orders });
+    } catch (error) {
+      console.error('Get all orders error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke hente alle bestillinger' });
     }
   }
 

@@ -26,54 +26,82 @@ model Tenant {
   updatedAt DateTime @updatedAt
 
   // Relations
-  users            User[]
-  classes          Class[]
-  bookings         Booking[]
-  ptSessions       PTSession[]
-  ptCredits        PTCredit[]
-  trainingPrograms TrainingProgram[]
-  payments         Payment[]
-  settings         TenantSettings?
-  emailTemplates   EmailTemplate[]
-  feedback         Feedback[]
-  products         Product[]
-  orders           Order[]
-  exercises        Exercise[]
-  suppliers        Supplier[]
-  accounts         Account[]
-  invoices         Invoice[]
-  transactions     Transaction[]
-  vatReports       VATReport[]
-  conversations    Conversation[]
-  landingPageContent LandingPageContent[]
-  activityLogs     ActivityLog[]
-  productViews     ProductView[]
+  users                 User[]
+  classes               Class[]
+  bookings              Booking[]
+  ptSessions            PTSession[]
+  ptCredits             PTCredit[]
+  trainingPrograms      TrainingProgram[]
+  payments              Payment[]
+  settings              TenantSettings?
+  emailTemplates        EmailTemplate[]
+  feedback              Feedback[]
+  products              Product[]
+  orders                Order[]
+  exercises             Exercise[]
+  suppliers             Supplier[]
+  accounts              Account[]
+  invoices              Invoice[]
+  transactions          Transaction[]
+  vatReports            VATReport[]
+  conversations         Conversation[]
+  landingPageContent    LandingPageContent[]
+  activityLogs          ActivityLog[]
+  productViews          ProductView[]
+  // E-commerce Relations
+  productCategories     ProductCategory[]
+  productAttributes     ProductAttribute[]
+  productReviews        ProductReview[]
+  wishlists             Wishlist[]
+  discountCodes         DiscountCode[]
+  productCollections    ProductCollection[]
+  guestCheckouts        GuestCheckout[]
+  notifications         Notification[]
+  // Membership Relations
+  membershipPlans       MembershipPlan[]
+  memberships           Membership[]
+  membershipPayments    MembershipPayment[]
+  membershipCheckIns    MembershipCheckIn[]
+  membershipReminders   MembershipReminder[]
+  // Access Control Relations
+  doors                 Door[]
+  DoorAccessRule        DoorAccessRule[]
+  DoorSchedule          DoorSchedule[]
+  DoorAccessLog         DoorAccessLog[]
+  DoorIntegrationConfig DoorIntegrationConfig[]
+  DoorCredential        DoorCredential[]
+  // Super Admin Relations
+  subscription          Subscription?
+  tenantFeatures        TenantFeature[]
 
   @@map("tenants")
 }
 
 model TenantSettings {
-  id                    String   @id @default(uuid())
-  tenantId              String   @unique
-  businessHoursStart    String   @default("06:00")
-  businessHoursEnd      String   @default("22:00")
-  bookingCancellation   Int      @default(24) // hours before
-  maxBookingsPerUser    Int      @default(10)
-  requirePayment        Boolean  @default(false)
-  currency              String   @default("NOK")
-  timezone              String   @default("Europe/Oslo")
-  emailNotifications    Boolean  @default(true)
-  smsNotifications      Boolean  @default(false)
-  primaryColor          String   @default("#3B82F6")
-  secondaryColor        String   @default("#10B981")
-  accountingEnabled     Boolean  @default(false)
-  classesEnabled        Boolean  @default(true)
-  chatEnabled           Boolean  @default(true)
-  landingPageEnabled    Boolean  @default(false)
-  companyVatNumber      String?
-  companyRegNumber      String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                  String   @id @default(uuid())
+  tenantId            String   @unique
+  businessHoursStart  String   @default("06:00")
+  businessHoursEnd    String   @default("22:00")
+  bookingCancellation Int      @default(24) // hours before
+  maxBookingsPerUser  Int      @default(10)
+  requirePayment      Boolean  @default(false)
+  currency            String   @default("NOK")
+  timezone            String   @default("Europe/Oslo")
+  emailNotifications  Boolean  @default(true)
+  smsNotifications    Boolean  @default(false)
+  primaryColor        String   @default("#3B82F6")
+  secondaryColor      String   @default("#10B981")
+  accountingEnabled   Boolean  @default(false)
+  classesEnabled      Boolean  @default(true)
+  chatEnabled         Boolean  @default(true)
+  landingPageEnabled  Boolean  @default(false)
+  ecommerceEnabled    Boolean  @default(false)
+  membershipEnabled   Boolean  @default(false)
+  doorAccessEnabled   Boolean  @default(false)
+  companyVatNumber    String?
+  companyRegNumber    String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -92,7 +120,7 @@ enum UserRole {
 }
 
 model User {
-  id                      String   @id @default(uuid())
+  id                      String    @id @default(uuid())
   tenantId                String
   email                   String
   password                String
@@ -101,15 +129,16 @@ model User {
   phone                   String?
   dateOfBirth             DateTime?
   username                String?
-  usernameChangesThisYear Int      @default(0)
+  usernameChangesThisYear Int       @default(0)
   lastUsernameChangeYear  Int?
   avatar                  String?
-  role                    UserRole @default(CUSTOMER)
-  active                  Boolean  @default(true)
-  emailVerified           Boolean @default(false)
+  role                    UserRole  @default(CUSTOMER)
+  active                  Boolean   @default(true)
+  emailVerified           Boolean   @default(false)
   lastLoginAt             DateTime?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  lastSeenAt              DateTime? // Track when user was last active (for online status)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   // Relations
   tenant                   Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -132,6 +161,22 @@ model User {
   orders                   Order[]
   conversationParticipants ConversationParticipant[]
   sentMessages             Message[]                 @relation("SentMessages")
+  // E-commerce Relations
+  productReviews           ProductReview[]
+  moderatedReviews         ProductReview[]           @relation("ModeratedReviews")
+  wishlist                 Wishlist?
+  discountCodeUsages       DiscountCodeUsage[]
+  guestCheckouts           GuestCheckout[]
+  notifications            Notification[]
+  notificationPreferences  NotificationPreferences?
+  // Membership Relations
+  memberships              Membership[]
+  membershipFreezes        MembershipFreeze[]
+  membershipCheckIns       MembershipCheckIn[]
+  membershipReminders      MembershipReminder[]
+  // Door Access Relations
+  doorAccessLogs           DoorAccessLog[]
+  doorCredentials          DoorCredential[]
 
   @@unique([tenantId, email])
   @@unique([tenantId, username])
@@ -152,17 +197,17 @@ model PasswordReset {
 }
 
 model PTCredit {
-  id         String   @id @default(uuid())
-  tenantId   String
-  userId     String
-  credits    Int      // Number of PT sessions
-  purchaseDate DateTime @default(now())
-  expiryDate DateTime?
-  orderId    String?  // Reference to order that created this credit
-  used       Int      @default(0)
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String    @id @default(uuid())
+  tenantId     String
+  userId       String
+  credits      Int // Number of PT sessions
+  purchaseDate DateTime  @default(now())
+  expiryDate   DateTime?
+  orderId      String? // Reference to order that created this credit
+  used         Int       @default(0)
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   // Relations
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -182,28 +227,39 @@ enum ClassType {
   FACILITY
 }
 
+enum ClassStatus {
+  ACTIVE
+  CANCELLED
+}
+
 model Class {
-  id          String    @id @default(uuid())
-  tenantId    String
-  trainerId   String
-  name        String
-  description String?
-  type        ClassType @default(GROUP_CLASS)
-  capacity    Int       @default(20)
-  duration    Int       // minutes
-  startTime   DateTime
-  endTime     DateTime
-  recurring   Boolean   @default(false)
+  id               String      @id @default(uuid())
+  tenantId         String
+  trainerId        String
+  name             String
+  description      String?
+  type             ClassType   @default(GROUP_CLASS)
+  capacity         Int         @default(20)
+  duration         Int // minutes
+  startTime        DateTime
+  endTime          DateTime
+  recurring        Boolean     @default(false)
   recurringPattern String? // JSON string for recurrence rules
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  active           Boolean     @default(true)
+  isTemplate       Boolean     @default(false) // Indicates if this is a reusable template
+  templateName     String? // Optional name for the template
+  published        Boolean     @default(false) // Only published classes visible to customers
+  status           ClassStatus @default(ACTIVE) // ACTIVE or CANCELLED
+  deletedAt        DateTime? // Soft delete timestamp
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   // Relations
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  trainer  User      @relation(fields: [trainerId], references: [id])
-  bookings Booking[]
-  feedback Feedback[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  trainer       User           @relation(fields: [trainerId], references: [id])
+  bookings      Booking[]
+  feedback      Feedback[]
+  notifications Notification[]
 
   @@map("classes")
 }
@@ -217,16 +273,16 @@ enum BookingStatus {
 }
 
 model Booking {
-  id         String        @id @default(uuid())
-  tenantId   String
-  classId    String
-  userId     String
-  status     BookingStatus @default(PENDING)
-  notes      String?
-  cancelledAt DateTime?
+  id           String        @id @default(uuid())
+  tenantId     String
+  classId      String
+  userId       String
+  status       BookingStatus @default(PENDING)
+  notes        String?
+  cancelledAt  DateTime?
   cancelReason String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   // Relations
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -242,40 +298,52 @@ model Booking {
 // ============================================
 
 enum PTSessionStatus {
+  PENDING_APPROVAL // Waiting for customer approval
   SCHEDULED
   CONFIRMED
   COMPLETED
   CANCELLED
   NO_SHOW
+  REJECTED // Customer rejected the session
 }
 
 model PTSession {
-  id         String          @id @default(uuid())
-  tenantId   String
-  trainerId  String
-  customerId String
-  title      String
-  description String?
-  startTime  DateTime
-  endTime    DateTime
-  location   String?
-  status     PTSessionStatus @default(SCHEDULED)
-  price      Float?          @default(0)
-  notes      String?
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  id                 String          @id @default(uuid())
+  tenantId           String
+  trainerId          String
+  customerId         String
+  programId          String? // Link to training program (optional)
+  title              String
+  description        String?
+  startTime          DateTime
+  endTime            DateTime
+  location           String?
+  status             PTSessionStatus @default(PENDING_APPROVAL)
+  price              Float?          @default(0)
+  notes              String? // Trainer notes
+  customerNotes      String? // Customer notes/requirements
+  rejectionReason    String? // Why customer rejected
+  cancellationReason String? // Why cancelled
+  calendarEventId    String? // For calendar integration
+  reminderSent       Boolean         @default(false)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   // Relations
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  trainer  User   @relation("TrainerSessions", fields: [trainerId], references: [id])
-  customer User   @relation("CustomerSessions", fields: [customerId], references: [id])
-  payment  Payment?
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  trainer          User                @relation("TrainerSessions", fields: [trainerId], references: [id])
+  customer         User                @relation("CustomerSessions", fields: [customerId], references: [id])
+  program          TrainingProgram?    @relation(fields: [programId], references: [id], onDelete: SetNull)
+  payment          Payment?
+  sessionResult    SessionResult?
+  plannedExercises PTSessionExercise[] // Exercises planned for this session
+  notifications    Notification[]
 
   @@map("pt_sessions")
 }
 
 model TrainingProgram {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   tenantId    String
   trainerId   String
   customerId  String
@@ -284,56 +352,59 @@ model TrainingProgram {
   startDate   DateTime
   endDate     DateTime?
   goals       String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // Relations
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  trainer  User   @relation("TrainerPrograms", fields: [trainerId], references: [id])
-  customer User   @relation("CustomerPrograms", fields: [customerId], references: [id])
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  trainer   User              @relation("TrainerPrograms", fields: [trainerId], references: [id])
+  customer  User              @relation("CustomerPrograms", fields: [customerId], references: [id])
   exercises ProgramExercise[]
+  sessions  PTSession[] // Sessions linked to this program
 
   @@map("training_programs")
 }
 
 // Exercise library - shared across tenant
 model Exercise {
-  id          String   @id @default(uuid())
-  tenantId    String
-  createdBy   String   // User who created this exercise
-  name        String
-  description String?
-  category    String?  // e.g., "Strength", "Cardio", "Flexibility"
-  muscleGroup String?  // e.g., "Legs", "Arms", "Core"
-  difficulty  String?  // e.g., "Beginner", "Intermediate", "Advanced"
+  id           String   @id @default(uuid())
+  tenantId     String
+  createdBy    String // User who created this exercise
+  name         String
+  description  String?
+  category     String? // e.g., "Strength", "Cardio", "Flexibility"
+  muscleGroup  String? // e.g., "Legs", "Arms", "Core"
+  difficulty   String? // e.g., "Beginner", "Intermediate", "Advanced"
   instructions String? // How to perform the exercise
-  videoUrl    String?
-  imageUrl    String?
-  isPublished Boolean  @default(false) // Only published exercises are visible to all
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  videoUrl     String?
+  imageUrl     String?
+  isPublished  Boolean  @default(false) // Only published exercises are visible to all
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  creator  User   @relation("CreatedExercises", fields: [createdBy], references: [id])
-  programs ProgramExercise[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator            User                @relation("CreatedExercises", fields: [createdBy], references: [id])
+  programs           ProgramExercise[]
+  sessionExercises   SessionExercise[]
+  ptSessionExercises PTSessionExercise[]
 
   @@map("exercises")
 }
 
 // Many-to-many relationship between programs and exercises
 model ProgramExercise {
-  id        String   @id @default(uuid())
-  programId String
+  id         String   @id @default(uuid())
+  programId  String
   exerciseId String
-  sets      Int      @default(3)
-  reps      String   @default("10") // Can be "10" or "8-12" or "30s"
-  restTime  Int?     // Rest time in seconds
-  notes     String?
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  sets       Int      @default(3)
+  reps       String   @default("10") // Can be "10" or "8-12" or "30s"
+  restTime   Int? // Rest time in seconds
+  notes      String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relations
   program  TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
@@ -341,6 +412,127 @@ model ProgramExercise {
 
   @@unique([programId, exerciseId, sortOrder])
   @@map("program_exercises")
+}
+
+// Session results - what happened during the PT session
+model SessionResult {
+  id              String   @id @default(uuid())
+  sessionId       String   @unique
+  trainerFeedback String? // Trainer's notes on how the session went
+  clientFeedback  String? // Optional client feedback
+  rating          Int? // 1-5 rating from client
+  completedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  session          PTSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionExercises SessionExercise[]
+
+  @@map("session_results")
+}
+
+// Track exercises performed during a session with actual results
+model SessionExercise {
+  id              String   @id @default(uuid())
+  sessionResultId String
+  exerciseName    String // Store name directly in case exercise is deleted
+  exerciseId      String? // Optional reference to Exercise
+  sets            Int
+  reps            String // Actual reps performed (e.g., "10", "8-12", "30s")
+  weight          Float? // Weight used in kg
+  notes           String? // Trainer notes for this specific exercise
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  sessionResult SessionResult @relation(fields: [sessionResultId], references: [id], onDelete: Cascade)
+  exercise      Exercise?     @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+
+  @@map("session_exercises")
+}
+
+// PT Session Exercises (Planned before the session)
+model PTSessionExercise {
+  id           String   @id @default(uuid())
+  ptSessionId  String
+  exerciseId   String? // Optional link to exercise library
+  exerciseName String // Name of the exercise
+  sets         Int?
+  reps         Int?
+  duration     Int? // Duration in seconds
+  weight       Float? // Weight in kg
+  notes        String? // PT notes for this exercise
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  ptSession PTSession @relation(fields: [ptSessionId], references: [id], onDelete: Cascade)
+  exercise  Exercise? @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+
+  @@map("pt_session_exercises")
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+enum NotificationType {
+  PT_SESSION_CREATED // PT created a new session
+  PT_SESSION_UPDATED // PT updated session details
+  PT_SESSION_CANCELLED // PT cancelled the session
+  PT_SESSION_APPROVED // Customer approved the session
+  PT_SESSION_REJECTED // Customer rejected the session
+  PT_SESSION_REMINDER // Reminder before session
+  PT_SESSION_COMPLETED // Session was completed
+  PT_SESSION_FEEDBACK // Feedback received
+  CLASS_UPDATED // Class time/trainer changed
+  CLASS_CANCELLED // Class was cancelled
+  SYSTEM // System notifications
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  tenantId    String
+  userId      String // Recipient
+  type        NotificationType
+  title       String
+  message     String
+  ptSessionId String? // Link to PT session if relevant
+  classId     String? // Link to class if relevant
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ptSession PTSession? @relation(fields: [ptSessionId], references: [id], onDelete: Cascade)
+  class     Class?     @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model NotificationPreferences {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  ptSessionReminder     Boolean  @default(true) // Enable PT session reminders
+  reminderMinutes       Int      @default(60) // Minutes before session to send reminder
+  sessionUpdates        Boolean  @default(true) // Notify on session updates
+  sessionApprovals      Boolean  @default(true) // Notify on approvals/rejections
+  sessionCancellations  Boolean  @default(true) // Notify on cancellations
+  feedbackNotifications Boolean  @default(true) // Notify on feedback
+  classUpdates          Boolean  @default(true) // Notify on class updates
+  classCancellations    Boolean  @default(true) // Notify on class cancellations
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }
 
 // ============================================
@@ -400,14 +592,14 @@ enum EmailTemplateType {
 }
 
 model EmailTemplate {
-  id       String            @id @default(uuid())
-  tenantId String
-  type     EmailTemplateType @unique
-  subject  String
-  body     String            // HTML content
-  active   Boolean           @default(true)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  id        String            @id @default(uuid())
+  tenantId  String
+  type      EmailTemplateType @unique
+  subject   String
+  body      String // HTML content
+  active    Boolean           @default(true)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 
   // Relations
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -453,11 +645,11 @@ model Feedback {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user          User           @relation(fields: [userId], references: [id])
-  class         Class?         @relation(fields: [classId], references: [id], onDelete: SetNull)
-  trainer       User?          @relation("TrainerReviews", fields: [trainerId], references: [id], onDelete: SetNull)
-  responder     User?          @relation("FeedbackResponses", fields: [respondedBy], references: [id], onDelete: SetNull)
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User   @relation(fields: [userId], references: [id])
+  class     Class? @relation(fields: [classId], references: [id], onDelete: SetNull)
+  trainer   User?  @relation("TrainerReviews", fields: [trainerId], references: [id], onDelete: SetNull)
+  responder User?  @relation("FeedbackResponses", fields: [respondedBy], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([userId])
@@ -559,9 +751,18 @@ model Product {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  images         ProductImage[]
-  invoiceLines   InvoiceLine[]
+  tenant          Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  images          ProductImage[]
+  invoiceLines    InvoiceLine[]
+  // E-commerce Relations
+  categories      ProductCategoryMapping[]
+  variants        ProductVariant[]
+  specifications  ProductSpecification[]
+  reviews         ProductReview[]
+  wishlistItems   WishlistItem[]
+  relatedProducts RelatedProduct[]           @relation("ProductRelations")
+  relatedTo       RelatedProduct[]           @relation("RelatedToProducts")
+  collections     ProductCollectionMapping[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status])
@@ -577,7 +778,7 @@ model ProductImage {
   isPrimary Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
   @@map("product_images")
@@ -593,7 +794,7 @@ model ProductView {
   userAgent String?
   createdAt DateTime @default(now())
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, productId])
   @@index([tenantId, createdAt])
@@ -606,13 +807,14 @@ model ProductView {
 // ============================================
 
 model Cart {
-  id        String     @id @default(uuid())
-  userId    String     @unique
-  tenantId  String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  tenantId         String
+  lastReminderSent DateTime? // Track when last reminder was sent
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  items     CartItem[]
+  items CartItem[]
 
   @@index([userId])
   @@map("carts")
@@ -626,7 +828,8 @@ model CartItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cart    Cart             @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant CartItemVariant?
 
   @@unique([cartId, productId])
   @@index([cartId])
@@ -648,39 +851,43 @@ enum OrderStatus {
 }
 
 model Order {
-  id              String      @id @default(uuid())
-  tenantId        String
-  userId          String
-  orderNumber     String      @unique
-  status          OrderStatus @default(PENDING)
-  subtotal        Float
-  tax             Float       @default(0)
-  total           Float
-  currency        String      @default("NOK")
-  notes           String?
+  id          String      @id @default(uuid())
+  tenantId    String
+  userId      String
+  orderNumber String      @unique
+  status      OrderStatus @default(PENDING)
+  subtotal    Float
+  tax         Float       @default(0)
+  total       Float
+  currency    String      @default("NOK")
+  notes       String?
 
   // Payment information
-  paymentMethod   String?     // CARD, VIPPS, etc.
-  paymentId       String?     // External payment ID from payment provider
+  paymentMethod String? // CARD, VIPPS, etc.
+  paymentId     String? // External payment ID from payment provider
 
   // Delivery information
-  requiresDelivery Boolean    @default(false)
+  requiresDelivery Boolean   @default(false)
   deliveryAddress  String?
   deliveryCity     String?
   deliveryZip      String?
-  deliveryCountry  String?    @default("Norway")
+  deliveryCountry  String?   @default("Norway")
   trackingNumber   String?
   shippedAt        DateTime?
   deliveredAt      DateTime?
 
-  completedAt     DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user            User        @relation(fields: [userId], references: [id])
-  items           OrderItem[]
-  ptCredits       PTCredit[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id])
+  items              OrderItem[]
+  ptCredits          PTCredit[]
+  // E-commerce Relations
+  discounts          OrderDiscount[]
+  discountCodeUsages DiscountCodeUsage[]
+  guestCheckout      GuestCheckout?
 
   @@index([tenantId, userId])
   @@index([orderNumber])
@@ -692,15 +899,16 @@ model OrderItem {
   id           String   @id @default(uuid())
   orderId      String
   productId    String
-  productName  String   // Snapshot of product name at time of purchase
-  productType  String   // Snapshot of product type
+  productName  String // Snapshot of product name at time of purchase
+  productType  String // Snapshot of product type
   quantity     Int
-  price        Float    // Price at time of purchase
-  subtotal     Float    // quantity * price
-  sessionCount Int?     // For PT sessions or memberships
+  price        Float // Price at time of purchase
+  subtotal     Float // quantity * price
+  sessionCount Int? // For PT sessions or memberships
   createdAt    DateTime @default(now())
 
-  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant OrderItemVariant?
 
   @@index([orderId])
   @@map("order_items")
@@ -724,28 +932,28 @@ enum TransactionType {
 }
 
 enum VATRate {
-  RATE_25  // 25%
-  RATE_15  // 15%
-  RATE_12  // 12%
-  RATE_0   // 0%
-  EXEMPT   // Fritatt
+  RATE_25 // 25%
+  RATE_15 // 15%
+  RATE_12 // 12%
+  RATE_0 // 0%
+  EXEMPT // Fritatt
 }
 
 // Supplier/Vendor management
 model Supplier {
-  id              String   @id @default(uuid())
-  tenantId        String
-  name            String
-  contactPerson   String?
-  email           String?
-  phone           String?
-  address         String?
-  vatNumber       String?
-  accountNumber   String?
-  notes           String?
-  active          Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String   @id @default(uuid())
+  tenantId      String
+  name          String
+  contactPerson String?
+  email         String?
+  phone         String?
+  address       String?
+  vatNumber     String?
+  accountNumber String?
+  notes         String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   transactions Transaction[]
@@ -755,16 +963,16 @@ model Supplier {
 
 // Chart of Accounts
 model Account {
-  id          String   @id @default(uuid())
-  tenantId    String
-  accountNumber String  // e.g., "3000", "4000"
-  name        String   // e.g., "Salgsinntekt", "Varekjøp"
-  type        String   // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
-  vatCode     VATRate?
-  description String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(uuid())
+  tenantId      String
+  accountNumber String // e.g., "3000", "4000"
+  name          String // e.g., "Salgsinntekt", "Varekjøp"
+  type          String // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
+  vatCode       VATRate?
+  description   String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   transactions Transaction[]
@@ -775,27 +983,27 @@ model Account {
 
 // Invoices
 model Invoice {
-  id              String        @id @default(uuid())
-  tenantId        String
-  invoiceNumber   String        // Auto-generated: INV-2025-001
-  customerId      String?       // Reference to User (customer) - optional for walk-in
-  customerName    String        // Stored for historical purposes
-  customerEmail   String?
-  customerAddress String?
+  id                String        @id @default(uuid())
+  tenantId          String
+  invoiceNumber     String // Auto-generated: INV-2025-001
+  customerId        String? // Reference to User (customer) - optional for walk-in
+  customerName      String // Stored for historical purposes
+  customerEmail     String?
+  customerAddress   String?
   customerVatNumber String?
-  issueDate       DateTime      @default(now())
-  dueDate         DateTime
-  status          InvoiceStatus @default(DRAFT)
-  subtotal        Float         @default(0)
-  vatAmount       Float         @default(0)
-  total           Float         @default(0)
-  notes           String?
-  paymentTerms    String?       @default("14 dager")
-  paidAt          DateTime?
-  sentAt          DateTime?
-  createdBy       String
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  issueDate         DateTime      @default(now())
+  dueDate           DateTime
+  status            InvoiceStatus @default(DRAFT)
+  subtotal          Float         @default(0)
+  vatAmount         Float         @default(0)
+  total             Float         @default(0)
+  notes             String?
+  paymentTerms      String?       @default("14 dager")
+  paidAt            DateTime?
+  sentAt            DateTime?
+  createdBy         String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer User?         @relation("CustomerInvoices", fields: [customerId], references: [id])
@@ -828,22 +1036,22 @@ model InvoiceLine {
 
 // Transactions (journal entries)
 model Transaction {
-  id            String          @id @default(uuid())
-  tenantId      String
-  type          TransactionType
-  accountId     String
-  supplierId    String?
-  description   String
-  amount        Float
-  vatAmount     Float           @default(0)
-  vatRate       VATRate?
-  invoiceId     String?         // Link to invoice if this transaction is from an invoice
-  transactionDate DateTime      @default(now())
-  receiptUrl    String?         // Link to uploaded receipt/bilag
-  notes         String?
-  createdBy     String
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id              String          @id @default(uuid())
+  tenantId        String
+  type            TransactionType
+  accountId       String
+  supplierId      String?
+  description     String
+  amount          Float
+  vatAmount       Float           @default(0)
+  vatRate         VATRate?
+  invoiceId       String? // Link to invoice if this transaction is from an invoice
+  transactionDate DateTime        @default(now())
+  receiptUrl      String? // Link to uploaded receipt/bilag
+  notes           String?
+  createdBy       String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account  Account   @relation(fields: [accountId], references: [id])
@@ -856,21 +1064,21 @@ model Transaction {
 
 // VAT Reports
 model VATReport {
-  id               String   @id @default(uuid())
-  tenantId         String
-  periodStart      DateTime
-  periodEnd        DateTime
-  totalSales       Float    @default(0)
-  totalVATOut      Float    @default(0) // Utgående MVA
-  totalPurchases   Float    @default(0)
-  totalVATIn       Float    @default(0) // Inngående MVA
-  netVAT           Float    @default(0) // To pay or receive
-  status           String   @default("DRAFT") // DRAFT, SUBMITTED
-  submittedAt      DateTime?
-  submittedBy      String?
-  notes            String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id             String    @id @default(uuid())
+  tenantId       String
+  periodStart    DateTime
+  periodEnd      DateTime
+  totalSales     Float     @default(0)
+  totalVATOut    Float     @default(0) // Utgående MVA
+  totalPurchases Float     @default(0)
+  totalVATIn     Float     @default(0) // Inngående MVA
+  netVAT         Float     @default(0) // To pay or receive
+  status         String    @default("DRAFT") // DRAFT, SUBMITTED
+  submittedAt    DateTime?
+  submittedBy    String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   submitter User?  @relation("SubmittedVATReports", fields: [submittedBy], references: [id])
@@ -883,20 +1091,20 @@ model VATReport {
 // ============================================
 
 model LandingPageContent {
-  id          String   @id @default(uuid())
-  tenantId    String
-  section     String   // HERO, FEATURES, ABOUT, NEWS, TESTIMONIALS, CTA, etc
-  title       String?
-  subtitle    String?
-  content     String?  // Can be JSON for complex content
-  imageUrl    String?
-  buttonText  String?
-  buttonUrl   String?
-  sortOrder   Int      @default(0)
-  active      Boolean  @default(true)
-  metadata    Json?    // For additional flexible data
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(uuid())
+  tenantId   String
+  section    String // HERO, FEATURES, ABOUT, NEWS, TESTIMONIALS, CTA, etc
+  title      String?
+  subtitle   String?
+  content    String? // Can be JSON for complex content
+  imageUrl   String?
+  buttonText String?
+  buttonUrl  String?
+  sortOrder  Int      @default(0)
+  active     Boolean  @default(true)
+  metadata   Json? // For additional flexible data
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -982,14 +1190,14 @@ enum ActivityAction {
 model ActivityLog {
   id          String         @id @default(uuid())
   tenantId    String
-  userId      String?        // Null for system actions
+  userId      String? // Null for system actions
   action      ActivityAction
-  resource    String         // e.g., "User", "Booking", "PTSession"
-  resourceId  String?        // ID of the affected resource
-  description String         // Human-readable description
+  resource    String // e.g., "User", "Booking", "PTSession"
+  resourceId  String? // ID of the affected resource
+  description String // Human-readable description
   ipAddress   String?
   userAgent   String?
-  metadata    Json?          // Additional context data
+  metadata    Json? // Additional context data
   createdAt   DateTime       @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -999,4 +1207,1170 @@ model ActivityLog {
   @@index([tenantId, createdAt])
   @@index([userId])
   @@map("activity_logs")
+}
+
+// ============================================
+// E-COMMERCE EXTENSION
+// ============================================
+
+// Product Categories (Hierarchical)
+model ProductCategory {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+  imageUrl    String?
+  parentId    String? // For hierarchical categories (subcategories)
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  metadata    Json? // For custom fields
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant   Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent   ProductCategory?         @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children ProductCategory[]        @relation("CategoryHierarchy")
+  products ProductCategoryMapping[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, active])
+  @@index([parentId])
+  @@map("product_categories")
+}
+
+// Many-to-many relationship between products and categories
+model ProductCategoryMapping {
+  id         String   @id @default(uuid())
+  productId  String
+  categoryId String
+  isPrimary  Boolean  @default(false) // One category can be primary
+  createdAt  DateTime @default(now())
+
+  product  Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, categoryId])
+  @@index([productId])
+  @@index([categoryId])
+  @@map("product_category_mappings")
+}
+
+// Product Variants (Size, Color, etc.)
+model ProductVariant {
+  id             String   @id @default(uuid())
+  productId      String
+  name           String // e.g., "Small - Red", "Medium - Blue"
+  sku            String?  @unique
+  price          Float? // Overrides base product price if set
+  compareAtPrice Float?
+  stock          Int?     @default(0)
+  trackInventory Boolean  @default(true)
+  weight         Float? // For shipping calculations
+  imageUrl       String? // Variant-specific image
+  sortOrder      Int      @default(0)
+  active         Boolean  @default(true)
+  metadata       Json? // Additional variant data
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  product         Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attributeValues ProductVariantAttribute[]
+  orderItems      OrderItemVariant[]
+  cartItems       CartItemVariant[]
+  wishlistItems   WishlistItem[]
+
+  @@index([productId])
+  @@index([productId, active])
+  @@map("product_variants")
+}
+
+// Attributes that define variants (e.g., Size, Color)
+model ProductAttribute {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String // e.g., "Size", "Color", "Material"
+  slug      String // e.g., "size", "color", "material"
+  type      String   @default("SELECT") // SELECT, COLOR, TEXT
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  values ProductAttributeValue[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("product_attributes")
+}
+
+// Attribute values (e.g., "Small", "Medium", "Red", "Blue")
+model ProductAttributeValue {
+  id          String   @id @default(uuid())
+  attributeId String
+  value       String // e.g., "Small", "Red"
+  displayName String? // Optional display name
+  colorCode   String? // For color attributes (#FF0000)
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  attribute ProductAttribute          @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  variants  ProductVariantAttribute[]
+
+  @@index([attributeId])
+  @@map("product_attribute_values")
+}
+
+// Links variants to their attribute values
+model ProductVariantAttribute {
+  id               String   @id @default(uuid())
+  variantId        String
+  attributeValueId String
+  createdAt        DateTime @default(now())
+
+  variant        ProductVariant        @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  attributeValue ProductAttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, attributeValueId])
+  @@index([variantId])
+  @@map("product_variant_attributes")
+}
+
+// Product Reviews & Ratings
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
+}
+
+model ProductReview {
+  id          String       @id @default(uuid())
+  tenantId    String
+  productId   String
+  userId      String
+  rating      Int // 1-5 stars
+  title       String?
+  comment     String
+  status      ReviewStatus @default(PENDING)
+  verified    Boolean      @default(false) // Verified purchase
+  helpful     Int          @default(0) // Helpful votes
+  notHelpful  Int          @default(0) // Not helpful votes
+  moderatedBy String?
+  moderatedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moderator User?   @relation("ModeratedReviews", fields: [moderatedBy], references: [id])
+
+  @@unique([productId, userId]) // One review per user per product
+  @@index([tenantId, productId])
+  @@index([userId])
+  @@index([status])
+  @@map("product_reviews")
+}
+
+// Wishlist
+model Wishlist {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items  WishlistItem[]
+
+  @@index([tenantId])
+  @@map("wishlists")
+}
+
+model WishlistItem {
+  id         String   @id @default(uuid())
+  wishlistId String
+  productId  String
+  variantId  String? // Optional specific variant
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  wishlist Wishlist        @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  product  Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant  ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@unique([wishlistId, productId, variantId])
+  @@index([wishlistId])
+  @@index([productId])
+  @@map("wishlist_items")
+}
+
+// Discount Codes & Coupons
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  FREE_SHIPPING
+  BUY_X_GET_Y
+}
+
+model DiscountCode {
+  id                String       @id @default(uuid())
+  tenantId          String
+  code              String // e.g., "SUMMER2025"
+  type              DiscountType
+  value             Float // Percentage (0-100) or fixed amount
+  minOrderAmount    Float? // Minimum order to apply
+  maxDiscountAmount Float? // Max discount cap
+  usageLimit        Int? // Total usage limit
+  usageCount        Int          @default(0)
+  perUserLimit      Int? // Limit per user
+  startDate         DateTime
+  endDate           DateTime?
+  active            Boolean      @default(true)
+  description       String?
+
+  // Product/Category restrictions
+  applicableToAll Boolean  @default(true)
+  categoryIds     String[] // Array of category IDs
+  productIds      String[] // Array of product IDs
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders OrderDiscount[]
+  usages DiscountCodeUsage[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, active])
+  @@index([code])
+  @@map("discount_codes")
+}
+
+model DiscountCodeUsage {
+  id      String   @id @default(uuid())
+  codeId  String
+  userId  String
+  orderId String
+  usedAt  DateTime @default(now())
+
+  code  DiscountCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([codeId])
+  @@index([userId])
+  @@map("discount_code_usages")
+}
+
+// Link between orders and discount codes
+model OrderDiscount {
+  id             String   @id @default(uuid())
+  orderId        String
+  discountCodeId String
+  discountAmount Float
+  createdAt      DateTime @default(now())
+
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  discountCode DiscountCode @relation(fields: [discountCodeId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_discounts")
+}
+
+// Enhanced Cart & Order Items with Variants
+model CartItemVariant {
+  id         String   @id @default(uuid())
+  cartItemId String   @unique
+  variantId  String
+  createdAt  DateTime @default(now())
+
+  cartItem CartItem       @relation(fields: [cartItemId], references: [id], onDelete: Cascade)
+  variant  ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([cartItemId])
+  @@index([variantId])
+  @@map("cart_item_variants")
+}
+
+model OrderItemVariant {
+  id          String   @id @default(uuid())
+  orderItemId String   @unique
+  variantId   String
+  variantName String // Snapshot at purchase time
+  variantSku  String?
+  createdAt   DateTime @default(now())
+
+  orderItem OrderItem      @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+  @@map("order_item_variants")
+}
+
+// Guest Checkout
+model GuestCheckout {
+  id        String  @id @default(uuid())
+  tenantId  String
+  email     String
+  firstName String
+  lastName  String
+  phone     String?
+  sessionId String  @unique // Browser session ID
+  orderId   String? @unique // Created order reference
+
+  // Delivery info
+  address String?
+  city    String?
+  zip     String?
+  country String  @default("Norway")
+
+  convertedToUser Boolean @default(false)
+  userId          String? // If guest converts to user
+
+  createdAt DateTime @default(now())
+  expiresAt DateTime // Session expiry (e.g., 24 hours)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order  Order? @relation(fields: [orderId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([email])
+  @@index([sessionId])
+  @@map("guest_checkouts")
+}
+
+// Product Specifications
+model ProductSpecification {
+  id        String   @id @default(uuid())
+  productId String
+  name      String // e.g., "Dimensions", "Weight", "Material"
+  value     String // e.g., "10x20x30 cm", "2.5 kg", "Cotton"
+  sortOrder Int      @default(0)
+  group     String? // Optional grouping (e.g., "Physical", "Technical")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_specifications")
+}
+
+// Related Products
+model RelatedProduct {
+  id               String   @id @default(uuid())
+  productId        String
+  relatedProductId String
+  type             String   @default("RELATED") // RELATED, UPSELL, CROSS_SELL
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  product        Product @relation("ProductRelations", fields: [productId], references: [id], onDelete: Cascade)
+  relatedProduct Product @relation("RelatedToProducts", fields: [relatedProductId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, relatedProductId, type])
+  @@index([productId])
+  @@map("related_products")
+}
+
+// Product Collections (Featured, New, etc.)
+model ProductCollection {
+  id          String    @id @default(uuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+  imageUrl    String?
+  type        String    @default("MANUAL") // MANUAL, AUTO
+  conditions  Json? // For automatic collections
+  sortOrder   Int       @default(0)
+  active      Boolean   @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant   Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products ProductCollectionMapping[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, active])
+  @@map("product_collections")
+}
+
+model ProductCollectionMapping {
+  id           String   @id @default(uuid())
+  collectionId String
+  productId    String
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  collection ProductCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  product    Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, productId])
+  @@index([collectionId])
+  @@index([productId])
+  @@map("product_collection_mappings")
+}
+
+// ============================================
+// MEMBERSHIP SYSTEM
+// ============================================
+
+enum MembershipPlanInterval {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum MembershipStatus {
+  ACTIVE
+  FROZEN
+  EXPIRED
+  CANCELLED
+  SUSPENDED // Admin suspended
+  BLACKLISTED
+}
+
+enum MembershipPaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  FAILED
+}
+
+// Membership Plans - Defines available membership types
+model MembershipPlan {
+  id            String                 @id @default(uuid())
+  tenantId      String
+  name          String // e.g., "Månedlig medlemskap", "Årlig medlemskap"
+  description   String?
+  price         Float
+  currency      String                 @default("NOK")
+  interval      MembershipPlanInterval
+  intervalCount Int                    @default(1) // e.g., every 1 month, every 3 months
+  trialDays     Int?                   @default(0) // Free trial period in days
+  features      Json? // Array of features
+  maxFreezes    Int                    @default(2) // Max freezes per year
+  active        Boolean                @default(true)
+  sortOrder     Int                    @default(0)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+
+  @@index([tenantId, active])
+  @@map("membership_plans")
+}
+
+// User Memberships
+model Membership {
+  id                  String           @id @default(uuid())
+  tenantId            String
+  userId              String
+  planId              String
+  status              MembershipStatus @default(ACTIVE)
+  startDate           DateTime         @default(now())
+  endDate             DateTime? // Null for active, set when cancelled/expired
+  nextBillingDate     DateTime? // Next payment due date
+  lastBillingDate     DateTime? // Last successful payment date
+  freezesUsedThisYear Int              @default(0) // Track freezes used in current calendar year
+  lastFreezeResetYear Int? // Year when freeze count was last reset
+  notes               String? // Admin notes
+  blacklistReason     String? // Reason for blacklisting
+  blacklistedAt       DateTime?
+  suspendedReason     String? // Reason for admin suspension
+  suspendedAt         DateTime?
+  cancelledAt         DateTime?
+  cancelledReason     String?
+  autoRenew           Boolean          @default(true) // Auto-renew on expiry
+  lastCheckInAt       DateTime? // Last time member checked in at facility
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan           MembershipPlan      @relation(fields: [planId], references: [id])
+  payments       MembershipPayment[]
+  freezes        MembershipFreeze[]
+  checkIns       MembershipCheckIn[]
+  doorAccessLogs DoorAccessLog[]
+
+  @@index([tenantId, userId])
+  @@index([tenantId, status])
+  @@index([userId, status])
+  @@index([nextBillingDate])
+  @@map("memberships")
+}
+
+// Membership Freezes - Track when users freeze their membership
+model MembershipFreeze {
+  id           String    @id @default(uuid())
+  membershipId String
+  userId       String // For easy querying
+  startDate    DateTime  @default(now())
+  endDate      DateTime? // Null if still frozen
+  reason       String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([membershipId])
+  @@index([userId])
+  @@index([startDate, endDate])
+  @@map("membership_freezes")
+}
+
+// Membership Payments - Track all membership payments
+model MembershipPayment {
+  id             String                  @id @default(uuid())
+  tenantId       String
+  membershipId   String
+  amount         Float
+  currency       String                  @default("NOK")
+  status         MembershipPaymentStatus @default(PENDING)
+  dueDate        DateTime
+  paidAt         DateTime?
+  failedAt       DateTime?
+  failureReason  String?
+  paymentMethod  String? // CARD, VIPPS, INVOICE, etc.
+  paymentId      String? // External payment provider ID
+  invoiceId      String? // Link to accounting invoice if generated
+  notes          String?
+  autoMarkedPaid Boolean                 @default(false) // Marked as paid automatically after 30 days
+  reminderCount  Int                     @default(0) // Number of reminders sent
+  lastReminderAt DateTime? // Last time reminder was sent
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membership Membership           @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  reminders  MembershipReminder[]
+
+  @@index([tenantId, status])
+  @@index([membershipId])
+  @@index([dueDate])
+  @@index([status, dueDate])
+  @@map("membership_payments")
+}
+
+// Membership Check-ins - Track when members visit the facility
+model MembershipCheckIn {
+  id           String    @id @default(uuid())
+  tenantId     String
+  userId       String
+  membershipId String
+  checkInTime  DateTime  @default(now())
+  checkOutTime DateTime?
+  location     String? // Which facility/location
+  notes        String?
+  createdAt    DateTime  @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+  @@index([membershipId])
+  @@index([checkInTime])
+  @@index([userId, checkInTime])
+  @@map("membership_checkins")
+}
+
+// Membership Reminders - Track payment reminders sent to members
+model MembershipReminder {
+  id        String                 @id @default(uuid())
+  tenantId  String
+  paymentId String
+  userId    String
+  type      MembershipReminderType
+  sentAt    DateTime               @default(now())
+  method    String? // EMAIL, SMS, PUSH
+  message   String?
+  response  String? // User response if any
+  createdAt DateTime               @default(now())
+
+  tenant  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payment MembershipPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+  @@index([paymentId])
+  @@index([sentAt])
+  @@map("membership_reminders")
+}
+
+enum MembershipReminderType {
+  FIRST_REMINDER // First reminder
+  SECOND_REMINDER // Second reminder
+  FINAL_REMINDER // Final reminder before suspension
+  OVERDUE_NOTICE // Payment is overdue
+}
+
+// ============================================
+// DOOR ACCESS CONTROL SYSTEM
+// ============================================
+
+enum DoorStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  ERROR
+}
+
+enum AccessRuleType {
+  MEMBERSHIP // Access based on active membership
+  ROLE // Access based on user role
+  USER_SPECIFIC // Access granted to specific users
+  TIME_BASED // Access based on time schedules
+  CREDENTIAL // Access based on credentials (cards, codes, etc.)
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum ScheduleType {
+  WEEKLY_RECURRING // Repeats every week
+  DATE_RANGE // Specific date range
+  HOLIDAY // Holiday schedule
+  OVERRIDE // Override for specific dates
+}
+
+enum AccessResult {
+  GRANTED // Access allowed
+  DENIED_NO_CREDENTIAL // No valid credential
+  DENIED_EXPIRED // Credential expired
+  DENIED_INACTIVE // Membership inactive/expired
+  DENIED_SUSPENDED // User/membership suspended
+  DENIED_TIME // Outside allowed time
+  DENIED_BLACKLISTED // User blacklisted
+  DENIED_NO_PERMISSION // No access rights
+  ERROR // System error
+  FORCED_OPEN // Door forced open (alarm)
+  HELD_OPEN // Door held open too long
+}
+
+enum IntegrationType {
+  SALTO // Salto access control system
+  ASSA_ABLOY // Assa Abloy access control
+  AXIS // Axis door controllers
+  PAXTON // Paxton access control
+  GENERIC_WIEGAND // Generic Wiegand protocol
+  REST_API // Generic REST API
+  MQTT // MQTT protocol
+  WEBHOOK // Webhook integration
+  MANUAL // Manual control only
+}
+
+enum CredentialType {
+  RFID_CARD // RFID/NFC card
+  PIN_CODE // PIN code
+  QR_CODE // QR code
+  MOBILE_KEY // Mobile app key
+  BIOMETRIC // Fingerprint/face
+  BARCODE // Barcode
+}
+
+enum CredentialStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  LOST
+  STOLEN
+  SUSPENDED
+}
+
+// Door - Physical door or access point
+model Door {
+  id          String     @id @default(uuid())
+  tenantId    String
+  name        String // e.g., "Main Entrance", "Gym Floor", "Locker Room"
+  description String?
+  location    String? // e.g., "Ground Floor", "Building A"
+  status      DoorStatus @default(ACTIVE)
+
+  // Integration settings
+  integrationId String? // ID in the external system
+  hardwareId    String? // Physical hardware ID/MAC address
+  ipAddress     String? // IP address if networked
+
+  // Access control
+  requiresCredential  Boolean @default(true)
+  allowManualOverride Boolean @default(false) // Allow admin manual open
+  alarmEnabled        Boolean @default(false)
+
+  // Door state
+  isOnline     Boolean   @default(true)
+  isLocked     Boolean   @default(true) // Current lock state
+  lastOnline   DateTime?
+  batteryLevel Int? // For battery-powered devices (0-100)
+
+  // Settings
+  unlockDuration   Int @default(5) // Seconds door stays unlocked
+  openTooLongAlert Int @default(30) // Seconds before alert
+  sortOrder        Int @default(0)
+
+  metadata  Json? // Additional configuration
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  accessRules        DoorAccessRule[]
+  schedules          DoorSchedule[]
+  accessLogs         DoorAccessLog[]
+  integrationConfigs DoorIntegrationConfig[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, name])
+  @@map("doors")
+}
+
+// DoorAccessRule - Defines who can access which doors
+model DoorAccessRule {
+  id          String         @id @default(uuid())
+  tenantId    String
+  doorId      String
+  name        String
+  description String?
+  type        AccessRuleType
+  priority    Int            @default(0) // Higher priority rules checked first
+  active      Boolean        @default(true)
+
+  // Rule conditions (JSON for flexible conditions)
+  conditions Json? // { roles: ["ADMIN", "TRAINER"], membershipStatuses: ["ACTIVE"] }
+
+  // User and role based access
+  allowedRoles              String[] // Array of UserRole values
+  allowedUserIds            String[] // Specific user IDs
+  allowedMembershipStatuses String[] // Array of MembershipStatus values
+
+  // Time restrictions
+  scheduleId String? // Link to schedule if time-based
+
+  // Validity period
+  validFrom  DateTime?
+  validUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  door     Door          @relation(fields: [doorId], references: [id], onDelete: Cascade)
+  schedule DoorSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, doorId])
+  @@index([doorId, active])
+  @@index([type])
+  @@map("door_access_rules")
+}
+
+// DoorSchedule - Time-based access schedules
+model DoorSchedule {
+  id          String       @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  type        ScheduleType
+  active      Boolean      @default(true)
+
+  // Weekly recurring schedule
+  daysOfWeek DayOfWeek[] // Days when schedule is active
+  startTime  String? // HH:MM format
+  endTime    String? // HH:MM format
+
+  // Date range schedule
+  startDate DateTime?
+  endDate   DateTime?
+
+  // All day access
+  allDay Boolean @default(false)
+
+  // Override settings
+  isOverride Boolean @default(false) // Override other schedules
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  accessRules DoorAccessRule[]
+  Door        Door?            @relation(fields: [doorId], references: [id])
+  doorId      String?
+
+  @@index([tenantId, active])
+  @@index([type])
+  @@map("door_schedules")
+}
+
+// DoorAccessLog - Audit trail of all access attempts
+model DoorAccessLog {
+  id           String  @id @default(uuid())
+  tenantId     String
+  doorId       String
+  userId       String?
+  membershipId String?
+
+  result       AccessResult
+  accessMethod String? // How access was attempted: "CARD", "PIN", "MOBILE", "MANUAL"
+  credentialId String? // Which credential was used
+
+  // Additional context
+  denialReason String? // Detailed reason for denial
+
+  // Event details
+  ipAddress String?
+  userAgent String?
+  metadata  Json? // Additional event data
+
+  timestamp DateTime @default(now())
+
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  door       Door            @relation(fields: [doorId], references: [id], onDelete: Cascade)
+  user       User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  membership Membership?     @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  credential DoorCredential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, timestamp])
+  @@index([doorId, timestamp])
+  @@index([userId, timestamp])
+  @@index([membershipId, timestamp])
+  @@index([result])
+  @@index([timestamp])
+  @@map("door_access_logs")
+}
+
+// DoorIntegrationConfig - Integration settings with external systems
+model DoorIntegrationConfig {
+  id       String  @id @default(uuid())
+  tenantId String
+  doorId   String? // Null for tenant-wide config
+
+  type        IntegrationType
+  name        String
+  description String?
+  active      Boolean         @default(true)
+
+  // Connection settings
+  endpoint     String? // API endpoint or MQTT broker
+  username     String?
+  password     String? // Should be encrypted
+  apiKey       String? // API key if applicable
+  clientId     String? // Client ID for OAuth/MQTT
+  clientSecret String? // Client secret for OAuth
+
+  // Protocol settings
+  protocol String? // "REST", "MQTT", "WIEGAND", etc.
+  port     Int?
+  useSsl   Boolean @default(true)
+
+  // Sync settings
+  syncEnabled    Boolean   @default(true)
+  syncInterval   Int       @default(60) // Minutes
+  lastSyncAt     DateTime?
+  lastSyncStatus String? // "SUCCESS", "FAILED", "IN_PROGRESS"
+  lastSyncError  String?
+
+  // Mapping configuration
+  fieldMapping Json? // Map internal fields to external system fields
+
+  metadata  Json? // Additional integration-specific settings
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  door   Door?  @relation(fields: [doorId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, active])
+  @@index([doorId])
+  @@index([type])
+  @@map("door_integration_configs")
+}
+
+// DoorCredential - User credentials for door access
+model DoorCredential {
+  id       String @id @default(uuid())
+  tenantId String
+  userId   String
+
+  type   CredentialType
+  status CredentialStatus @default(ACTIVE)
+
+  // Credential data
+  credentialData String // Card number, PIN, QR code data (encrypted if sensitive)
+  facilityCode   String? // For proximity cards
+
+  name        String? // User-friendly name: "Blue Card", "Main PIN"
+  description String?
+
+  // Validity
+  validFrom  DateTime  @default(now())
+  validUntil DateTime?
+
+  // External system reference
+  externalId String? // ID in the external access control system
+
+  // Security
+  lastUsedAt DateTime?
+  usageCount Int       @default(0)
+
+  // Lost/stolen tracking
+  reportedLostAt   DateTime?
+  reportedStolenAt DateTime?
+  suspendedAt      DateTime?
+  suspensionReason String?
+
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessLogs DoorAccessLog[]
+
+  @@index([tenantId, userId])
+  @@index([userId, status])
+  @@index([credentialData])
+  @@index([type, status])
+  @@index([status])
+  @@map("door_credentials")
+}
+
+// ============================================
+// SUPER ADMIN - FEATURE MANAGEMENT & BILLING
+// ============================================
+
+enum FeatureCategory {
+  CORE // Core features (always available)
+  BOOKINGS // Booking & classes system
+  PERSONAL_TRAINING // PT sessions & programs
+  MEMBERSHIP // Membership management
+  ECOMMERCE // E-commerce & products
+  ACCOUNTING // Accounting & invoicing
+  CHAT // Chat & messaging
+  DOOR_ACCESS // Door access control
+  LANDING_PAGE // Landing page CMS
+  ANALYTICS // Analytics & reporting
+  INTEGRATIONS // Third-party integrations
+  CUSTOM // Custom features
+}
+
+// Feature - Individual feature toggle
+model Feature {
+  id          String          @id @default(uuid())
+  key         String          @unique // e.g., "door_access", "chat", "membership"
+  name        String // Display name
+  description String?
+  category    FeatureCategory @default(CUSTOM)
+  isCore      Boolean         @default(false) // Core features always enabled
+  sortOrder   Int             @default(0)
+  active      Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  featurePacks   FeaturePackItem[]
+  tenantFeatures TenantFeature[]
+
+  @@index([category])
+  @@index([active])
+  @@map("features")
+}
+
+enum SubscriptionInterval {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  CUSTOM
+}
+
+// FeaturePack - Bundle of features (pricing tiers)
+model FeaturePack {
+  id          String               @id @default(uuid())
+  name        String // e.g., "Basic", "Premium", "Enterprise"
+  slug        String               @unique
+  description String?
+  price       Float
+  currency    String               @default("NOK")
+  interval    SubscriptionInterval
+  trialDays   Int                  @default(0) // Free trial period
+  isPopular   Boolean              @default(false) // Highlight as popular
+  sortOrder   Int                  @default(0)
+  active      Boolean              @default(true)
+  metadata    Json? // Additional configuration
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  features      FeaturePackItem[]
+  subscriptions Subscription[]
+
+  @@index([active])
+  @@index([slug])
+  @@map("feature_packs")
+}
+
+// FeaturePackItem - Many-to-many between packs and features
+model FeaturePackItem {
+  id        String   @id @default(uuid())
+  packId    String
+  featureId String
+  createdAt DateTime @default(now())
+
+  pack    FeaturePack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  feature Feature     @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([packId, featureId])
+  @@index([packId])
+  @@index([featureId])
+  @@map("feature_pack_items")
+}
+
+// TenantFeature - Which features are enabled for each tenant
+model TenantFeature {
+  id         String    @id @default(uuid())
+  tenantId   String
+  featureId  String
+  enabled    Boolean   @default(true)
+  enabledAt  DateTime  @default(now())
+  disabledAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, featureId])
+  @@index([tenantId, enabled])
+  @@index([featureId])
+  @@map("tenant_features")
+}
+
+enum SubscriptionStatus {
+  TRIAL // Trial period
+  ACTIVE // Active subscription
+  PAST_DUE // Payment failed
+  SUSPENDED // Manually suspended
+  CANCELLED // Cancelled but still active until period end
+  EXPIRED // Subscription ended
+}
+
+// Subscription - Per-tenant subscription management
+model Subscription {
+  id             String             @id @default(uuid())
+  tenantId       String             @unique
+  featurePackId  String?
+  status         SubscriptionStatus @default(TRIAL)
+  tier           String? // "BASIC", "PREMIUM", "ENTERPRISE", "CUSTOM"
+  interval       SubscriptionInterval
+  price          Float
+  currency       String             @default("NOK")
+  customFeatures Json? // For custom subscriptions
+
+  // Trial management
+  trialEndsAt DateTime?
+
+  // Billing period
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean  @default(false)
+  cancelledAt        DateTime?
+  cancellationReason String?
+
+  // Billing contact
+  billingEmail   String?
+  billingName    String?
+  billingAddress String?
+  billingPhone   String?
+  vatNumber      String?
+
+  // Payment integration
+  stripeCustomerId     String? // Stripe customer ID
+  stripeSubscriptionId String? // Stripe subscription ID
+
+  // Usage tracking
+  lastBilledAt DateTime?
+  nextBillingAt DateTime?
+
+  // Notes
+  notes String?
+
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  featurePack FeaturePack?           @relation(fields: [featurePackId], references: [id])
+  invoices    SubscriptionInvoice[]
+
+  @@index([status])
+  @@index([nextBillingAt])
+  @@index([tenantId, status])
+  @@map("subscriptions")
+}
+
+enum InvoiceStatusEnum {
+  DRAFT // Being prepared
+  SENT // Sent to customer
+  PAID // Paid
+  OVERDUE // Payment overdue
+  CANCELLED // Cancelled
+  REFUNDED // Refunded
+}
+
+// SubscriptionInvoice - Billing invoices for subscriptions
+model SubscriptionInvoice {
+  id             String            @id @default(uuid())
+  subscriptionId String
+  invoiceNumber  String            @unique
+  amount         Float
+  currency       String            @default("NOK")
+  vatAmount      Float             @default(0)
+  total          Float
+  status         InvoiceStatusEnum @default(DRAFT)
+
+  // Billing period
+  periodStart DateTime
+  periodEnd   DateTime
+
+  // Payment details
+  dueDate        DateTime
+  paidAt         DateTime?
+  paymentMethod  String? // "CARD", "INVOICE", "VIPPS"
+  paymentId      String? // External payment ID
+  reminderCount  Int      @default(0)
+  lastReminderAt DateTime?
+
+  // Invoice details
+  description String?
+  notes       String?
+  pdfUrl      String? // Link to PDF invoice
+
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([status, dueDate])
+  @@map("subscription_invoices")
 }

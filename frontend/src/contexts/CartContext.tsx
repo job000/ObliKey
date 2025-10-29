@@ -1,182 +1,140 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api } from '../services/api';
 import { useAuth } from './AuthContext';
 
 interface CartItem {
-  id?: string; // Backend cart item ID
+  id: string;
   productId: string;
   name: string;
+  type: string;
   price: number;
-  currency: string;
   quantity: number;
   image?: string;
-  type: string;
+  currency: string;
 }
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (item: Omit<CartItem, 'quantity'>) => Promise<void>;
+  itemCount: number;
+  total: number;
+  addItem: (product: any) => Promise<void>;
   removeItem: (productId: string) => Promise<void>;
   updateQuantity: (productId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
-  total: number;
-  itemCount: number;
-  loading: boolean;
-  refreshCart: () => Promise<void>;
+  loadCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { user, token } = useAuth();
 
-  // Load cart from backend when user is authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    // Only load cart if user is authenticated
+    if (user && token) {
       loadCart();
     } else {
-      // Clear cart when user logs out
+      // Clear cart items when user logs out
       setItems([]);
     }
-  }, [isAuthenticated]);
+  }, [user, token]);
 
   const loadCart = async () => {
-    if (!isAuthenticated) return;
-
     try {
-      setLoading(true);
       const response = await api.getCart();
-
       if (response.success && response.data) {
-        // Transform backend cart data to match CartItem interface
-        const cartItems: CartItem[] = response.data.items.map((item: any) => ({
-          id: item.id,
-          productId: item.productId,
-          name: item.product?.name || 'Unknown Product',
-          price: item.product?.price || 0,
-          currency: item.product?.currency || 'NOK',
-          quantity: item.quantity,
-          image: item.product?.image,
-          type: item.product?.type || 'PHYSICAL_PRODUCT'
-        }));
-
-        setItems(cartItems);
+        setItems(response.data.items || []);
       }
     } catch (error) {
-      console.error('Failed to load cart:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error loading cart:', error);
     }
   };
 
-  const addItem = async (item: Omit<CartItem, 'quantity'>) => {
-    if (!isAuthenticated) {
-      alert('Du må logge inn for å legge til produkter i handlekurven');
-      return;
-    }
-
+  const addItem = async (product: any) => {
     try {
-      setLoading(true);
-      await api.addToCart(item.productId, 1);
-      await loadCart(); // Reload cart from backend
-    } catch (error: any) {
-      console.error('Failed to add item to cart:', error);
-      alert(error.response?.data?.error || 'Kunne ikke legge til produkt i handlekurven');
-    } finally {
-      setLoading(false);
+      const productId = product.productId || product.id;
+      const existingItem = items.find(item => item.productId === productId);
+      const quantity = existingItem ? existingItem.quantity + 1 : 1;
+
+      const response = await api.addToCart(productId, quantity);
+      if (response.success) {
+        await loadCart();
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      throw error;
     }
   };
 
   const removeItem = async (productId: string) => {
-    if (!isAuthenticated) return;
-
     try {
-      setLoading(true);
-      // Find the cart item ID by productId
-      const cartItem = items.find(item => item.productId === productId);
-      if (cartItem && cartItem.id) {
-        await api.removeFromCart(cartItem.id);
-        await loadCart(); // Reload cart from backend
+      // Find the cart item by productId to get its id
+      const item = items.find(item => item.productId === productId);
+      if (!item) {
+        console.error('Item not found in cart');
+        return;
+      }
+
+      const response = await api.removeFromCart(item.id);
+      if (response.success) {
+        setItems(items.filter(item => item.productId !== productId));
       }
     } catch (error) {
-      console.error('Failed to remove item from cart:', error);
-      alert('Kunne ikke fjerne produkt fra handlekurven');
-    } finally {
-      setLoading(false);
+      console.error('Error removing from cart:', error);
     }
   };
 
   const updateQuantity = async (productId: string, quantity: number) => {
-    if (!isAuthenticated) return;
-
-    if (quantity <= 0) {
+    if (quantity < 1) {
       await removeItem(productId);
       return;
     }
 
     try {
-      setLoading(true);
-      // Find the cart item ID by productId
-      const cartItem = items.find(item => item.productId === productId);
-      if (cartItem && cartItem.id) {
-        await api.updateCartItem(cartItem.id, quantity);
-        await loadCart(); // Reload cart from backend
+      // Find the cart item by productId to get its id
+      const item = items.find(item => item.productId === productId);
+      if (!item) {
+        console.error('Item not found in cart');
+        return;
       }
-    } catch (error: any) {
-      console.error('Failed to update cart item:', error);
-      alert(error.response?.data?.error || 'Kunne ikke oppdatere antall');
-    } finally {
-      setLoading(false);
+
+      const response = await api.updateCartItem(item.id, quantity);
+      if (response.success) {
+        setItems(items.map(item =>
+          item.productId === productId ? { ...item, quantity } : item
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error);
     }
   };
 
   const clearCart = async () => {
-    if (!isAuthenticated) return;
-
     try {
-      setLoading(true);
-      await api.clearCart();
-      setItems([]);
+      const response = await api.clearCart();
+      if (response.success) {
+        setItems([]);
+      }
     } catch (error) {
-      console.error('Failed to clear cart:', error);
-      alert('Kunne ikke tømme handlekurven');
-    } finally {
-      setLoading(false);
+      console.error('Error clearing cart:', error);
     }
   };
 
-  const refreshCart = async () => {
-    await loadCart();
-  };
-
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const total = items.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
 
   return (
-    <CartContext.Provider
-      value={{
-        items,
-        addItem,
-        removeItem,
-        updateQuantity,
-        clearCart,
-        total,
-        itemCount,
-        loading,
-        refreshCart,
-      }}
-    >
+    <CartContext.Provider value={{ items, itemCount, total, addItem, removeItem, updateQuantity, clearCart, loadCart }}>
       {children}
     </CartContext.Provider>
   );
-};
+}
 
-export const useCart = () => {
+export function useCart() {
   const context = useContext(CartContext);
   if (context === undefined) {
     throw new Error('useCart must be used within a CartProvider');
   }
   return context;
-};
+}

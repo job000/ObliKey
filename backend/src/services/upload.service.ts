@@ -53,6 +53,13 @@ export const upload = multer({
 export const getFileUrl = (req: Request, filename: string): string => {
   const protocol = req.protocol;
   const host = req.get('host');
+
+  // For development, always use network IP instead of localhost
+  // This ensures images work on physical devices (iOS/Android)
+  if (host?.includes('localhost') || host?.includes('127.0.0.1')) {
+    return `${protocol}://10.0.0.57:${host.split(':')[1] || 3000}/uploads/products/${filename}`;
+  }
+
   return `${protocol}://${host}/uploads/products/${filename}`;
 };
 

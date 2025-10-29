@@ -46,9 +46,12 @@ export const authenticate = async (
       return;
     }
 
-    if (!user.tenant.active) {
-      res.status(403).json({ success: false, error: 'Organisasjonen er deaktivert' });
-      return;
+    // SUPER_ADMIN users might not have a tenant
+    if (user.role !== 'SUPER_ADMIN') {
+      if (!user.tenant || !user.tenant.active) {
+        res.status(403).json({ success: false, error: 'Organisasjonen er deaktivert' });
+        return;
+      }
     }
 
     // Update decoded with current role (in case it changed)
@@ -56,7 +59,34 @@ export const authenticate = async (
       ...decoded,
       role: user.role
     };
-    req.tenantId = decoded.tenantId;
+
+    // Check if SUPER_ADMIN is viewing as a specific tenant
+    const viewingAsTenantHeader = req.headers['x-viewing-as-tenant'] as string | undefined;
+
+    if (viewingAsTenantHeader && user.role === 'SUPER_ADMIN') {
+      // Validate that the tenant exists and is active
+      const viewingAsTenant = await prisma.tenant.findUnique({
+        where: { id: viewingAsTenantHeader },
+        select: { id: true, active: true }
+      });
+
+      if (!viewingAsTenant) {
+        res.status(404).json({ success: false, error: 'Tenant ikke funnet' });
+        return;
+      }
+
+      if (!viewingAsTenant.active) {
+        res.status(403).json({ success: false, error: 'Denne tenanten er deaktivert' });
+        return;
+      }
+
+      // Override tenantId with the viewing-as tenant
+      req.tenantId = viewingAsTenantHeader;
+    } else {
+      // Use user's own tenant ID
+      req.tenantId = decoded.tenantId;
+    }
+
     next();
   } catch (error) {
     console.error('Authentication error:', error);
