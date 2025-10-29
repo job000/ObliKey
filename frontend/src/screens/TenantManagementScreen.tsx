@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Platform,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -118,6 +119,59 @@ export default function TenantManagementScreen({ navigation }: any) {
 
   const handleCreateTenant = () => {
     navigation.navigate('CreateTenant');
+  };
+
+  const handleToggleActive = async (tenant: Tenant, event: any) => {
+    // Prevent navigation to detail screen
+    event.stopPropagation();
+
+    const action = tenant.active ? 'deaktivere' : 'aktivere';
+    Alert.alert(
+      `${tenant.active ? 'Deaktiver' : 'Aktiver'} Tenant`,
+      `Er du sikker på at du vil ${action} ${tenant.name}?`,
+      [
+        { text: 'Avbryt', style: 'cancel' },
+        {
+          text: tenant.active ? 'Deaktiver' : 'Aktiver',
+          style: tenant.active ? 'destructive' : 'default',
+          onPress: async () => {
+            try {
+              await api.updateTenant(tenant.id, { active: !tenant.active });
+              Alert.alert('Suksess', `Tenant ${action}t vellykket`);
+              loadData(); // Reload the list
+            } catch (err: any) {
+              Alert.alert('Feil', err.response?.data?.error || `Kunne ikke ${action} tenant`);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteTenant = async (tenant: Tenant, event: any) => {
+    // Prevent navigation to detail screen
+    event.stopPropagation();
+
+    Alert.alert(
+      'Slett Tenant',
+      `Er du sikker på at du vil slette ${tenant.name}? Denne handlingen kan ikke angres og vil fjerne all tilhørende data.`,
+      [
+        { text: 'Avbryt', style: 'cancel' },
+        {
+          text: 'Slett',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.deleteTenant(tenant.id);
+              Alert.alert('Suksess', 'Tenant slettet vellykket');
+              loadData(); // Reload the list
+            } catch (err: any) {
+              Alert.alert('Feil', err.response?.data?.error || 'Kunne ikke slette tenant');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const formatCurrency = (amount: number, currency: string = 'NOK') => {
@@ -236,6 +290,32 @@ export default function TenantManagementScreen({ navigation }: any) {
 
       <View style={styles.tenantCell}>
         <Text style={styles.dateText}>{formatDate(tenant.createdAt)}</Text>
+      </View>
+
+      {/* Action Buttons */}
+      <View style={styles.actionButtonsContainer}>
+        <TouchableOpacity
+          style={[
+            styles.actionButton,
+            tenant.active ? styles.actionButtonDeactivate : styles.actionButtonActivate,
+          ]}
+          onPress={(e) => handleToggleActive(tenant, e)}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={tenant.active ? 'close-circle-outline' : 'checkmark-circle-outline'}
+            size={18}
+            color={tenant.active ? '#EF4444' : '#10B981'}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, styles.actionButtonDelete]}
+          onPress={(e) => handleDeleteTenant(tenant, e)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.tenantCell}>
@@ -807,5 +887,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     fontWeight: '500',
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 8,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  actionButtonDeactivate: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  actionButtonActivate: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  actionButtonDelete: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
   },
 });

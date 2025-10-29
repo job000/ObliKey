@@ -3,17 +3,20 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   Platform,
   TextInput,
   RefreshControl,
+  Alert,
+  KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useTenant } from '../contexts/TenantContext';
-import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../services/api';
 import { Tenant } from '../types';
 
@@ -33,12 +36,41 @@ interface TenantWithStats extends Tenant {
 export default function SuperAdminDashboardScreen({ navigation }: any) {
   const { user } = useAuth();
   const { selectedTenant, setSelectedTenant } = useTenant();
-  const [tenants, setTenants] = useState<TenantWithStats[]>([]);
+  const [allTenants, setAllTenants] = useState<TenantWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const searchInputRef = React.useRef<TextInput>(null);
+
+  // Function to dismiss keyboard and blur search input
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+    searchInputRef.current?.blur();
+  };
+
+  // Filter tenants locally based on search query and status filter
+  const filteredTenants = React.useMemo(() => {
+    let result = allTenants;
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      result = result.filter(t => t.active === (statusFilter === 'active'));
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(t =>
+        t.name.toLowerCase().includes(query) ||
+        t.subdomain.toLowerCase().includes(query) ||
+        t.email?.toLowerCase().includes(query)
+      );
+    }
+
+    return result;
+  }, [allTenants, searchQuery, statusFilter]);
 
   useEffect(() => {
     if (user?.role !== 'SUPER_ADMIN') {
@@ -46,18 +78,14 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
       return;
     }
     loadTenants();
-  }, [user, searchQuery, statusFilter]);
+  }, [user]);
 
-  // Reload tenants when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      loadTenants();
-    }, [searchQuery, statusFilter])
-  );
-
-  const loadTenants = async () => {
+  const loadTenants = async (forceLoading = false) => {
     try {
-      setLoading(true);
+      // Only show loading spinner if we have no data yet or force loading
+      if (allTenants.length === 0 || forceLoading) {
+        setLoading(true);
+      }
       setError(null);
 
       const params: any = {
@@ -65,14 +93,6 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
         sortBy: 'createdAt',
         sortOrder: 'desc',
       };
-
-      if (searchQuery.trim()) {
-        params.search = searchQuery.trim();
-      }
-
-      if (statusFilter !== 'all') {
-        params.active = statusFilter === 'active';
-      }
 
       const response = await api.getAllTenants(params);
 
@@ -94,7 +114,7 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
         })
       );
 
-      setTenants(tenantsWithStats);
+      setAllTenants(tenantsWithStats);
     } catch (err: any) {
       console.error('Failed to load tenants:', err);
       setError(err.response?.data?.message || 'Failed to load tenants');
@@ -118,7 +138,66 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
     await setSelectedTenant(null);
   };
 
-  if (loading && !refreshing) {
+  const handleToggleStatus = async (tenant: TenantWithStats) => {
+    const action = tenant.active ? 'deaktivere' : 'aktivere';
+    const actionCaps = tenant.active ? 'Deaktivere' : 'Aktivere';
+
+    Alert.alert(
+      `${actionCaps} Tenant`,
+      `Er du sikker på at du vil ${action} "${tenant.name}"?`,
+      [
+        { text: 'Avbryt', style: 'cancel' },
+        {
+          text: actionCaps,
+          style: tenant.active ? 'destructive' : 'default',
+          onPress: async () => {
+            try {
+              await api.setTenantStatus(tenant.id, !tenant.active);
+              // Reload tenants to reflect the change
+              await loadTenants();
+            } catch (err: any) {
+              Alert.alert(
+                'Feil',
+                err.response?.data?.message || `Kunne ikke ${action} tenant`
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteTenant = async (tenant: TenantWithStats) => {
+    Alert.alert(
+      'Slett Tenant',
+      `Er du sikker på at du vil slette "${tenant.name}"?\n\nDette vil permanent slette alle data knyttet til denne tenant, inkludert brukere, produkter, og innstillinger.\n\nDenne handlingen kan IKKE angres!`,
+      [
+        { text: 'Avbryt', style: 'cancel' },
+        {
+          text: 'Slett',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.deleteTenant(tenant.id);
+              // If deleted tenant was selected, clear selection
+              if (selectedTenant?.id === tenant.id) {
+                await setSelectedTenant(null);
+              }
+              // Reload tenants to reflect the change
+              await loadTenants();
+            } catch (err: any) {
+              Alert.alert(
+                'Feil',
+                err.response?.data?.message || 'Kunne ikke slette tenant'
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (loading && !refreshing && allTenants.length === 0) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3B82F6" />
@@ -127,13 +206,25 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
     );
   }
 
+  const renderEmpty = () => {
+    if (error) return null;
+
+    return (
+      <View style={styles.emptyState}>
+        <Ionicons name="business-outline" size={64} color="#D1D5DB" />
+        <Text style={styles.emptyStateText}>No tenants found</Text>
+        <Text style={styles.emptyStateSubtext}>
+          {searchQuery.trim()
+            ? 'Try adjusting your search criteria'
+            : 'No tenants available to browse'}
+        </Text>
+      </View>
+    );
+  };
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, isWeb && styles.webContent]}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
-      {/* Header */}
+    <View style={styles.container}>
+      {/* Header - Fast, re-rendrer ikke */}
       <View style={[styles.header, isWeb && styles.headerWeb]}>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Tenant Browser</Text>
@@ -149,7 +240,7 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      {/* Selected Tenant Indicator */}
+      {/* Selected Tenant Banner */}
       {selectedTenant && (
         <View style={styles.selectedTenantBanner}>
           <View style={styles.selectedTenantContent}>
@@ -173,16 +264,20 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
         </View>
       )}
 
-      {/* Search and Filters */}
+      {/* Search and Filters - Separat fra FlatList */}
       <View style={[styles.filtersContainer, isWeb && styles.filtersContainerWeb]}>
         <View style={[styles.searchContainer, isWeb && styles.searchContainerWeb]}>
           <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
           <TextInput
+            ref={searchInputRef}
             style={[styles.searchInput, isWeb && styles.searchInputWeb]}
             placeholder="Search tenants by name, subdomain, or email..."
             placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={setSearchQuery}
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
           />
         </View>
 
@@ -192,7 +287,10 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
               styles.filterButton,
               statusFilter === 'all' && styles.filterButtonActive,
             ]}
-            onPress={() => setStatusFilter('all')}
+            onPress={() => {
+              dismissKeyboard();
+              setStatusFilter('all');
+            }}
           >
             <Text
               style={[
@@ -209,7 +307,10 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
               styles.filterButton,
               statusFilter === 'active' && styles.filterButtonActive,
             ]}
-            onPress={() => setStatusFilter('active')}
+            onPress={() => {
+              dismissKeyboard();
+              setStatusFilter('active');
+            }}
           >
             <Text
               style={[
@@ -226,7 +327,10 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
               styles.filterButton,
               statusFilter === 'inactive' && styles.filterButtonActive,
             ]}
-            onPress={() => setStatusFilter('inactive')}
+            onPress={() => {
+              dismissKeyboard();
+              setStatusFilter('inactive');
+            }}
           >
             <Text
               style={[
@@ -245,44 +349,43 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color="#EF4444" />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadTenants}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => loadTenants()}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Tenants Grid */}
-      {!error && (
-        <View style={[styles.tenantsGrid, isWeb && styles.tenantsGridWeb]}>
-          {tenants.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="business-outline" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyStateText}>No tenants found</Text>
-              <Text style={styles.emptyStateSubtext}>
-                {searchQuery
-                  ? 'Try adjusting your search criteria'
-                  : 'No tenants available to browse'}
-              </Text>
-            </View>
-          ) : (
-            tenants.map((tenant) => (
-              <TenantCard
-                key={tenant.id}
-                tenant={tenant}
-                isSelected={selectedTenant?.id === tenant.id}
-                onPress={() => handleTenantSelect(tenant)}
-                navigation={navigation}
-              />
-            ))
-          )}
-        </View>
-      )}
-    </ScrollView>
+      {/* Tenant List */}
+      <FlatList
+        data={filteredTenants}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TenantCard
+            tenant={item}
+            isSelected={selectedTenant?.id === item.id}
+            onPress={() => handleTenantSelect(item)}
+            onToggleStatus={() => handleToggleStatus(item)}
+            onDelete={() => handleDeleteTenant(item)}
+            navigation={navigation}
+          />
+        )}
+        ListEmptyComponent={renderEmpty}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={[styles.listContent, isWeb && styles.webContent]}
+        numColumns={isWeb ? 3 : 1}
+        columnWrapperStyle={isWeb ? styles.tenantsGridWeb : undefined}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        onScrollBeginDrag={dismissKeyboard}
+        removeClippedSubviews={false}
+        extraData={searchQuery}
+      />
+    </View>
   );
 }
 
 // Tenant Card Component
-const TenantCard = ({ tenant, isSelected, onPress, navigation }: any) => (
+const TenantCard = ({ tenant, isSelected, onPress, onToggleStatus, onDelete, navigation }: any) => (
   <View
     style={[
       styles.tenantCard,
@@ -379,6 +482,42 @@ const TenantCard = ({ tenant, isSelected, onPress, navigation }: any) => (
         <Ionicons name="cube-outline" size={18} color="#3B82F6" />
         <Text style={styles.manageButtonText}>Administrer Features</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.toggleStatusButton,
+          tenant.active ? styles.deactivateButton : styles.activateButton,
+        ]}
+        onPress={(e) => {
+          e.stopPropagation();
+          onToggleStatus();
+        }}
+        activeOpacity={0.7}
+      >
+        <Ionicons
+          name={tenant.active ? "pause-circle-outline" : "play-circle-outline"}
+          size={18}
+          color={tenant.active ? "#F59E0B" : "#10B981"}
+        />
+        <Text style={[
+          styles.toggleStatusButtonText,
+          tenant.active ? styles.deactivateButtonText : styles.activateButtonText,
+        ]}>
+          {tenant.active ? 'Deaktiver' : 'Aktiver'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="trash-outline" size={18} color="#EF4444" />
+        <Text style={styles.deleteButtonText}>Slett</Text>
+      </TouchableOpacity>
     </View>
   </View>
 );
@@ -416,6 +555,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   content: {
+    padding: 16,
+  },
+  listContent: {
     padding: 16,
   },
   webContent: {
@@ -626,7 +768,10 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   tenantsGridWeb: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
     gap: 20,
+    marginBottom: 20,
   },
   // Empty State
   emptyState: {
@@ -791,5 +936,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#3B82F6',
+  },
+  toggleStatusButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 8,
+    borderWidth: 1,
+  },
+  deactivateButton: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FCD34D',
+  },
+  activateButton: {
+    backgroundColor: '#D1FAE5',
+    borderColor: '#6EE7B7',
+  },
+  toggleStatusButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deactivateButtonText: {
+    color: '#F59E0B',
+  },
+  activateButtonText: {
+    color: '#10B981',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  deleteButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
   },
 });

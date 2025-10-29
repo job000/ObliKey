@@ -177,19 +177,18 @@ export default function CreatePTSessionScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color="#111827" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Ny PT-økt</Text>
-          <View style={{ width: 24 }} />
-        </View>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Ny PT-økt</Text>
+        <View style={{ width: 24 }} />
+      </View>
 
-        <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView}>
           <Container>
             {/* Title */}
             <View style={styles.formGroup}>
@@ -400,6 +399,7 @@ export default function CreatePTSessionScreen({ navigation }: any) {
                             setStartDate(newDate);
                           }
                         }}
+                        textColor="#111827"
                       />
                     )}
                     {showStartTimePicker && (
@@ -421,6 +421,7 @@ export default function CreatePTSessionScreen({ navigation }: any) {
                             setEndDate(newEndDate);
                           }
                         }}
+                        textColor="#111827"
                       />
                     )}
                     {showEndDatePicker && (
@@ -439,6 +440,7 @@ export default function CreatePTSessionScreen({ navigation }: any) {
                             setEndDate(newDate);
                           }
                         }}
+                        textColor="#111827"
                       />
                     )}
                     {showEndTimePicker && (
@@ -457,6 +459,7 @@ export default function CreatePTSessionScreen({ navigation }: any) {
                             setEndDate(newDate);
                           }
                         }}
+                        textColor="#111827"
                       />
                     )}
                   </View>
@@ -675,7 +678,6 @@ export default function CreatePTSessionScreen({ navigation }: any) {
             </View>
           </View>
         </Modal>
-      </View>
     </SafeAreaView>
   );
 }

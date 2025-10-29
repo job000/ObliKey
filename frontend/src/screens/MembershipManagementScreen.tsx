@@ -211,17 +211,17 @@ const MembershipManagementScreen = ({ navigation }: any) => {
           return;
         }
 
-        const registerResponse = await api.register({
+        const createUserResponse = await api.createUser({
           ...newUserData,
-          tenantId: '', // This will be set by backend from token
+          role: 'CUSTOMER', // Members are customers by default
         });
 
-        if (!registerResponse.success) {
+        if (!createUserResponse.success) {
           Alert.alert('Feil', 'Kunne ikke opprette bruker');
           return;
         }
 
-        userId = registerResponse.data.user.id;
+        userId = createUserResponse.data.id;
       } else if (!selectedUser) {
         Alert.alert('Feil', 'Vennligst velg en bruker');
         return;
@@ -293,52 +293,33 @@ const MembershipManagementScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
 
-      {stats && (
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.activeMembers}</Text>
-            <Text style={styles.statLabel}>Aktive</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.frozenMembers}</Text>
-            <Text style={styles.statLabel}>Fryste</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.overduePayments}</Text>
-            <Text style={styles.statLabel}>Forfalt</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.recentCheckIns}</Text>
-            <Text style={styles.statLabel}>Inn i dag</Text>
-          </View>
+
+      <View style={styles.searchAndFilterWrapper}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Søk etter medlemmer..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
-      )}
-
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Søk etter medlemmer..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+        <ScrollView horizontal style={styles.filterContainer} showsHorizontalScrollIndicator={false}>
+          {['all', 'ACTIVE', 'FROZEN', 'SUSPENDED', 'CANCELLED', 'BLACKLISTED'].map(f => (
+            <TouchableOpacity
+              key={f}
+              style={[styles.filterChip, filter === f && styles.filterChipActive]}
+              onPress={() => setFilter(f)}
+            >
+              <Ionicons
+                name={getFilterIcon(f)}
+                size={16}
+                color={filter === f ? '#fff' : '#6B7280'}
+              />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
-
-      <ScrollView horizontal style={styles.filterContainer} showsHorizontalScrollIndicator={false}>
-        {['all', 'ACTIVE', 'FROZEN', 'SUSPENDED', 'CANCELLED', 'BLACKLISTED'].map(f => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterChip, filter === f && styles.filterChipActive]}
-            onPress={() => setFilter(f)}
-          >
-            <Ionicons
-              name={getFilterIcon(f)}
-              size={16}
-              color={filter === f ? '#fff' : '#6B7280'}
-            />
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
 
       <ScrollView
         style={styles.listContainer}
@@ -719,13 +700,15 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     backgroundColor: '#fff',
-    gap: 12,
+    gap: 8,
   },
   statCard: {
     flex: 1,
-    padding: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
     backgroundColor: '#F9FAFB',
     borderRadius: 8,
     alignItems: 'center',
@@ -740,13 +723,39 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 4,
   },
+  statIconContainer: {
+    marginBottom: 4,
+  },
+  statCardGreen: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+  },
+  statCardBlue: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+  },
+  statCardOrange: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+    backgroundColor: '#FFFBEB',
+  },
+  statCardPurple: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#8B5CF6',
+    backgroundColor: '#F5F3FF',
+  },
+  searchAndFilterWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+    gap: 8,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
+    backgroundColor: '#F9FAFB',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -758,13 +767,13 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     color: '#111827',
   },
   filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 8,
+    gap: 6,
+    paddingVertical: 4,
   },
   filterChip: {
     width: 28,
@@ -772,19 +781,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 14,
-    backgroundColor: '#F3F4F6',
-    marginRight: 6,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: '#D1D5DB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   filterChipActive: {
     backgroundColor: '#3B82F6',
-    borderColor: '#2563EB',
+    borderColor: '#3B82F6',
     shadowColor: '#3B82F6',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
+    transform: [{ scale: 1.05 }],
   },
   filterChipText: {
     fontSize: 12,
@@ -801,8 +815,8 @@ const styles = StyleSheet.create({
   memberCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,

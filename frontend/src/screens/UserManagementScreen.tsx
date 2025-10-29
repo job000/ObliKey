@@ -11,15 +11,29 @@ import {
   Modal,
   TextInput,
   Platform,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useTenant } from '../contexts/TenantContext';
+import { api, storage } from '../services/api';
 import Container from '../components/Container';
 import type { User } from '../types';
 
 type UserRole = 'CUSTOMER' | 'TRAINER' | 'ADMIN' | 'SUPER_ADMIN';
 
+interface Tenant {
+  id: string;
+  name: string;
+  subdomain: string;
+  active: boolean;
+}
+
 export default function UserManagementScreen({ navigation }: any) {
+  const { user: currentUser } = useAuth();
+  const { selectedTenant } = useTenant();
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,17 +44,26 @@ export default function UserManagementScreen({ navigation }: any) {
 
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [selectedTenant]); // Reload when tenant changes OR on first load
 
   const loadUsers = async () => {
     try {
       setLoading(true);
+
+      // For SUPER_ADMIN without a selected tenant, just set empty users array
+      if (isSuperAdmin && !selectedTenant) {
+        setUsers([]);
+        return;
+      }
+
+      // Fetch users - the X-Viewing-As-Tenant header is handled by AuthContext/TenantContext
       const response = await api.getUsers();
       if (response.success) {
-        setUsers(response.data);
+        setUsers(response.data || []);
       }
     } catch (error) {
       console.error('Failed to load users:', error);
+      setUsers([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -205,18 +228,67 @@ export default function UserManagementScreen({ navigation }: any) {
   const filteredUsers = getFilteredUsers();
   const stats = getUserStats();
 
+  const handleCreateUser = () => {
+    const tenantId = isSuperAdmin && selectedTenant
+      ? selectedTenant.id
+      : currentUser?.tenantId || '';
+    const tenantName = isSuperAdmin && selectedTenant
+      ? selectedTenant.name
+      : 'din organisasjon';
+
+    navigation.navigate('AddUserToTenantScreen', { tenantId, tenantName });
+  };
+
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <Container>
-        <View style={styles.header}>
-          <Text style={styles.title}>Brukeradministrasjon</Text>
-          <Text style={styles.subtitle}>Administrer brukere og roller</Text>
+    <View style={styles.container}>
+      <View style={styles.fixedHeader}>
+        <View style={styles.headerContent}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>Brukere</Text>
+            <Text style={styles.subtitle}>Administrer brukere og roller</Text>
+          </View>
+          {!isSuperAdmin || (isSuperAdmin && selectedTenant) ? (
+            <TouchableOpacity
+              style={styles.createButton}
+              onPress={handleCreateUser}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="person-add" size={20} color="#FFFFFF" />
+              <Text style={styles.createButtonText}>Opprett</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <Container>
+
+        {/* Viewing Tenant Banner for SUPER_ADMIN */}
+        {isSuperAdmin && selectedTenant && (
+          <View style={styles.viewingTenantBanner}>
+            <Ionicons name="business" size={20} color="#3B82F6" />
+            <View style={{flex: 1}}>
+              <Text style={styles.viewingTenantLabel}>Viser brukere for:</Text>
+              <Text style={styles.viewingTenantName}>{selectedTenant.name}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* No Tenant Selected for SUPER_ADMIN */}
+        {isSuperAdmin && !selectedTenant && (
+          <View style={styles.infoMessage}>
+            <Ionicons name="information-circle-outline" size={20} color="#3B82F6" />
+            <Text style={styles.infoMessageText}>
+              Velg en tenant i Super Admin Portal for å administrere brukere
+            </Text>
+          </View>
+        )}
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
@@ -352,48 +424,65 @@ export default function UserManagementScreen({ navigation }: any) {
                   </View>
                 </View>
 
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity
-                    style={styles.roleButton}
-                    onPress={() => {
-                      setSelectedUser(user);
-                      setModalVisible(true);
-                    }}
-                  >
-                    <Ionicons name="shield-outline" size={18} color="#8B5CF6" />
-                    <Text style={styles.roleButtonText}>Endre rolle</Text>
-                  </TouchableOpacity>
-
-                  {user.active ? (
+                {/* Only show action buttons if user is not SUPER_ADMIN, or if current user is also SUPER_ADMIN */}
+                {(user.role !== 'SUPER_ADMIN' || currentUser?.role === 'SUPER_ADMIN') && (
+                  <View style={styles.actionButtons}>
                     <TouchableOpacity
-                      style={styles.deactivateButton}
-                      onPress={() => handleDeactivateUser(user.id)}
+                      style={styles.actionButtonPrimary}
+                      onPress={() => {
+                        setSelectedUser(user);
+                        setModalVisible(true);
+                      }}
+                      activeOpacity={0.7}
                     >
-                      <Ionicons name="close-circle-outline" size={18} color="#F59E0B" />
-                      <Text style={styles.deactivateButtonText}>Deaktiver</Text>
+                      <View style={styles.actionButtonIcon}>
+                        <Ionicons name="shield-checkmark" size={16} color="#8B5CF6" />
+                      </View>
+                      <Text style={styles.actionButtonPrimaryText}>Rolle</Text>
                     </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.activateButton}
-                      onPress={() => handleActivateUser(user.id)}
-                    >
-                      <Ionicons name="checkmark-circle-outline" size={18} color="#10B981" />
-                      <Text style={styles.activateButtonText}>Aktiver</Text>
-                    </TouchableOpacity>
-                  )}
 
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDeleteUser(user.id)}
-                  >
-                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                  </TouchableOpacity>
-                </View>
+                    {user.active ? (
+                      <TouchableOpacity
+                        style={styles.actionButtonWarning}
+                        onPress={() => handleDeactivateUser(user.id)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.actionButtonIcon}>
+                          <Ionicons name="pause-circle" size={16} color="#F59E0B" />
+                        </View>
+                        <Text style={styles.actionButtonWarningText}>Deaktiver</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.actionButtonSuccess}
+                        onPress={() => handleActivateUser(user.id)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.actionButtonIcon}>
+                          <Ionicons name="play-circle" size={16} color="#10B981" />
+                        </View>
+                        <Text style={styles.actionButtonSuccessText}>Aktiver</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    <TouchableOpacity
+                      style={styles.actionButtonDanger}
+                      onPress={() => handleDeleteUser(user.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.actionButtonIcon}>
+                        <Ionicons name="trash" size={16} color="#EF4444" />
+                      </View>
+                      <Text style={styles.actionButtonDangerText}>Slett</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             ))
           )}
         </View>
-      </Container>
+        </Container>
+      </ScrollView>
 
       {/* Role Change Modal */}
       <Modal
@@ -417,8 +506,10 @@ export default function UserManagementScreen({ navigation }: any) {
               </Text>
 
               <View style={styles.roleOptions}>
-                {(['CUSTOMER', 'TRAINER', 'ADMIN', 'SUPER_ADMIN'] as UserRole[]).map(
-                  (role) => (
+                {(currentUser?.role === 'SUPER_ADMIN'
+                  ? ['CUSTOMER', 'TRAINER', 'ADMIN', 'SUPER_ADMIN']
+                  : ['CUSTOMER', 'TRAINER', 'ADMIN']
+                ).map((role: UserRole) => (
                     <TouchableOpacity
                       key={role}
                       style={[
@@ -445,7 +536,8 @@ export default function UserManagementScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+
+    </View>
   );
 }
 
@@ -454,15 +546,59 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  fixedHeader: {
+    backgroundColor: '#FFF',
+    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 3,
+    zIndex: 10,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 16,
+  },
+  titleContainer: {
+    flex: 1,
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#3B82F6',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  createButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
-  },
-  header: {
-    paddingTop: 24,
-    paddingBottom: 16,
   },
   title: {
     fontSize: 28,
@@ -629,66 +765,114 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
-  roleButton: {
+  actionButtonPrimary: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#8B5CF6',
-    backgroundColor: '#F3E8FF',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1.5,
+    borderColor: '#E9D5FF',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  roleButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8B5CF6',
-  },
-  activateButton: {
+  actionButtonSuccess: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#10B981',
-    backgroundColor: '#D1FAE5',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1.5,
+    borderColor: '#BBF7D0',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  activateButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#10B981',
-  },
-  deactivateButton: {
+  actionButtonWarning: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-    backgroundColor: '#FEF3C7',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1.5,
+    borderColor: '#FDE68A',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  deactivateButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#F59E0B',
+  actionButtonDanger: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  deleteButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#EF4444',
-    backgroundColor: '#FEE2E2',
+  actionButtonIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  actionButtonPrimaryText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#7C3AED',
+    textAlign: 'center',
+  },
+  actionButtonSuccessText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#059669',
+    textAlign: 'center',
+  },
+  actionButtonWarningText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#D97706',
+    textAlign: 'center',
+  },
+  actionButtonDangerText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#DC2626',
+    textAlign: 'center',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -744,5 +928,45 @@ const styles = StyleSheet.create({
   roleOptionText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  infoMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EFF6FF',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  infoMessageText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1E40AF',
+  },
+  viewingTenantBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  viewingTenantLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  viewingTenantName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
   },
 });

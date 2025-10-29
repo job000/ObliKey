@@ -72,7 +72,14 @@
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1YTNkNTJlYS02MWQ5LTRjZDUtYmRjZi1hNGIzNTMzNjQwZTQiLCJ0ZW5hbnRJZCI6ImI3OWYxYzJhLTdiMTItNGRlZC1hNmY4LWRmMzI3ZDRiZjEwYyIsImVtYWlsIjoiYWRtaW4xQHRlc3Qubm8iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NjE2OTcxMjIsImV4cCI6MTc2MjMwMTkyMn0.Kag-x7GggEDaW-Cg7hd_BjdkypMBAqGxA4gIHdCEHbg\")",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIwNGRkMTViNy01MjM4LTQ2N2ItOTJmYi1kYWE5NWIyNjBlNTUiLCJ0ZW5hbnRJZCI6ImI3OWYxYzJhLTdiMTItNGRlZC1hNmY4LWRmMzI3ZDRiZjEwYyIsImVtYWlsIjoia3VuZGUxQHRlc3Qubm8iLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3NjE2OTkzMzIsImV4cCI6MTc2MjMwNDEzMn0.kbeZbSZc2P538mAjt5BcCdxcJgDWz5MV8F5ffTT2JCQ\")",
       "Bash(npm run:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(ngrok config add-authtoken:*)",
+      "Bash(./test-user-creation.sh:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJiMDNjNWU0Ni0zOTFjLTRmNmYtOTJmOC0xYTJiZTliMzJkMTIiLCJ0ZW5hbnRJZCI6IjVhNjQ2ZjRmLWZmMjgtNDI1Yy04NTdkLTY0MjI0OWEwZTViOSIsImVtYWlsIjoiYWRtaW4xQHByZW1pdW1neW0ubm8iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NjE3Njc4NTYsImV4cCI6MTc2MjM3MjY1Nn0.mjhUa07Bn0dtL3K9gqLnUpfANWkvIn7jm0UOpcZZnLo\" SUPERADMIN_ID=\"9ca2d4ee-602e-42a2-9db7-d02be97e0171\")",
+      "Bash(echo \"Test 1: ADMIN trying to deactivate SUPER_ADMIN (should fail with 403)\" curl -s -X PATCH \"http://localhost:3000/api/users/$SUPERADMIN_ID/deactivate\" -H \"Authorization: Bearer $TOKEN\" -H \"Content-Type: application/json\")",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJiMDNjNWU0Ni0zOTFjLTRmNmYtOTJmOC0xYTJiZTliMzJkMTIiLCJ0ZW5hbnRJZCI6IjVhNjQ2ZjRmLWZmMjgtNDI1Yy04NTdkLTY0MjI0OWEwZTViOSIsImVtYWlsIjoiYWRtaW4xQHByZW1pdW1neW0ubm8iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NjE3Njc4NTYsImV4cCI6MTc2MjM3MjY1Nn0.mjhUa07Bn0dtL3K9gqLnUpfANWkvIn7jm0UOpcZZnLo\")",
+      "Bash(SUPERADMIN_ID=\"9ca2d4ee-602e-42a2-9db7-d02be97e0171\")",
+      "Bash(__NEW_LINE__ echo \"=== Test 1: Trying to deactivate SUPER_ADMIN ===\")"
     ],
     "deny": [],
     "ask": []

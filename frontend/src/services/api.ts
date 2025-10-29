@@ -10,41 +10,12 @@ const getApiUrl = () => {
     return 'http://localhost:3000/api';
   }
 
-  // Debug: Log what Constants contains
-  console.log('[API Debug] Constants.expoConfig:', Constants.expoConfig);
-  console.log('[API Debug] Constants.manifest:', Constants.manifest);
-  console.log('[API Debug] Constants.manifest2:', Constants.manifest2);
+  // For mobile (iOS/Android), use ngrok for consistent access from anywhere
+  // This ensures the app works on local network and external networks
+  const NGROK_URL = 'https://unstubborn-rina-unaesthetically.ngrok-free.dev/api';
 
-  // For mobile (iOS/Android)
-  // Try multiple ways to get the dev server host
-  let debuggerHost = null;
-
-  // Method 1: Try manifest (legacy)
-  if (Constants.manifest?.debuggerHost) {
-    debuggerHost = Constants.manifest.debuggerHost;
-  }
-  // Method 2: Try manifest2 (Expo SDK 46+)
-  else if (Constants.manifest2?.extra?.expoGo?.debuggerHost) {
-    debuggerHost = Constants.manifest2.extra.expoGo.debuggerHost;
-  }
-  // Method 3: Try expoConfig
-  else if (Constants.expoConfig?.hostUri) {
-    debuggerHost = Constants.expoConfig.hostUri;
-  }
-
-  console.log('[API Debug] debuggerHost:', debuggerHost);
-
-  // If we have a debuggerHost, we're likely on a physical device connected via Expo Go
-  // Extract the IP address from debuggerHost (format: "192.168.1.1:19000")
-  if (debuggerHost && !debuggerHost.includes('localhost')) {
-    const host = debuggerHost.split(':')[0];
-    console.log('[API Debug] Extracted host:', host);
-    return `http://${host}:3000/api`;
-  }
-
-  // Fallback to localhost for simulator
-  // iOS/Android simulators can reach localhost
-  return 'http://localhost:3000/api';
+  console.log('[API] Using ngrok URL for mobile:', NGROK_URL);
+  return NGROK_URL;
 };
 
 const API_URL = getApiUrl();
@@ -878,6 +849,20 @@ class ApiService {
     return response.data;
   }
 
+  async createUser(userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role: 'CUSTOMER' | 'TRAINER';
+    phone?: string;
+    dateOfBirth?: string;
+    username?: string;
+  }) {
+    const response = await this.axiosInstance.post('/users', userData);
+    return response.data;
+  }
+
   async updateUserRole(userId: string, role: string) {
     const response = await this.axiosInstance.put(`/users/${userId}/role`, { role });
     return response.data;
@@ -889,12 +874,12 @@ class ApiService {
   }
 
   async activateUser(userId: string) {
-    const response = await this.axiosInstance.put(`/users/${userId}/activate`);
+    const response = await this.axiosInstance.patch(`/users/${userId}/activate`);
     return response.data;
   }
 
   async deactivateUser(userId: string) {
-    const response = await this.axiosInstance.put(`/users/${userId}/deactivate`);
+    const response = await this.axiosInstance.patch(`/users/${userId}/deactivate`);
     return response.data;
   }
 

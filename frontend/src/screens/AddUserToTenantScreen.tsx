@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Platform,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,7 +24,7 @@ export default function AddUserToTenantScreen({ navigation, route }: any) {
     password: '',
     firstName: '',
     lastName: '',
-    role: 'CUSTOMER' as 'ADMIN' | 'CUSTOMER',
+    role: 'CUSTOMER' as 'CUSTOMER' | 'TRAINER',
     phone: '',
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -55,6 +56,12 @@ export default function AddUserToTenantScreen({ navigation, route }: any) {
       newErrors.password = 'Passord er påkrevd';
     } else if (formData.password.length < 8) {
       newErrors.password = 'Passord må være minst 8 tegn';
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = 'Passord må inneholde minst én stor bokstav';
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = 'Passord må inneholde minst én liten bokstav';
+    } else if (!/[0-9]/.test(formData.password)) {
+      newErrors.password = 'Passord må inneholde minst ett tall';
     }
 
     setErrors(newErrors);
@@ -68,7 +75,7 @@ export default function AddUserToTenantScreen({ navigation, route }: any) {
 
     try {
       setCreating(true);
-      const response = await api.createUserForTenant(tenantId, {
+      const response = await api.createUser({
         email: formData.email.trim(),
         password: formData.password,
         firstName: formData.firstName.trim(),
@@ -87,10 +94,26 @@ export default function AddUserToTenantScreen({ navigation, route }: any) {
       ]);
     } catch (err: any) {
       console.error('Failed to create user:', err);
-      const errorMessage = err.response?.data?.message || 'Kunne ikke opprette bruker';
+      console.error('Error response data:', err.response?.data);
+      console.error('Error response status:', err.response?.status);
 
-      // Check for email conflict
-      if (errorMessage.includes('email') || errorMessage.includes('already exists')) {
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Kunne ikke opprette bruker';
+      const validationErrors = err.response?.data?.validationErrors || [];
+
+      // Log validation errors for debugging
+      if (validationErrors.length > 0) {
+        console.error('Validation errors:', validationErrors);
+      }
+
+      // Handle validation errors
+      if (validationErrors.length > 0) {
+        const newErrors: { [key: string]: string } = {};
+        validationErrors.forEach((error: any) => {
+          newErrors[error.field] = error.message;
+        });
+        setErrors(newErrors);
+        Alert.alert('Valideringsfeil', 'Vennligst rett opp feilene i skjemaet');
+      } else if (errorMessage.includes('email') || errorMessage.includes('already exists')) {
         setErrors({ ...errors, email: 'Denne e-postadressen er allerede i bruk i denne tenanten' });
       } else {
         Alert.alert('Feil', errorMessage);
@@ -101,11 +124,12 @@ export default function AddUserToTenantScreen({ navigation, route }: any) {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, isWeb && styles.webContent]}
-      keyboardShouldPersistTaps="handled"
-    >
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.content, isWeb && styles.webContent]}
+        keyboardShouldPersistTaps="handled"
+      >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -202,7 +226,7 @@ export default function AddUserToTenantScreen({ navigation, route }: any) {
             autoCorrect={false}
           />
           {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-          <Text style={styles.helpText}>Minimum 8 tegn</Text>
+          <Text style={styles.helpText}>Minimum 8 tegn, må inneholde stor/liten bokstav og tall</Text>
         </View>
 
         {/* Phone Field */}
@@ -250,28 +274,28 @@ export default function AddUserToTenantScreen({ navigation, route }: any) {
             <TouchableOpacity
               style={[
                 styles.roleButton,
-                formData.role === 'ADMIN' && styles.roleButtonActive,
+                formData.role === 'TRAINER' && styles.roleButtonActive,
               ]}
-              onPress={() => setFormData({ ...formData, role: 'ADMIN' })}
+              onPress={() => setFormData({ ...formData, role: 'TRAINER' })}
             >
               <Ionicons
-                name="shield-checkmark"
+                name="fitness"
                 size={20}
-                color={formData.role === 'ADMIN' ? '#FFF' : '#6B7280'}
+                color={formData.role === 'TRAINER' ? '#FFF' : '#6B7280'}
               />
               <Text
                 style={[
                   styles.roleButtonText,
-                  formData.role === 'ADMIN' && styles.roleButtonTextActive,
+                  formData.role === 'TRAINER' && styles.roleButtonTextActive,
                 ]}
               >
-                Admin
+                PT
               </Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.helpText}>
-            {formData.role === 'ADMIN'
-              ? 'Admin har tilgang til å administrere tenanten'
+            {formData.role === 'TRAINER'
+              ? 'PT kan holde klasser og trene kunder'
               : 'Kunde har tilgang til å bruke systemet'}
           </Text>
         </View>
@@ -331,10 +355,15 @@ export default function AddUserToTenantScreen({ navigation, route }: any) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',

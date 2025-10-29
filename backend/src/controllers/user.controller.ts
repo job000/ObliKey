@@ -4,17 +4,40 @@ import { prisma } from '../utils/prisma';
 import { AppError } from '../middleware/errorHandler';
 import { authRateLimiter, generalRateLimiter } from '../middleware/security';
 import { canChangeUsername } from '../utils/username';
+import { UserService } from '../services/user.service';
+import { CreateUserDto } from '../dto/create-user.dto';
 
 export class UserController {
   // Get all users in tenant
   async getUsers(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const { role, search } = req.query;
+      const tenantId = req.tenantId;
+      const userRole = req.user?.role;
+      const { role, search, tenantId: queryTenantId } = req.query;
+
+      // For SUPER_ADMIN: use tenantId from query if no tenantId in request
+      const effectiveTenantId = userRole === 'SUPER_ADMIN' && !tenantId && queryTenantId
+        ? queryTenantId as string
+        : tenantId;
+
+      // If SUPER_ADMIN has no tenant context, return empty list with message
+      if (userRole === 'SUPER_ADMIN' && !effectiveTenantId) {
+        res.json({
+          success: true,
+          data: [],
+          message: 'Velg en tenant for å se brukere'
+        });
+        return;
+      }
+
+      if (!effectiveTenantId) {
+        res.status(400).json({ success: false, error: 'Tenant ID mangler' });
+        return;
+      }
 
       const users = await prisma.user.findMany({
         where: {
-          tenantId,
+          tenantId: effectiveTenantId,
           ...(role && { role: role as any }),
           ...(search && {
             OR: [
@@ -86,6 +109,61 @@ export class UserController {
     } catch (error) {
       console.error('Search users error:', error);
       res.status(500).json({ success: false, error: 'Kunne ikke søke etter brukere' });
+    }
+  }
+
+  /**
+   * Create user (ADMIN only)
+   *
+   * This controller method now follows best practices:
+   * - Only handles HTTP concerns (request/response)
+   * - Delegates business logic to UserService
+   * - Clean and easy to read
+   * - Testable by mocking the service
+   */
+  async createUser(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+      const createUserDto: CreateUserDto = req.body;
+
+      // Use the UserService for business logic
+      const userService = new UserService(prisma);
+      const result = await userService.createUser(
+        createUserDto,
+        tenantId,
+        ['CUSTOMER', 'TRAINER'] // Only these roles allowed for ADMIN
+      );
+
+      if (!result.success) {
+        // Handle validation errors
+        const firstError = result.errors[0];
+
+        // Map field-specific errors to appropriate HTTP status codes
+        const statusCode =
+          firstError.field === 'email' && firstError.message.includes('allerede i bruk') ? 409 :
+          firstError.field === 'username' && firstError.message.includes('allerede tatt') ? 409 :
+          400;
+
+        res.status(statusCode).json({
+          success: false,
+          error: firstError.message,
+          validationErrors: result.errors
+        });
+        return;
+      }
+
+      // Success response
+      res.status(201).json({
+        success: true,
+        data: result.data,
+        message: 'Bruker opprettet'
+      });
+    } catch (error) {
+      console.error('Create user error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Kunne ikke opprette bruker'
+      });
     }
   }
 
@@ -298,14 +376,24 @@ export class UserController {
     try {
       const { id } = req.params;
       const tenantId = req.tenantId!;
+      const currentUserRole = req.user!.role;
 
       // Verify user belongs to tenant FIRST
       const existingUser = await prisma.user.findFirst({
-        where: { id, tenantId }
+        where: { id, tenantId },
+        select: {
+          id: true,
+          role: true
+        }
       });
 
       if (!existingUser) {
         throw new AppError('Bruker ikke funnet', 404);
+      }
+
+      // Prevent ADMIN from deactivating SUPER_ADMIN
+      if (existingUser.role === 'SUPER_ADMIN' && currentUserRole !== 'SUPER_ADMIN') {
+        throw new AppError('Du har ikke tilgang til å deaktivere en superadmin', 403);
       }
 
       await prisma.user.update({
@@ -328,14 +416,24 @@ export class UserController {
     try {
       const { id } = req.params;
       const tenantId = req.tenantId!;
+      const currentUserRole = req.user!.role;
 
       // Verify user belongs to tenant FIRST
       const existingUser = await prisma.user.findFirst({
-        where: { id, tenantId }
+        where: { id, tenantId },
+        select: {
+          id: true,
+          role: true
+        }
       });
 
       if (!existingUser) {
         throw new AppError('Bruker ikke funnet', 404);
+      }
+
+      // Prevent ADMIN from activating SUPER_ADMIN
+      if (existingUser.role === 'SUPER_ADMIN' && currentUserRole !== 'SUPER_ADMIN') {
+        throw new AppError('Du har ikke tilgang til å aktivere en superadmin', 403);
       }
 
       await prisma.user.update({
@@ -358,10 +456,15 @@ export class UserController {
     try {
       const { id } = req.params;
       const tenantId = req.tenantId!;
+      const currentUserRole = req.user!.role;
 
       // Check if user exists in tenant
       const user = await prisma.user.findFirst({
-        where: { id, tenantId }
+        where: { id, tenantId },
+        select: {
+          id: true,
+          role: true
+        }
       });
 
       if (!user) {
@@ -371,6 +474,11 @@ export class UserController {
       // Prevent self-deletion
       if (id === req.user!.userId) {
         throw new AppError('Du kan ikke slette deg selv', 400);
+      }
+
+      // Prevent ADMIN from deleting SUPER_ADMIN
+      if (user.role === 'SUPER_ADMIN' && currentUserRole !== 'SUPER_ADMIN') {
+        throw new AppError('Du har ikke tilgang til å slette en superadmin', 403);
       }
 
       // Delete user (cascading will handle related records)
@@ -394,6 +502,7 @@ export class UserController {
       const { id } = req.params;
       const { role } = req.body;
       const tenantId = req.tenantId!;
+      const currentUserRole = req.user!.role;
 
       // Validate role
       const validRoles = ['CUSTOMER', 'TRAINER', 'ADMIN'];
@@ -403,11 +512,20 @@ export class UserController {
 
       // Verify user belongs to tenant FIRST
       const existingUser = await prisma.user.findFirst({
-        where: { id, tenantId }
+        where: { id, tenantId },
+        select: {
+          id: true,
+          role: true
+        }
       });
 
       if (!existingUser) {
         throw new AppError('Bruker ikke funnet', 404);
+      }
+
+      // Prevent ADMIN from changing SUPER_ADMIN role
+      if (existingUser.role === 'SUPER_ADMIN' && currentUserRole !== 'SUPER_ADMIN') {
+        throw new AppError('Du har ikke tilgang til å endre rollen til en superadmin', 403);
       }
 
       // Prevent self-demotion from admin
@@ -639,6 +757,123 @@ export class UserController {
         success: false,
         error: 'Kunne ikke hente modulstatus'
       });
+    }
+  }
+
+  /**
+   * Update own profile (logged-in user updates their own profile)
+   */
+  async updateOwnProfile(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const tenantId = req.tenantId!;
+      const { firstName, lastName, phone, dateOfBirth } = req.body;
+
+      // Verify user belongs to tenant
+      const existingUser = await prisma.user.findFirst({
+        where: { id: userId, tenantId }
+      });
+
+      if (!existingUser) {
+        throw new AppError('Bruker ikke funnet', 404);
+      }
+
+      // Update user profile
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(firstName !== undefined && { firstName }),
+          ...(lastName !== undefined && { lastName }),
+          ...(phone !== undefined && { phone }),
+          ...(dateOfBirth !== undefined && { dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null })
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          dateOfBirth: true,
+          avatar: true,
+          role: true,
+          active: true,
+          tenantId: true,
+          lastLoginAt: true,
+          createdAt: true,
+          username: true
+        }
+      });
+
+      res.json({
+        success: true,
+        data: user,
+        message: 'Profil oppdatert'
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Update own profile error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke oppdatere profil' });
+      }
+    }
+  }
+
+  /**
+   * Update own password (logged-in user changes their own password)
+   */
+  async updateOwnPassword(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        throw new AppError('Både nåværende og nytt passord er påkrevd', 400);
+      }
+
+      // Find user
+      const user = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+
+      if (!user) {
+        throw new AppError('Bruker ikke funnet', 404);
+      }
+
+      // Verify current password
+      const bcrypt = require('bcrypt');
+      const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isPasswordValid) {
+        throw new AppError('Nåværende passord er feil', 401);
+      }
+
+      // Validate new password strength
+      const { validatePasswordStrength } = require('../middleware/security');
+      const passwordValidation = validatePasswordStrength(newPassword);
+      if (!passwordValidation.valid) {
+        throw new AppError(passwordValidation.message || 'Passordet oppfyller ikke kravene', 400);
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword }
+      });
+
+      res.json({
+        success: true,
+        message: 'Passord endret vellykket'
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Update own password error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke endre passord' });
+      }
     }
   }
 }

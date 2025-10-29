@@ -40,6 +40,22 @@ export const rateLimitMiddleware = async (
     return next();
   }
 
+  // Check if user is ADMIN or SUPER_ADMIN - skip rate limiting for them
+  // Note: This only works for authenticated requests. Initial login attempts
+  // will still be rate limited, but once logged in, admins have no restrictions.
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (token) {
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
+      if (decoded.role === 'ADMIN' || decoded.role === 'SUPER_ADMIN') {
+        return next(); // Skip rate limiting for admins
+      }
+    }
+  } catch (error) {
+    // If token verification fails, continue with rate limiting
+  }
+
   try {
     const key = req.ip || 'unknown';
     await rateLimiter.consume(key);

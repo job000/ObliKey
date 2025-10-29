@@ -10,6 +10,8 @@ import {
   Platform,
   Alert,
   Switch,
+  KeyboardAvoidingView,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -114,13 +116,20 @@ export default function CreateTenantScreen({ navigation }: any) {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, isWeb && styles.webContent]}
-      keyboardShouldPersistTaps="handled"
-    >
-      {/* Header */}
-      <View style={styles.header}>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoid}
+        keyboardVerticalOffset={0}
+      >
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={[styles.content, isWeb && styles.webContent]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
@@ -308,17 +317,26 @@ export default function CreateTenantScreen({ navigation }: any) {
           )}
         </TouchableOpacity>
       </View>
-    </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+  },
   content: {
     padding: 16,
+    paddingBottom: 40,
   },
   webContent: {
     paddingHorizontal: 32,

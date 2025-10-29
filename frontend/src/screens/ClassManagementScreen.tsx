@@ -137,11 +137,16 @@ export default function ClassManagementScreen({ navigation }: any) {
     }
 
     try {
+      // Calculate duration in minutes
+      const start = new Date(formData.startTime);
+      const end = new Date(formData.endTime);
+      const durationMinutes = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+
       const classData = {
         name: formData.name,
         description: formData.description,
         startTime: formData.startTime,
-        endTime: formData.endTime,
+        duration: durationMinutes,
         capacity: parseInt(formData.capacity),
         trainerId: formData.trainerId || null,
       };
@@ -363,11 +368,11 @@ export default function ClassManagementScreen({ navigation }: any) {
       newDate.setSeconds(0);
       newDate.setMilliseconds(0);
       setStartDateTime(newDate);
-      setFormData({ ...formData, startTime: newDate.toISOString() });
       // Auto-set end time to 1 hour later
       const newEndTime = new Date(newDate.getTime() + 60 * 60 * 1000);
       setEndDateTime(newEndTime);
-      setFormData(prev => ({ ...prev, endTime: newEndTime.toISOString() }));
+      // Update both startTime and endTime in a single setState call
+      setFormData({ ...formData, startTime: newDate.toISOString(), endTime: newEndTime.toISOString() });
     }
   };
 
@@ -883,6 +888,7 @@ export default function ClassManagementScreen({ navigation }: any) {
                                 mode="date"
                                 display="spinner"
                                 onChange={handleStartDateChange}
+                                textColor="#111827"
                               />
                             )}
                             {showStartTimePicker && (
@@ -891,6 +897,7 @@ export default function ClassManagementScreen({ navigation }: any) {
                                 mode="time"
                                 display="spinner"
                                 onChange={handleStartTimeChange}
+                                textColor="#111827"
                               />
                             )}
                             {showEndDatePicker && (
@@ -899,6 +906,7 @@ export default function ClassManagementScreen({ navigation }: any) {
                                 mode="date"
                                 display="spinner"
                                 onChange={handleEndDateChange}
+                                textColor="#111827"
                               />
                             )}
                             {showEndTimePicker && (
@@ -907,6 +915,7 @@ export default function ClassManagementScreen({ navigation }: any) {
                                 mode="time"
                                 display="spinner"
                                 onChange={handleEndTimeChange}
+                                textColor="#111827"
                               />
                             )}
                           </View>

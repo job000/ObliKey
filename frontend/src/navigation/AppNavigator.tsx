@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { useChat } from '../contexts/ChatContext';
 import { useModules } from '../contexts/ModuleContext';
+import { useTenant } from '../contexts/TenantContext';
 
 // Auth Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -71,9 +72,13 @@ function MainTabs() {
   const { itemCount } = useCart();
   const { unreadCount } = useChat();
   const { modules } = useModules();
+  const { selectedTenant } = useTenant();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isCustomer = user?.role === 'CUSTOMER';
+
+  // Show tenant-specific tabs if user is ADMIN, or if SUPER_ADMIN has selected a tenant
+  const showTenantTabs = isAdmin && (!isSuperAdmin || selectedTenant !== null);
 
   return (
     <Tab.Navigator
@@ -203,7 +208,7 @@ function MainTabs() {
         />
       )}
 
-      {isAdmin && !isSuperAdmin && (
+      {isAdmin && (
         <Tab.Screen
           name="Admin"
           component={AdminScreen}
@@ -215,7 +220,7 @@ function MainTabs() {
         />
       )}
 
-      {isAdmin && !isSuperAdmin && modules.accounting && (
+      {showTenantTabs && modules.accounting && (
         <Tab.Screen
           name="Accounting"
           component={EnhancedAccountingScreen}

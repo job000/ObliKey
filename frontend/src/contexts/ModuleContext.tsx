@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api } from '../services/api';
 import { useAuth } from './AuthContext';
+import { useTenant } from './TenantContext';
 
 interface ModuleStatus {
   shop: boolean;
@@ -45,6 +46,7 @@ export const ModuleProvider: React.FC<ModuleProviderProps> = ({ children }) => {
   });
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const { selectedTenant } = useTenant();
 
   const fetchModuleStatuses = async () => {
     if (!user) {
@@ -105,7 +107,7 @@ export const ModuleProvider: React.FC<ModuleProviderProps> = ({ children }) => {
 
   useEffect(() => {
     fetchModuleStatuses();
-  }, [user]);
+  }, [user, selectedTenant]); // Reload modules when user changes OR when SUPER_ADMIN selects a different tenant
 
   const value: ModuleContextType = {
     modules,
