@@ -10,6 +10,8 @@ import {
   Alert,
   SafeAreaView,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -392,7 +394,11 @@ export default function CheckoutScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
         <View style={styles.screenHeader}>
           <Container>
             <View style={styles.headerContent}>
@@ -535,7 +541,7 @@ export default function CheckoutScreen() {
             </TouchableOpacity>
           </Container>
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

@@ -490,15 +490,19 @@ export default function ProductsManagementScreen({ navigation }: any) {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editMode ? 'Rediger produkt' : 'Nytt produkt'}
-              </Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#111827" />
-              </TouchableOpacity>
-            </View>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {editMode ? 'Rediger produkt' : 'Nytt produkt'}
+                </Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#111827" />
+                </TouchableOpacity>
+              </View>
 
             <ScrollView style={styles.modalBody}>
               <View style={styles.formGroup}>
@@ -687,6 +691,7 @@ export default function ProductsManagementScreen({ navigation }: any) {
               </TouchableOpacity>
             </ScrollView>
           </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </SafeAreaView>
