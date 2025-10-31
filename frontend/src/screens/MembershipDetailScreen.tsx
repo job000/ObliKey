@@ -91,6 +91,13 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
       newDate.setMonth(selectedDate.getMonth());
       newDate.setDate(selectedDate.getDate());
       setFreezeStartDate(newDate);
+
+      // Automatisk juster sluttdato hvis den er tidligere enn startdato
+      if (freezeEndDate < newDate) {
+        const adjustedEndDate = new Date(newDate);
+        adjustedEndDate.setDate(adjustedEndDate.getDate() + 1); // Sett til dagen etter
+        setFreezeEndDate(adjustedEndDate);
+      }
     }
   };
 
@@ -101,6 +108,13 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
       newDate.setHours(selectedDate.getHours());
       newDate.setMinutes(selectedDate.getMinutes());
       setFreezeStartDate(newDate);
+
+      // Automatisk juster sluttdato hvis den er tidligere enn startdato
+      if (freezeEndDate < newDate) {
+        const adjustedEndDate = new Date(newDate);
+        adjustedEndDate.setHours(adjustedEndDate.getHours() + 1); // Sett til 1 time senere
+        setFreezeEndDate(adjustedEndDate);
+      }
     }
   };
 
@@ -154,6 +168,10 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
         case 'freeze':
           if (!freezeStartDate || !freezeEndDate) {
             Alert.alert('Feil', 'Vennligst oppgi start- og sluttdato for frysing');
+            return;
+          }
+          if (freezeEndDate <= freezeStartDate) {
+            Alert.alert('Feil', 'Sluttdato må være senere enn startdato');
             return;
           }
           await api.freezeMembership(membership.id, {
@@ -525,7 +543,12 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
                           <View style={styles.dateButtonRow}>
                             <TouchableOpacity
                               style={styles.modernDateButton}
-                              onPress={() => setShowStartDatePicker(true)}
+                              onPress={() => {
+                                setShowStartTimePicker(false);
+                                setShowEndDatePicker(false);
+                                setShowEndTimePicker(false);
+                                setShowStartDatePicker(true);
+                              }}
                             >
                               <View style={styles.dateIconContainer}>
                                 <Ionicons name="calendar-outline" size={18} color="#3B82F6" />
@@ -537,7 +560,12 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
 
                             <TouchableOpacity
                               style={styles.modernDateButton}
-                              onPress={() => setShowStartTimePicker(true)}
+                              onPress={() => {
+                                setShowStartDatePicker(false);
+                                setShowEndDatePicker(false);
+                                setShowEndTimePicker(false);
+                                setShowStartTimePicker(true);
+                              }}
                             >
                               <View style={styles.dateIconContainer}>
                                 <Ionicons name="time-outline" size={18} color="#3B82F6" />
@@ -556,6 +584,7 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
                             display="spinner"
                             onChange={handleStartDateChange}
                             textColor="#111827"
+                            minimumDate={new Date()}
                           />
                         )}
                         {Platform.OS === 'ios' && showStartTimePicker && (
@@ -573,7 +602,12 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
                           <View style={styles.dateButtonRow}>
                             <TouchableOpacity
                               style={styles.modernDateButton}
-                              onPress={() => setShowEndDatePicker(true)}
+                              onPress={() => {
+                                setShowStartDatePicker(false);
+                                setShowStartTimePicker(false);
+                                setShowEndTimePicker(false);
+                                setShowEndDatePicker(true);
+                              }}
                             >
                               <View style={styles.dateIconContainer}>
                                 <Ionicons name="calendar-outline" size={18} color="#3B82F6" />
@@ -585,7 +619,12 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
 
                             <TouchableOpacity
                               style={styles.modernDateButton}
-                              onPress={() => setShowEndTimePicker(true)}
+                              onPress={() => {
+                                setShowStartDatePicker(false);
+                                setShowStartTimePicker(false);
+                                setShowEndDatePicker(false);
+                                setShowEndTimePicker(true);
+                              }}
                             >
                               <View style={styles.dateIconContainer}>
                                 <Ionicons name="time-outline" size={18} color="#3B82F6" />
@@ -604,6 +643,7 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
                             display="spinner"
                             onChange={handleEndDateChange}
                             textColor="#111827"
+                            minimumDate={freezeStartDate}
                           />
                         )}
                         {Platform.OS === 'ios' && showEndTimePicker && (
@@ -659,6 +699,7 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
           mode="date"
           display="default"
           onChange={handleStartDateChange}
+          minimumDate={new Date()}
         />
       )}
 
@@ -677,6 +718,7 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
           mode="date"
           display="default"
           onChange={handleEndDateChange}
+          minimumDate={freezeStartDate}
         />
       )}
 
