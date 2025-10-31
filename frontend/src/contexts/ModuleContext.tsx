@@ -65,9 +65,11 @@ export const ModuleProvider: React.FC<ModuleProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
+      console.log('[Modules] Fetching module statuses for user:', user?.email);
 
       // Fetch all module statuses in a single call
       const response = await api.getAllModuleStatuses();
+      console.log('[Modules] API Response:', JSON.stringify(response, null, 2));
 
       if (response.success && response.data) {
         const newModules = {
@@ -82,7 +84,7 @@ export const ModuleProvider: React.FC<ModuleProviderProps> = ({ children }) => {
         console.log('[Modules] Loaded tenant features:', newModules);
         setModules(newModules);
       } else {
-        console.log('[Modules] Invalid response from API, disabling all modules');
+        console.log('[Modules] Invalid response from API, disabling all modules. Response:', response);
         setModules({
           shop: false,
           classes: false,
