@@ -211,12 +211,11 @@ export class TenantSettingsController {
         'accounting': 'accounting',
         'regnskap': 'accounting',
         'chat': 'chat',
-        'landingPage': 'landingPage',
+        'landingpage': 'landingPage',
         'membership': 'membership',
         'medlemskap': 'membership',
-        'doorAccess': 'doorAccess',
-        'door': 'doorAccess',
-        'doraccess': 'doorAccess'
+        'dooraccess': 'doorAccess',
+        'door': 'doorAccess'
       };
 
       // Get enabled tenant features
