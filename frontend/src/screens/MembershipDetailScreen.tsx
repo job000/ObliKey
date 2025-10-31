@@ -32,7 +32,9 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
   const [freezeStartDate, setFreezeStartDate] = useState(new Date());
   const [freezeEndDate, setFreezeEndDate] = useState(new Date());
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -69,22 +71,57 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('nb-NO', {
       day: '2-digit',
-      month: 'short',
+      month: '2-digit',
       year: 'numeric',
+    });
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('nb-NO', {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
   const handleStartDateChange = (event: any, selectedDate?: Date) => {
     setShowStartDatePicker(false);
     if (selectedDate) {
-      setFreezeStartDate(selectedDate);
+      const newDate = new Date(freezeStartDate);
+      newDate.setFullYear(selectedDate.getFullYear());
+      newDate.setMonth(selectedDate.getMonth());
+      newDate.setDate(selectedDate.getDate());
+      setFreezeStartDate(newDate);
+    }
+  };
+
+  const handleStartTimeChange = (event: any, selectedDate?: Date) => {
+    setShowStartTimePicker(false);
+    if (selectedDate) {
+      const newDate = new Date(freezeStartDate);
+      newDate.setHours(selectedDate.getHours());
+      newDate.setMinutes(selectedDate.getMinutes());
+      setFreezeStartDate(newDate);
     }
   };
 
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
     setShowEndDatePicker(false);
     if (selectedDate) {
-      setFreezeEndDate(selectedDate);
+      const newDate = new Date(freezeEndDate);
+      newDate.setFullYear(selectedDate.getFullYear());
+      newDate.setMonth(selectedDate.getMonth());
+      newDate.setDate(selectedDate.getDate());
+      setFreezeEndDate(newDate);
+    }
+  };
+
+  const handleEndTimeChange = (event: any, selectedDate?: Date) => {
+    setShowEndTimePicker(false);
+    if (selectedDate) {
+      const newDate = new Date(freezeEndDate);
+      newDate.setHours(selectedDate.getHours());
+      newDate.setMinutes(selectedDate.getMinutes());
+      setFreezeEndDate(newDate);
     }
   };
 
@@ -484,41 +521,101 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
                     {selectedAction === 'freeze' && (
                       <>
                         <View style={styles.inputGroup}>
-                          <Text style={styles.inputLabel}>Startdato *</Text>
-                          <TouchableOpacity
-                            style={styles.dateButton}
-                            onPress={() => setShowStartDatePicker(true)}
-                          >
-                            <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
-                            <Text style={styles.dateButtonText}>{formatDate(freezeStartDate)}</Text>
-                          </TouchableOpacity>
+                          <Text style={styles.inputLabel}>Startdato og tid *</Text>
+                          <View style={styles.dateButtonRow}>
+                            <TouchableOpacity
+                              style={styles.modernDateButton}
+                              onPress={() => setShowStartDatePicker(true)}
+                            >
+                              <View style={styles.dateIconContainer}>
+                                <Ionicons name="calendar-outline" size={18} color="#3B82F6" />
+                              </View>
+                              <Text style={styles.modernDateButtonText}>
+                                {formatDate(freezeStartDate)}
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={styles.modernDateButton}
+                              onPress={() => setShowStartTimePicker(true)}
+                            >
+                              <View style={styles.dateIconContainer}>
+                                <Ionicons name="time-outline" size={18} color="#3B82F6" />
+                              </View>
+                              <Text style={styles.modernDateButtonText}>
+                                {formatTime(freezeStartDate)}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
-                        {showStartDatePicker && (
+
+                        {Platform.OS === 'ios' && showStartDatePicker && (
                           <DateTimePicker
                             value={freezeStartDate}
                             mode="date"
-                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            display="spinner"
                             onChange={handleStartDateChange}
+                            textColor="#111827"
                           />
                         )}
+                        {Platform.OS === 'ios' && showStartTimePicker && (
+                          <DateTimePicker
+                            value={freezeStartDate}
+                            mode="time"
+                            display="spinner"
+                            onChange={handleStartTimeChange}
+                            textColor="#111827"
+                          />
+                        )}
+
                         <View style={styles.inputGroup}>
-                          <Text style={styles.inputLabel}>Sluttdato *</Text>
-                          <TouchableOpacity
-                            style={styles.dateButton}
-                            onPress={() => setShowEndDatePicker(true)}
-                          >
-                            <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
-                            <Text style={styles.dateButtonText}>{formatDate(freezeEndDate)}</Text>
-                          </TouchableOpacity>
+                          <Text style={styles.inputLabel}>Sluttdato og tid *</Text>
+                          <View style={styles.dateButtonRow}>
+                            <TouchableOpacity
+                              style={styles.modernDateButton}
+                              onPress={() => setShowEndDatePicker(true)}
+                            >
+                              <View style={styles.dateIconContainer}>
+                                <Ionicons name="calendar-outline" size={18} color="#3B82F6" />
+                              </View>
+                              <Text style={styles.modernDateButtonText}>
+                                {formatDate(freezeEndDate)}
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={styles.modernDateButton}
+                              onPress={() => setShowEndTimePicker(true)}
+                            >
+                              <View style={styles.dateIconContainer}>
+                                <Ionicons name="time-outline" size={18} color="#3B82F6" />
+                              </View>
+                              <Text style={styles.modernDateButtonText}>
+                                {formatTime(freezeEndDate)}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
-                        {showEndDatePicker && (
+
+                        {Platform.OS === 'ios' && showEndDatePicker && (
                           <DateTimePicker
                             value={freezeEndDate}
                             mode="date"
-                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            display="spinner"
                             onChange={handleEndDateChange}
+                            textColor="#111827"
                           />
                         )}
+                        {Platform.OS === 'ios' && showEndTimePicker && (
+                          <DateTimePicker
+                            value={freezeEndDate}
+                            mode="time"
+                            display="spinner"
+                            onChange={handleEndTimeChange}
+                            textColor="#111827"
+                          />
+                        )}
+
                         <View style={styles.inputGroup}>
                           <Text style={styles.inputLabel}>Grunn (valgfri)</Text>
                           <TextInput
@@ -554,6 +651,43 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* Android Date/Time Pickers */}
+      {showStartDatePicker && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={freezeStartDate}
+          mode="date"
+          display="default"
+          onChange={handleStartDateChange}
+        />
+      )}
+
+      {showStartTimePicker && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={freezeStartDate}
+          mode="time"
+          display="default"
+          onChange={handleStartTimeChange}
+        />
+      )}
+
+      {showEndDatePicker && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={freezeEndDate}
+          mode="date"
+          display="default"
+          onChange={handleEndDateChange}
+        />
+      )}
+
+      {showEndTimePicker && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={freezeEndDate}
+          mode="time"
+          display="default"
+          onChange={handleEndTimeChange}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -800,19 +934,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  dateButton: {
+  dateButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modernDateButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
     padding: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFBFC',
   },
-  dateButtonText: {
-    fontSize: 16,
+  dateIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modernDateButtonText: {
+    fontSize: 14,
     color: '#111827',
+    fontWeight: '600',
     flex: 1,
   },
 });
