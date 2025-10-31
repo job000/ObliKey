@@ -104,6 +104,7 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
   const [currentMVAPeriod, setCurrentMVAPeriod] = useState<any>(null);
   const [showMVAResultModal, setShowMVAResultModal] = useState(false);
   const [mvaCalculationResult, setMvaCalculationResult] = useState<any>(null);
+  const [mvaReportNotes, setMvaReportNotes] = useState('');
 
   useEffect(() => {
     loadData();
@@ -1089,7 +1090,10 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
           <View style={styles.mvaModalContent}>
             <View style={styles.mvaModalHeader}>
               <Text style={styles.mvaModalTitle}>MVA-beregning</Text>
-              <TouchableOpacity onPress={() => setShowMVAResultModal(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowMVAResultModal(false);
+                setMvaReportNotes('');
+              }}>
                 <Ionicons name="close" size={28} color="#6B7280" />
               </TouchableOpacity>
             </View>
@@ -1100,7 +1104,13 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                 <View style={styles.mvaSection}>
                   <Text style={styles.mvaSectionTitle}>Periode</Text>
                   <Text style={styles.mvaText}>
-                    {new Date(mvaCalculationResult.period?.start).toLocaleDateString('nb-NO')} - {new Date(mvaCalculationResult.period?.end).toLocaleDateString('nb-NO')}
+                    {currentMVAPeriod ? (
+                      `${new Date(currentMVAPeriod.start).toLocaleDateString('nb-NO')} - ${new Date(currentMVAPeriod.end).toLocaleDateString('nb-NO')}`
+                    ) : (
+                      mvaCalculationResult.period?.start && mvaCalculationResult.period?.end ? (
+                        `${new Date(mvaCalculationResult.period.start).toLocaleDateString('nb-NO')} - ${new Date(mvaCalculationResult.period.end).toLocaleDateString('nb-NO')}`
+                      ) : 'Periode ikke tilgjengelig'
+                    )}
                   </Text>
                 </View>
 
@@ -1177,6 +1187,23 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                   </View>
                 </View>
 
+                {/* Notes/Comments Section */}
+                <View style={styles.mvaSection}>
+                  <Text style={styles.mvaSectionTitle}>Notater / Kommentarer</Text>
+                  <Text style={styles.mvaText}>
+                    Legg til eventuelle notater, justeringer eller forklaringer (valgfritt)
+                  </Text>
+                  <TextInput
+                    style={styles.mvaNotesInput}
+                    placeholder="Skriv notater her..."
+                    value={mvaReportNotes}
+                    onChangeText={setMvaReportNotes}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                </View>
+
                 {/* Action Buttons */}
                 <View style={styles.mvaButtonContainer}>
                   <TouchableOpacity
@@ -1190,11 +1217,13 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                         const response = await api.saveMVAReport({
                           startDate: currentMVAPeriod.start,
                           endDate: currentMVAPeriod.end,
-                          submit: false
+                          submit: false,
+                          notes: mvaReportNotes || undefined
                         });
                         if (response.success) {
                           Alert.alert('Suksess', 'MVA-rapport lagret som utkast');
                           setShowMVAResultModal(false);
+                          setMvaReportNotes('');
                           loadMVAData();
                         }
                       } catch (error: any) {
@@ -1218,11 +1247,13 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                         const response = await api.saveMVAReport({
                           startDate: currentMVAPeriod.start,
                           endDate: currentMVAPeriod.end,
-                          submit: true
+                          submit: true,
+                          notes: mvaReportNotes || undefined
                         });
                         if (response.success) {
                           Alert.alert('Suksess', 'MVA-rapport lagret og markert for innsending');
                           setShowMVAResultModal(false);
+                          setMvaReportNotes('');
                           loadMVAData();
                         }
                       } catch (error: any) {
@@ -2022,5 +2053,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#F59E0B',
     fontWeight: '600',
+  },
+  mvaNotesInput: {
+    marginTop: 12,
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    padding: 12,
+    fontSize: 14,
+    color: '#111827',
+    minHeight: 100,
   },
 });
