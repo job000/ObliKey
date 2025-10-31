@@ -628,7 +628,45 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
           </View>
         ) : (
           mvaReports.map((report) => (
-            <View key={report.id} style={styles.mvaCard}>
+            <TouchableOpacity
+              key={report.id}
+              style={styles.mvaCard}
+              onPress={() => {
+                if (report.status === 'DRAFT') {
+                  Alert.alert(
+                    'MVA-rapport (utkast)',
+                    'Vil du redigere dette utkastet?',
+                    [
+                      { text: 'Avbryt', style: 'cancel' },
+                      {
+                        text: 'Åpne for redigering',
+                        onPress: async () => {
+                          // Recalculate MVA for this period to allow editing
+                          try {
+                            const response = await api.calculateMVAPeriod({
+                              startDate: new Date(report.year, parseInt(report.period) - 1, 1).toISOString(),
+                              endDate: new Date(report.year, parseInt(report.period), 0).toISOString(),
+                            });
+                            if (response.success) {
+                              setMvaCalculationResult(response.data);
+                              setShowMVAResultModal(true);
+                            }
+                          } catch (error: any) {
+                            Alert.alert('Feil', error.response?.data?.error || 'Kunne ikke laste MVA-rapport');
+                          }
+                        }
+                      }
+                    ]
+                  );
+                } else {
+                  Alert.alert(
+                    'MVA-rapport',
+                    `Denne rapporten er allerede sendt inn og kan ikke redigeres.\n\nPeriode: ${report.period}/${report.year}\nStatus: ${report.status}`
+                  );
+                }
+              }}
+              activeOpacity={0.7}
+            >
               <View style={styles.mvaHeader}>
                 <View style={styles.mvaInfo}>
                   <Text style={styles.mvaTitle}>
@@ -666,7 +704,13 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                   </Text>
                 </View>
               </View>
-            </View>
+              {report.status === 'DRAFT' && (
+                <View style={styles.draftHint}>
+                  <Ionicons name="create-outline" size={16} color="#F59E0B" style={{ marginRight: 6 }} />
+                  <Text style={styles.draftHintText}>Trykk for å redigere</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           ))
         )}
       </View>
@@ -1956,5 +2000,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     right: 20,
+  },
+  draftHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  draftHintText: {
+    fontSize: 13,
+    color: '#F59E0B',
+    fontWeight: '600',
   },
 });
