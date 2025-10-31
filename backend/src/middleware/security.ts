@@ -182,7 +182,8 @@ export const preventSQLInjection = (
     '/api/landing-page',
     '/api/chat',
     '/api/feedback',
-    '/api/exercises'
+    '/api/exercises',
+    '/api/tenant-settings'
   ];
 
   // Skip validation for excluded routes

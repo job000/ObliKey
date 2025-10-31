@@ -32,7 +32,7 @@ export class AnalyticsController {
       }
 
       // Revenue calculations
-      const paidStatuses = ['COMPLETED', 'PROCESSING'];
+      const paidStatuses = ['COMPLETED', 'PROCESSING', 'DELIVERED'] as const;
 
       const [
         totalRevenue,
@@ -54,7 +54,7 @@ export class AnalyticsController {
         // Total revenue (all time)
         prisma.order.aggregate({
           where: { tenantId, status: { in: paidStatuses } },
-          _sum: { totalAmount: true }
+          _sum: { total: true }
         }),
         // This month revenue
         prisma.order.aggregate({
@@ -63,7 +63,7 @@ export class AnalyticsController {
             status: { in: paidStatuses },
             createdAt: { gte: startOfThisMonth }
           },
-          _sum: { totalAmount: true }
+          _sum: { total: true }
         }),
         // Last month revenue
         prisma.order.aggregate({
@@ -72,7 +72,7 @@ export class AnalyticsController {
             status: { in: paidStatuses },
             createdAt: { gte: startOfLastMonth, lte: endOfLastMonth }
           },
-          _sum: { totalAmount: true }
+          _sum: { total: true }
         }),
         // Total orders
         prisma.order.count({ where: { tenantId } }),
@@ -86,7 +86,7 @@ export class AnalyticsController {
         prisma.user.count({
           where: {
             tenantId,
-            lastLogin: {
+            lastLoginAt: {
               gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
             }
           }
@@ -125,15 +125,15 @@ export class AnalyticsController {
       ]);
 
       // Calculate growth percentage
-      const thisMonthRev = thisMonthRevenue._sum.totalAmount || 0;
-      const lastMonthRev = lastMonthRevenue._sum.totalAmount || 0;
+      const thisMonthRev = thisMonthRevenue._sum?.total || 0;
+      const lastMonthRev = lastMonthRevenue._sum?.total || 0;
       const growth = lastMonthRev > 0
         ? ((thisMonthRev - lastMonthRev) / lastMonthRev) * 100
         : thisMonthRev > 0 ? 100 : 0;
 
       // Calculate average order value
       const avgValue = completedOrders > 0
-        ? (totalRevenue._sum.totalAmount || 0) / completedOrders
+        ? (totalRevenue._sum?.total || 0) / completedOrders
         : 0;
 
       // Calculate average attendance percentage
@@ -145,7 +145,7 @@ export class AnalyticsController {
         success: true,
         data: {
           revenue: {
-            total: totalRevenue._sum.totalAmount || 0,
+            total: totalRevenue._sum?.total || 0,
             thisMonth: thisMonthRev,
             lastMonth: lastMonthRev,
             growth: parseFloat(growth.toFixed(1))

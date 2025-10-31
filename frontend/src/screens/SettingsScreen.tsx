@@ -12,24 +12,28 @@ import {
   Switch,
   Platform,
   SafeAreaView,
+  Modal,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
 
 interface TenantSettings {
-  businessName: string;
-  email: string;
-  phone: string;
-  address: string;
-  organizationNumber: string;
-  website: string;
-  allowRegistration: boolean;
-  requireEmailVerification: boolean;
-  enableNotifications: boolean;
+  businessHoursStart: string;
+  businessHoursEnd: string;
+  bookingCancellation: number;
+  maxBookingsPerUser: number;
+  requirePayment: boolean;
   currency: string;
   timezone: string;
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  primaryColor: string;
+  secondaryColor: string;
+  companyVatNumber?: string;
+  companyRegNumber?: string;
 }
 
 export default function SettingsScreen({ navigation }: any) {
@@ -39,6 +43,10 @@ export default function SettingsScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'business' | 'system'>('general');
+
+  // Time picker states
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -53,34 +61,38 @@ export default function SettingsScreen({ navigation }: any) {
       } else {
         // Mock data for demonstration
         setSettings({
-          businessName: 'ObliKey Gym',
-          email: 'kontakt@oblikey.no',
-          phone: '+47 123 45 678',
-          address: 'Gymveien 1, 0123 Oslo',
-          organizationNumber: '123456789',
-          website: 'https://oblikey.no',
-          allowRegistration: true,
-          requireEmailVerification: false,
-          enableNotifications: true,
+          businessHoursStart: '06:00',
+          businessHoursEnd: '22:00',
+          bookingCancellation: 24,
+          maxBookingsPerUser: 10,
+          requirePayment: false,
           currency: 'NOK',
           timezone: 'Europe/Oslo',
+          emailNotifications: true,
+          smsNotifications: false,
+          primaryColor: '#3B82F6',
+          secondaryColor: '#10B981',
+          companyVatNumber: '',
+          companyRegNumber: '',
         });
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
       // Set mock data on error
       setSettings({
-        businessName: 'ObliKey Gym',
-        email: 'kontakt@oblikey.no',
-        phone: '+47 123 45 678',
-        address: 'Gymveien 1, 0123 Oslo',
-        organizationNumber: '123456789',
-        website: 'https://oblikey.no',
-        allowRegistration: true,
-        requireEmailVerification: false,
-        enableNotifications: true,
+        businessHoursStart: '06:00',
+        businessHoursEnd: '22:00',
+        bookingCancellation: 24,
+        maxBookingsPerUser: 10,
+        requirePayment: false,
         currency: 'NOK',
         timezone: 'Europe/Oslo',
+        emailNotifications: true,
+        smsNotifications: false,
+        primaryColor: '#3B82F6',
+        secondaryColor: '#10B981',
+        companyVatNumber: '',
+        companyRegNumber: '',
       });
     } finally {
       setLoading(false);
@@ -112,6 +124,43 @@ export default function SettingsScreen({ navigation }: any) {
   const updateSetting = (key: keyof TenantSettings, value: any) => {
     if (settings) {
       setSettings({ ...settings, [key]: value });
+    }
+  };
+
+  // Helper function to convert "HH:mm" string to Date object
+  const timeStringToDate = (timeStr: string): Date => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+  };
+
+  // Helper function to convert Date object to "HH:mm" string
+  const dateToTimeString = (date: Date): string => {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  // Handle start time change
+  const handleStartTimeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowStartTimePicker(false);
+    }
+    if (selectedDate && settings) {
+      const timeString = dateToTimeString(selectedDate);
+      updateSetting('businessHoursStart', timeString);
+    }
+  };
+
+  // Handle end time change
+  const handleEndTimeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowEndTimePicker(false);
+    }
+    if (selectedDate && settings) {
+      const timeString = dateToTimeString(selectedDate);
+      updateSetting('businessHoursEnd', timeString);
     }
   };
 
@@ -205,89 +254,79 @@ export default function SettingsScreen({ navigation }: any) {
         {activeTab === 'general' && (
           <View style={styles.content}>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Bedriftsinformasjon</Text>
+              <Text style={styles.sectionTitle}>Booking-innstillinger</Text>
               <View style={styles.card}>
+                {/* Start Time Picker */}
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Bedriftsnavn</Text>
+                  <Text style={styles.label}>Åpningstid</Text>
+                  <TouchableOpacity
+                    style={styles.timePickerButton}
+                    onPress={() => setShowStartTimePicker(true)}
+                  >
+                    <Ionicons name="time-outline" size={20} color="#3B82F6" />
+                    <Text style={styles.timePickerText}>
+                      {settings.businessHoursStart}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* End Time Picker */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Stengetid</Text>
+                  <TouchableOpacity
+                    style={styles.timePickerButton}
+                    onPress={() => setShowEndTimePicker(true)}
+                  >
+                    <Ionicons name="time-outline" size={20} color="#3B82F6" />
+                    <Text style={styles.timePickerText}>
+                      {settings.businessHoursEnd}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Avbestillingsfrist (timer)</Text>
                   <TextInput
                     style={styles.input}
-                    value={settings.businessName}
-                    onChangeText={(text) => updateSetting('businessName', text)}
-                    placeholder="Navn på bedriften"
+                    value={String(settings.bookingCancellation)}
+                    onChangeText={(text) => updateSetting('bookingCancellation', parseInt(text) || 0)}
+                    placeholder="24"
+                    keyboardType="number-pad"
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>E-post</Text>
+                  <Text style={styles.label}>Maks bookinger per bruker</Text>
                   <TextInput
                     style={styles.input}
-                    value={settings.email}
-                    onChangeText={(text) => updateSetting('email', text)}
-                    placeholder="kontakt@bedrift.no"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Telefon</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={settings.phone}
-                    onChangeText={(text) => updateSetting('phone', text)}
-                    placeholder="+47 123 45 678"
-                    keyboardType="phone-pad"
-                  />
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Adresse</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={settings.address}
-                    onChangeText={(text) => updateSetting('address', text)}
-                    placeholder="Gateadresse, Postnummer Sted"
+                    value={String(settings.maxBookingsPerUser)}
+                    onChangeText={(text) => updateSetting('maxBookingsPerUser', parseInt(text) || 0)}
+                    placeholder="10"
+                    keyboardType="number-pad"
                   />
                 </View>
               </View>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Tilgangskontroll</Text>
+              <Text style={styles.sectionTitle}>Betalingsinnstillinger</Text>
               <View style={styles.card}>
                 <View style={styles.switchRow}>
                   <View style={styles.switchInfo}>
-                    <Text style={styles.switchLabel}>Tillat registrering</Text>
+                    <Text style={styles.switchLabel}>Krev betaling</Text>
                     <Text style={styles.switchDescription}>
-                      Tillat nye brukere å registrere seg
+                      Krev betaling for bookinger
                     </Text>
                   </View>
                   <Switch
-                    value={settings.allowRegistration}
+                    value={settings.requirePayment}
                     onValueChange={(value) =>
-                      updateSetting('allowRegistration', value)
+                      updateSetting('requirePayment', value)
                     }
                     trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-                    thumbColor={settings.allowRegistration ? '#3B82F6' : '#F3F4F6'}
-                  />
-                </View>
-
-                <View style={styles.switchRow}>
-                  <View style={styles.switchInfo}>
-                    <Text style={styles.switchLabel}>E-post verifisering</Text>
-                    <Text style={styles.switchDescription}>
-                      Krev e-postbekreftelse ved registrering
-                    </Text>
-                  </View>
-                  <Switch
-                    value={settings.requireEmailVerification}
-                    onValueChange={(value) =>
-                      updateSetting('requireEmailVerification', value)
-                    }
-                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-                    thumbColor={
-                      settings.requireEmailVerification ? '#3B82F6' : '#F3F4F6'
-                    }
+                    thumbColor={settings.requirePayment ? '#3B82F6' : '#F3F4F6'}
                   />
                 </View>
               </View>
@@ -302,27 +341,25 @@ export default function SettingsScreen({ navigation }: any) {
               <Text style={styles.sectionTitle}>Bedriftsdetaljer</Text>
               <View style={styles.card}>
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Organisasjonsnummer</Text>
+                  <Text style={styles.label}>MVA-nummer</Text>
                   <TextInput
                     style={styles.input}
-                    value={settings.organizationNumber}
+                    value={settings.companyVatNumber || ''}
                     onChangeText={(text) =>
-                      updateSetting('organizationNumber', text)
+                      updateSetting('companyVatNumber', text)
                     }
-                    placeholder="123456789"
-                    keyboardType="number-pad"
+                    placeholder="NO123456789MVA"
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Nettside</Text>
+                  <Text style={styles.label}>Organisasjonsnummer</Text>
                   <TextInput
                     style={styles.input}
-                    value={settings.website}
-                    onChangeText={(text) => updateSetting('website', text)}
-                    placeholder="https://bedrift.no"
-                    keyboardType="url"
-                    autoCapitalize="none"
+                    value={settings.companyRegNumber || ''}
+                    onChangeText={(text) => updateSetting('companyRegNumber', text)}
+                    placeholder="123456789"
+                    keyboardType="number-pad"
                   />
                 </View>
 
@@ -354,22 +391,64 @@ export default function SettingsScreen({ navigation }: any) {
         {activeTab === 'system' && (
           <View style={styles.content}>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Systeminnstillinger</Text>
+              <Text style={styles.sectionTitle}>Varslingsinnstillinger</Text>
               <View style={styles.card}>
                 <View style={styles.switchRow}>
                   <View style={styles.switchInfo}>
-                    <Text style={styles.switchLabel}>Varslinger</Text>
+                    <Text style={styles.switchLabel}>E-post varsler</Text>
                     <Text style={styles.switchDescription}>
-                      Aktiver push-varslinger
+                      Send e-post varslinger til brukere
                     </Text>
                   </View>
                   <Switch
-                    value={settings.enableNotifications}
+                    value={settings.emailNotifications}
                     onValueChange={(value) =>
-                      updateSetting('enableNotifications', value)
+                      updateSetting('emailNotifications', value)
                     }
                     trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-                    thumbColor={settings.enableNotifications ? '#3B82F6' : '#F3F4F6'}
+                    thumbColor={settings.emailNotifications ? '#3B82F6' : '#F3F4F6'}
+                  />
+                </View>
+
+                <View style={styles.switchRow}>
+                  <View style={styles.switchInfo}>
+                    <Text style={styles.switchLabel}>SMS varsler</Text>
+                    <Text style={styles.switchDescription}>
+                      Send SMS varslinger til brukere
+                    </Text>
+                  </View>
+                  <Switch
+                    value={settings.smsNotifications}
+                    onValueChange={(value) =>
+                      updateSetting('smsNotifications', value)
+                    }
+                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
+                    thumbColor={settings.smsNotifications ? '#3B82F6' : '#F3F4F6'}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Design & Branding</Text>
+              <View style={styles.card}>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Primærfarge</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={settings.primaryColor}
+                    onChangeText={(text) => updateSetting('primaryColor', text)}
+                    placeholder="#3B82F6"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Sekundærfarge</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={settings.secondaryColor}
+                    onChangeText={(text) => updateSetting('secondaryColor', text)}
+                    placeholder="#10B981"
                   />
                 </View>
               </View>
@@ -438,6 +517,94 @@ export default function SettingsScreen({ navigation }: any) {
         </View>
       </Container>
     </ScrollView>
+
+    {/* Time Picker Modals for iOS */}
+    {Platform.OS === 'ios' && showStartTimePicker && (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showStartTimePicker}
+        onRequestClose={() => setShowStartTimePicker(false)}
+      >
+        <View style={styles.timePickerModalOverlay}>
+          <View style={styles.timePickerModalContent}>
+            <View style={styles.timePickerHeader}>
+              <Text style={styles.timePickerTitle}>Velg åpningstid</Text>
+              <TouchableOpacity
+                style={styles.timePickerDoneButton}
+                onPress={() => setShowStartTimePicker(false)}
+              >
+                <Text style={styles.timePickerDoneText}>Ferdig</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.dateTimePickerContainer}>
+              <DateTimePicker
+                value={timeStringToDate(settings?.businessHoursStart || '06:00')}
+                mode="time"
+                is24Hour={true}
+                display="spinner"
+                onChange={handleStartTimeChange}
+                textColor="#000000"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    )}
+
+    {Platform.OS === 'ios' && showEndTimePicker && (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showEndTimePicker}
+        onRequestClose={() => setShowEndTimePicker(false)}
+      >
+        <View style={styles.timePickerModalOverlay}>
+          <View style={styles.timePickerModalContent}>
+            <View style={styles.timePickerHeader}>
+              <Text style={styles.timePickerTitle}>Velg stengetid</Text>
+              <TouchableOpacity
+                style={styles.timePickerDoneButton}
+                onPress={() => setShowEndTimePicker(false)}
+              >
+                <Text style={styles.timePickerDoneText}>Ferdig</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.dateTimePickerContainer}>
+              <DateTimePicker
+                value={timeStringToDate(settings?.businessHoursEnd || '22:00')}
+                mode="time"
+                is24Hour={true}
+                display="spinner"
+                onChange={handleEndTimeChange}
+                textColor="#000000"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    )}
+
+    {/* Time Pickers for Android (shows directly) */}
+    {Platform.OS === 'android' && showStartTimePicker && (
+      <DateTimePicker
+        value={timeStringToDate(settings?.businessHoursStart || '06:00')}
+        mode="time"
+        is24Hour={true}
+        display="default"
+        onChange={handleStartTimeChange}
+      />
+    )}
+
+    {Platform.OS === 'android' && showEndTimePicker && (
+      <DateTimePicker
+        value={timeStringToDate(settings?.businessHoursEnd || '22:00')}
+        mode="time"
+        is24Hour={true}
+        display="default"
+        onChange={handleEndTimeChange}
+      />
+    )}
     </SafeAreaView>
   );
 }
@@ -537,6 +704,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     color: '#111827',
   },
+  timePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#FFF',
+    gap: 8,
+  },
+  timePickerText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginLeft: 8,
+  },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -616,5 +801,48 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
     marginBottom: 4,
+  },
+  // Time Picker Modal Styles
+  timePickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  timePickerModalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34, // Safe area for home indicator
+  },
+  timePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  timePickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  timePickerDoneButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#3B82F6',
+    borderRadius: 8,
+  },
+  timePickerDoneText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  dateTimePickerContainer: {
+    height: 260,
+    width: '100%',
+    backgroundColor: '#FFF',
+    paddingVertical: 20,
   },
 });

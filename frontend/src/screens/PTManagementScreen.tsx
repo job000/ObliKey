@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
@@ -46,6 +47,14 @@ export default function PTManagementScreen({ navigation }: any) {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loadingLists, setLoadingLists] = useState(false);
 
+  // Search states
+  const [trainerSearch, setTrainerSearch] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
+
+  // Dropdown modals
+  const [showTrainerDropdown, setShowTrainerDropdown] = useState(false);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+
   // Date picker state
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
@@ -57,6 +66,18 @@ export default function PTManagementScreen({ navigation }: any) {
   useEffect(() => {
     loadSessions();
   }, []);
+
+  useEffect(() => {
+    console.log('[PTManagement] State updated - Trainers:', trainers.length, 'Customers:', customers.length, 'Loading:', loadingLists);
+  }, [trainers, customers, loadingLists]);
+
+  useEffect(() => {
+    console.log('[PTManagement] Trainer dropdown visibility changed:', showTrainerDropdown);
+  }, [showTrainerDropdown]);
+
+  useEffect(() => {
+    console.log('[PTManagement] Customer dropdown visibility changed:', showCustomerDropdown);
+  }, [showCustomerDropdown]);
 
   const loadSessions = async () => {
     try {
@@ -82,6 +103,7 @@ export default function PTManagementScreen({ navigation }: any) {
     try {
       setLoadingLists(true);
       console.log('Loading trainers and customers...');
+      console.log('loadingLists set to true');
 
       const [trainersRes, customersRes] = await Promise.all([
         api.getPTTrainers(),
@@ -102,12 +124,33 @@ export default function PTManagementScreen({ navigation }: any) {
         console.log(`Loaded ${customersData.length} customers:`, customersData);
         setCustomers(customersData);
       }
+
+      console.log('Data loading complete. Setting loadingLists to false');
     } catch (error) {
       console.error('Failed to load trainers and customers:', error);
       Alert.alert('Feil', 'Kunne ikke laste PT og kunder. Prøv igjen.');
     } finally {
       setLoadingLists(false);
+      console.log('loadingLists set to false');
     }
+  };
+
+  const filterTrainers = () => {
+    if (!trainerSearch.trim()) return trainers;
+    const search = trainerSearch.toLowerCase();
+    return trainers.filter(trainer =>
+      `${trainer.firstName} ${trainer.lastName}`.toLowerCase().includes(search) ||
+      trainer.email?.toLowerCase().includes(search)
+    );
+  };
+
+  const filterCustomers = () => {
+    if (!customerSearch.trim()) return customers;
+    const search = customerSearch.toLowerCase();
+    return customers.filter(customer =>
+      `${customer.firstName} ${customer.lastName}`.toLowerCase().includes(search) ||
+      customer.email?.toLowerCase().includes(search)
+    );
   };
 
   const openAddModal = async () => {
@@ -125,6 +168,8 @@ export default function PTManagementScreen({ navigation }: any) {
       customerId: '',
       trainerId: '',
     });
+    setTrainerSearch('');
+    setCustomerSearch('');
     setModalVisible(true);
     await loadTrainersAndCustomers();
   };
@@ -144,6 +189,8 @@ export default function PTManagementScreen({ navigation }: any) {
       customerId: session.customerId || '',
       trainerId: session.trainerId || '',
     });
+    setTrainerSearch('');
+    setCustomerSearch('');
     setModalVisible(true);
     await loadTrainersAndCustomers();
   };
@@ -586,11 +633,24 @@ export default function PTManagementScreen({ navigation }: any) {
               >
                 <View style={styles.modalContent}>
                   <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>
-                      {editMode ? 'Rediger PT-økt' : 'Ny PT-økt'}
-                    </Text>
-                    <TouchableOpacity onPress={() => setModalVisible(false)}>
-                      <Ionicons name="close" size={24} color="#111827" />
+                    <View style={styles.modalHeaderContent}>
+                      <View style={styles.modalIconContainer}>
+                        <Ionicons name="barbell" size={24} color="#3B82F6" />
+                      </View>
+                      <View>
+                        <Text style={styles.modalTitle}>
+                          {editMode ? 'Rediger PT-økt' : 'Ny PT-økt'}
+                        </Text>
+                        <Text style={styles.modalSubtitle}>
+                          {editMode ? 'Oppdater detaljer for økten' : 'Fyll inn informasjon om økten'}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.closeButton}
+                      onPress={() => setModalVisible(false)}
+                    >
+                      <Ionicons name="close" size={24} color="#6B7280" />
                     </TouchableOpacity>
                   </View>
 
@@ -599,9 +659,15 @@ export default function PTManagementScreen({ navigation }: any) {
                     contentContainerStyle={styles.modalBodyContent}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={true}
+                    bounces={true}
+                    scrollEnabled={true}
+                    nestedScrollEnabled={true}
                   >
                   <View style={styles.formGroup}>
-                    <Text style={styles.label}>Tittel *</Text>
+                    <View style={styles.labelContainer}>
+                      <Ionicons name="text-outline" size={16} color="#6B7280" />
+                      <Text style={styles.label}>Tittel *</Text>
+                    </View>
                     <TextInput
                       style={styles.input}
                       value={formData.title}
@@ -614,7 +680,10 @@ export default function PTManagementScreen({ navigation }: any) {
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={styles.label}>Beskrivelse</Text>
+                    <View style={styles.labelContainer}>
+                      <Ionicons name="document-text-outline" size={16} color="#6B7280" />
+                      <Text style={styles.label}>Beskrivelse</Text>
+                    </View>
                     <TextInput
                       style={[styles.input, styles.textArea]}
                       value={formData.description}
@@ -624,139 +693,118 @@ export default function PTManagementScreen({ navigation }: any) {
                       placeholder="Beskrivelse av økten"
                       placeholderTextColor="#9CA3AF"
                       multiline
-                      numberOfLines={4}
+                      numberOfLines={3}
                     />
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={styles.label}>PT *</Text>
-                    {loadingLists ? (
-                      <View style={styles.loadingBox}>
-                        <ActivityIndicator size="small" color="#3B82F6" />
-                        <Text style={styles.loadingText}>Laster PT-ere...</Text>
+                    <View style={styles.labelContainer}>
+                      <Ionicons name="fitness-outline" size={16} color="#6B7280" />
+                      <Text style={styles.label}>Velg PT *</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.dropdownButton}
+                      onPress={() => {
+                        console.log('[PTManagement] Opening trainer dropdown. Trainers:', trainers.length);
+                        setShowTrainerDropdown(true);
+                      }}
+                      disabled={loadingLists}
+                    >
+                      <View style={styles.dropdownContent}>
+                        {formData.trainerId && trainers.find(t => t.id === formData.trainerId) ? (
+                          <>
+                            <View style={[styles.dropdownAvatar, styles.dropdownAvatarTrainer]}>
+                              <Text style={styles.dropdownAvatarText}>
+                                {trainers.find(t => t.id === formData.trainerId)?.firstName?.charAt(0)}
+                                {trainers.find(t => t.id === formData.trainerId)?.lastName?.charAt(0)}
+                              </Text>
+                            </View>
+                            <View style={styles.dropdownInfo}>
+                              <Text style={styles.dropdownName}>
+                                {trainers.find(t => t.id === formData.trainerId)?.firstName} {trainers.find(t => t.id === formData.trainerId)?.lastName}
+                              </Text>
+                              <Text style={styles.dropdownEmail}>
+                                {trainers.find(t => t.id === formData.trainerId)?.email}
+                              </Text>
+                            </View>
+                          </>
+                        ) : (
+                          <Text style={styles.dropdownPlaceholder}>
+                            {loadingLists ? 'Laster PT-ere...' : 'Velg PT...'}
+                          </Text>
+                        )}
                       </View>
-                    ) : trainers.length === 0 ? (
-                      <View style={styles.emptyBox}>
-                        <Ionicons name="person-outline" size={32} color="#9CA3AF" />
-                        <Text style={styles.emptyText}>Ingen PT-ere funnet</Text>
-                        <Text style={styles.emptySubtext}>Opprett en PT-bruker først</Text>
-                      </View>
-                    ) : (
-                      <ScrollView style={styles.selectScrollContainer} nestedScrollEnabled>
-                        <View style={styles.selectContainer}>
-                          {trainers.map((trainer) => (
-                            <TouchableOpacity
-                              key={trainer.id}
-                              style={[
-                                styles.selectOption,
-                                formData.trainerId === trainer.id && styles.selectOptionActive,
-                              ]}
-                              onPress={() => setFormData({ ...formData, trainerId: trainer.id })}
-                            >
-                              <View style={styles.selectOptionIconContainer}>
-                                <View style={styles.selectOptionAvatar}>
-                                  <Text style={styles.selectOptionAvatarText}>
-                                    {trainer.firstName?.charAt(0)}{trainer.lastName?.charAt(0)}
-                                  </Text>
-                                </View>
-                              </View>
-                              <View style={styles.selectOptionContent}>
-                                <Text
-                                  style={[
-                                    styles.selectOptionText,
-                                    formData.trainerId === trainer.id && styles.selectOptionTextActive,
-                                  ]}
-                                >
-                                  {trainer.firstName} {trainer.lastName}
-                                </Text>
-                                {trainer.email && (
-                                  <Text style={styles.selectOptionRole}>{trainer.email}</Text>
-                                )}
-                              </View>
-                              {formData.trainerId === trainer.id && (
-                                <Ionicons name="checkmark-circle" size={24} color="#3B82F6" />
-                              )}
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </ScrollView>
-                    )}
+                      <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={styles.label}>Kunde *</Text>
-                    {loadingLists ? (
-                      <View style={styles.loadingBox}>
-                        <ActivityIndicator size="small" color="#3B82F6" />
-                        <Text style={styles.loadingText}>Laster kunder...</Text>
+                    <View style={styles.labelContainer}>
+                      <Ionicons name="people-outline" size={16} color="#6B7280" />
+                      <Text style={styles.label}>Velg kunde *</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.dropdownButton}
+                      onPress={() => {
+                        console.log('[PTManagement] Opening customer dropdown. Customers:', customers.length);
+                        setShowCustomerDropdown(true);
+                      }}
+                      disabled={loadingLists}
+                    >
+                      <View style={styles.dropdownContent}>
+                        {formData.customerId && customers.find(c => c.id === formData.customerId) ? (
+                          <>
+                            <View style={styles.dropdownAvatar}>
+                              <Text style={styles.dropdownAvatarText}>
+                                {customers.find(c => c.id === formData.customerId)?.firstName?.charAt(0)}
+                                {customers.find(c => c.id === formData.customerId)?.lastName?.charAt(0)}
+                              </Text>
+                            </View>
+                            <View style={styles.dropdownInfo}>
+                              <Text style={styles.dropdownName}>
+                                {customers.find(c => c.id === formData.customerId)?.firstName} {customers.find(c => c.id === formData.customerId)?.lastName}
+                              </Text>
+                              <Text style={styles.dropdownEmail}>
+                                {customers.find(c => c.id === formData.customerId)?.email}
+                              </Text>
+                            </View>
+                          </>
+                        ) : (
+                          <Text style={styles.dropdownPlaceholder}>
+                            {loadingLists ? 'Laster kunder...' : 'Velg kunde...'}
+                          </Text>
+                        )}
                       </View>
-                    ) : customers.length === 0 ? (
-                      <View style={styles.emptyBox}>
-                        <Ionicons name="people-outline" size={32} color="#9CA3AF" />
-                        <Text style={styles.emptyText}>Ingen kunder funnet</Text>
-                        <Text style={styles.emptySubtext}>Opprett en kunde først</Text>
-                      </View>
-                    ) : (
-                      <ScrollView style={styles.selectScrollContainer} nestedScrollEnabled>
-                        <View style={styles.selectContainer}>
-                          {customers.map((customer) => (
-                            <TouchableOpacity
-                              key={customer.id}
-                              style={[
-                                styles.selectOption,
-                                formData.customerId === customer.id && styles.selectOptionActive,
-                              ]}
-                              onPress={() => setFormData({ ...formData, customerId: customer.id })}
-                            >
-                              <View style={styles.selectOptionIconContainer}>
-                                <View style={[styles.selectOptionAvatar, styles.selectOptionAvatarCustomer]}>
-                                  <Text style={styles.selectOptionAvatarText}>
-                                    {customer.firstName?.charAt(0)}{customer.lastName?.charAt(0)}
-                                  </Text>
-                                </View>
-                              </View>
-                              <View style={styles.selectOptionContent}>
-                                <Text
-                                  style={[
-                                    styles.selectOptionText,
-                                    formData.customerId === customer.id && styles.selectOptionTextActive,
-                                  ]}
-                                >
-                                  {customer.firstName} {customer.lastName}
-                                </Text>
-                                {customer.email && (
-                                  <Text style={styles.selectOptionEmail}>{customer.email}</Text>
-                                )}
-                              </View>
-                              {formData.customerId === customer.id && (
-                                <Ionicons name="checkmark-circle" size={24} color="#3B82F6" />
-                              )}
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </ScrollView>
-                    )}
+                      <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={styles.label}>Starttid *</Text>
+                    <View style={styles.labelContainer}>
+                      <Ionicons name="play-outline" size={16} color="#6B7280" />
+                      <Text style={styles.label}>Starttid *</Text>
+                    </View>
                     <View style={styles.dateTimeRow}>
                       <TouchableOpacity
-                        style={[styles.dateButton, { flex: 1 }]}
+                        style={styles.modernDateButton}
                         onPress={() => setShowStartDatePicker(true)}
                       >
-                        <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-                        <Text style={styles.dateButtonText}>
+                        <View style={styles.dateIconContainer}>
+                          <Ionicons name="calendar-outline" size={18} color="#3B82F6" />
+                        </View>
+                        <Text style={styles.modernDateButtonText}>
                           {formatDate(startDateTime.toISOString())}
                         </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.dateButton, { flex: 1 }]}
+                        style={styles.modernDateButton}
                         onPress={() => setShowStartTimePicker(true)}
                       >
-                        <Ionicons name="time-outline" size={20} color="#6B7280" />
-                        <Text style={styles.dateButtonText}>
+                        <View style={styles.dateIconContainer}>
+                          <Ionicons name="time-outline" size={18} color="#3B82F6" />
+                        </View>
+                        <Text style={styles.modernDateButtonText}>
                           {formatTime(startDateTime.toISOString())}
                         </Text>
                       </TouchableOpacity>
@@ -764,39 +812,57 @@ export default function PTManagementScreen({ navigation }: any) {
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={styles.label}>Sluttid *</Text>
+                    <View style={styles.labelContainer}>
+                      <Ionicons name="stop-outline" size={16} color="#6B7280" />
+                      <Text style={styles.label}>Sluttid *</Text>
+                    </View>
                     <View style={styles.dateTimeRow}>
                       <TouchableOpacity
-                        style={[styles.dateButton, { flex: 1 }]}
+                        style={styles.modernDateButton}
                         onPress={() => setShowEndDatePicker(true)}
                       >
-                        <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-                        <Text style={styles.dateButtonText}>
+                        <View style={styles.dateIconContainer}>
+                          <Ionicons name="calendar-outline" size={18} color="#3B82F6" />
+                        </View>
+                        <Text style={styles.modernDateButtonText}>
                           {formatDate(endDateTime.toISOString())}
                         </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.dateButton, { flex: 1 }]}
+                        style={styles.modernDateButton}
                         onPress={() => setShowEndTimePicker(true)}
                       >
-                        <Ionicons name="time-outline" size={20} color="#6B7280" />
-                        <Text style={styles.dateButtonText}>
+                        <View style={styles.dateIconContainer}>
+                          <Ionicons name="time-outline" size={18} color="#3B82F6" />
+                        </View>
+                        <Text style={styles.modernDateButtonText}>
                           {formatTime(endDateTime.toISOString())}
                         </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
+                </ScrollView>
+
+                {/* Action Buttons - Always Visible */}
+                <View style={styles.modalFooter}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Avbryt</Text>
+                  </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.saveButton}
+                    style={styles.modernSaveButton}
                     onPress={handleSaveSession}
                   >
-                    <Text style={styles.saveButtonText}>
-                      {editMode ? 'Oppdater PT-økt' : 'Opprett PT-økt'}
+                    <Ionicons name={editMode ? "refresh" : "add-circle"} size={20} color="#FFF" />
+                    <Text style={styles.modernSaveButtonText}>
+                      {editMode ? 'Oppdater' : 'Opprett'}
                     </Text>
                   </TouchableOpacity>
-                </ScrollView>
+                </View>
 
                 {/* iOS Date/Time Pickers in Modal */}
                 {(showStartDatePicker || showStartTimePicker || showEndDatePicker || showEndTimePicker) && Platform.OS === 'ios' && (
@@ -895,11 +961,171 @@ export default function PTManagementScreen({ navigation }: any) {
                   />
                 )}
                 </View>
-              </View>
             </KeyboardAvoidingView>
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+
+      {/* Dropdown Modals - Inside main modal to work on iOS */}
+      {/* Trainer Dropdown Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showTrainerDropdown}
+        onRequestClose={() => setShowTrainerDropdown(false)}
+      >
+        <View style={styles.dropdownModalOverlay}>
+          <View style={styles.dropdownModalContent}>
+            <View style={styles.dropdownModalHeader}>
+              <Text style={styles.modalTitle}>Velg trener</Text>
+              <TouchableOpacity onPress={() => setShowTrainerDropdown(false)}>
+                <Ionicons name="close" size={28} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalSearchContainer}>
+              <Ionicons name="search" size={20} color="#9CA3AF" style={styles.modalSearchIcon} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Søk etter trener..."
+                placeholderTextColor="#9CA3AF"
+                value={trainerSearch}
+                onChangeText={setTrainerSearch}
+                autoCapitalize="none"
+              />
+              {trainerSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setTrainerSearch('')}>
+                  <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <FlatList
+              data={filterTrainers()}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalPersonItem}
+                  onPress={() => {
+                    setFormData({ ...formData, trainerId: item.id });
+                    setTrainerSearch('');
+                    setShowTrainerDropdown(false);
+                  }}
+                >
+                  <View style={styles.modalPersonContent}>
+                    <View style={styles.modalAvatarTrainer}>
+                      <Text style={styles.modalAvatarText}>
+                        {item.firstName?.charAt(0)}{item.lastName?.charAt(0)}
+                      </Text>
+                    </View>
+                    <View style={styles.modalPersonInfo}>
+                      <Text style={styles.modalPersonName}>
+                        {item.firstName} {item.lastName}
+                      </Text>
+                      {item.email && (
+                        <Text style={styles.modalPersonEmail}>{item.email}</Text>
+                      )}
+                    </View>
+                  </View>
+                  {formData.trainerId === item.id && (
+                    <Ionicons name="checkmark-circle" size={24} color="#3B82F6" />
+                  )}
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.modalEmptyContainer}>
+                  <Ionicons name="search-outline" size={48} color="#D1D5DB" />
+                  <Text style={styles.modalEmptyTitle}>
+                    {trainerSearch ? 'Ingen treff' : 'Ingen trenere funnet'}
+                  </Text>
+                </View>
+              }
+              ItemSeparatorComponent={() => <View style={styles.modalSeparator} />}
+              contentContainerStyle={styles.modalListContent}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Customer Dropdown Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showCustomerDropdown}
+        onRequestClose={() => setShowCustomerDropdown(false)}
+      >
+        <View style={styles.dropdownModalOverlay}>
+          <View style={styles.dropdownModalContent}>
+            <View style={styles.dropdownModalHeader}>
+              <Text style={styles.modalTitle}>Velg kunde</Text>
+              <TouchableOpacity onPress={() => setShowCustomerDropdown(false)}>
+                <Ionicons name="close" size={28} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalSearchContainer}>
+              <Ionicons name="search" size={20} color="#9CA3AF" style={styles.modalSearchIcon} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Søk etter kunde..."
+                placeholderTextColor="#9CA3AF"
+                value={customerSearch}
+                onChangeText={setCustomerSearch}
+                autoCapitalize="none"
+              />
+              {customerSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setCustomerSearch('')}>
+                  <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <FlatList
+              data={filterCustomers()}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalPersonItem}
+                  onPress={() => {
+                    setFormData({ ...formData, customerId: item.id });
+                    setCustomerSearch('');
+                    setShowCustomerDropdown(false);
+                  }}
+                >
+                  <View style={styles.modalPersonContent}>
+                    <View style={styles.modalAvatarCustomer}>
+                      <Text style={styles.modalAvatarText}>
+                        {item.firstName?.charAt(0)}{item.lastName?.charAt(0)}
+                      </Text>
+                    </View>
+                    <View style={styles.modalPersonInfo}>
+                      <Text style={styles.modalPersonName}>
+                        {item.firstName} {item.lastName}
+                      </Text>
+                      {item.email && (
+                        <Text style={styles.modalPersonEmail}>{item.email}</Text>
+                      )}
+                    </View>
+                  </View>
+                  {formData.customerId === item.id && (
+                    <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                  )}
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.modalEmptyContainer}>
+                  <Ionicons name="search-outline" size={48} color="#D1D5DB" />
+                  <Text style={styles.modalEmptyTitle}>
+                    {customerSearch ? 'Ingen treff' : 'Ingen kunder funnet'}
+                  </Text>
+                </View>
+              }
+              ItemSeparatorComponent={() => <View style={styles.modalSeparator} />}
+              contentContainerStyle={styles.modalListContent}
+            />
+          </View>
+        </View>
+      </Modal>
       </Modal>
     </ScrollView>
     </SafeAreaView>
@@ -1155,67 +1381,289 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
   },
-  modalOverlay: {
+  // Dropdown styles
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 56,
+  },
+  dropdownContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  dropdownAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#D1FAE5',
+    borderWidth: 2,
+    borderColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dropdownAvatarTrainer: {
+    backgroundColor: '#DBEAFE',
+    borderColor: '#3B82F6',
+  },
+  dropdownAvatarText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    textTransform: 'uppercase',
+  },
+  dropdownInfo: {
+    flex: 1,
+  },
+  dropdownName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  dropdownEmail: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  dropdownPlaceholder: {
+    fontSize: 15,
+    color: '#9CA3AF',
+  },
+  // Dropdown Modal styles (for PT and Customer selection)
+  dropdownModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  dropdownModalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    paddingTop: 20,
+  },
+  dropdownModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  // Main Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    paddingTop: 40,
+  },
   keyboardAvoidingView: {
     width: '100%',
-    maxHeight: '90%',
+    height: '93%',
   },
   modalContent: {
     backgroundColor: '#FFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     width: '100%',
+    height: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  modalSearchIcon: {
+    marginRight: 10,
+  },
+  modalSearchInput: {
     flex: 1,
+    fontSize: 16,
+    color: '#111827',
+    padding: 0,
+  },
+  modalListContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  modalPersonItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+  },
+  modalPersonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
+  },
+  modalAvatarCustomer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#D1FAE5',
+    borderWidth: 2,
+    borderColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalAvatarTrainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#DBEAFE',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalAvatarText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#374151',
+    textTransform: 'uppercase',
+  },
+  modalPersonInfo: {
+    flex: 1,
+  },
+  modalPersonName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 3,
+  },
+  modalPersonEmail: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  modalSeparator: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  modalEmptyContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalEmptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 16,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FAFBFC',
+  },
+  modalHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  modalIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#111827',
+    marginBottom: 2,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '400',
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalBody: {
     flex: 1,
+    backgroundColor: '#FFF',
   },
   modalBodyContent: {
     padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    paddingBottom: 20,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    backgroundColor: '#FAFBFC',
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 8,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    padding: 14,
+    fontSize: 15,
+    backgroundColor: '#FAFBFC',
     color: '#111827',
+    fontWeight: '500',
   },
   textArea: {
-    minHeight: 100,
+    minHeight: 80,
     textAlignVertical: 'top',
   },
   dateTimeRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   dateButton: {
     flexDirection: 'row',
@@ -1232,6 +1680,31 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '500',
   },
+  modernDateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    padding: 12,
+    backgroundColor: '#FAFBFC',
+  },
+  dateIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modernDateButtonText: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '600',
+    flex: 1,
+  },
   saveButton: {
     backgroundColor: '#3B82F6',
     paddingVertical: 14,
@@ -1242,6 +1715,41 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#FFF',
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  modernSaveButton: {
+    flex: 2,
+    backgroundColor: '#3B82F6',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modernSaveButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFF',
   },
   pickerModalOverlay: {
@@ -1292,7 +1800,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyText: {
+  selectEmptyText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
@@ -1368,5 +1876,508 @@ const styles = StyleSheet.create({
   selectOptionEmail: {
     fontSize: 12,
     color: '#6B7280',
+  },
+  compactLoadingBox: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  compactEmptyBox: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  compactEmptyText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  compactSelectContainer: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    backgroundColor: '#FFF',
+    maxHeight: 150,
+  },
+  compactSelectOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  compactSelectOptionActive: {
+    backgroundColor: '#EFF6FF',
+  },
+  compactSelectContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  compactAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  compactAvatarCustomer: {
+    backgroundColor: '#10B981',
+  },
+  compactAvatarText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFF',
+    textTransform: 'uppercase',
+  },
+  compactSelectText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  compactSelectTextActive: {
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  modernLoadingBox: {
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    backgroundColor: '#FAFBFC',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  modernEmptyBox: {
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    backgroundColor: '#FAFBFC',
+    padding: 20,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  modernEmptyText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  modernSelectScrollContainer: {
+    maxHeight: 180,
+  },
+  modernSelectContainer: {
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    backgroundColor: '#FFF',
+    overflow: 'hidden',
+  },
+  modernSelectOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#FAFBFC',
+  },
+  modernSelectOptionActive: {
+    backgroundColor: '#EFF6FF',
+    borderLeftWidth: 3,
+    borderLeftColor: '#3B82F6',
+  },
+  modernSelectOptionLast: {
+    borderBottomWidth: 0,
+  },
+  modernSelectContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  modernAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#DBEAFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  modernAvatarActive: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  modernAvatarCustomer: {
+    backgroundColor: '#D1FAE5',
+    borderColor: '#E5E7EB',
+  },
+  modernAvatarCustomerActive: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  modernAvatarText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#374151',
+    textTransform: 'uppercase',
+  },
+  modernAvatarTextActive: {
+    color: '#FFF',
+  },
+  modernSelectText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  modernSelectTextActive: {
+    color: '#111827',
+    fontWeight: '700',
+  },
+  checkmarkContainer: {
+    marginLeft: 8,
+  },
+  // Improved selector styles
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAFBFC',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#111827',
+    padding: 0,
+  },
+  improvedSelectScrollContainer: {
+    maxHeight: 200,
+  },
+  improvedSelectContainer: {
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    backgroundColor: '#FFF',
+    overflow: 'hidden',
+  },
+  improvedSelectOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  improvedSelectOptionLast: {
+    borderBottomWidth: 0,
+  },
+  improvedSelectContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  improvedAvatarPT: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#DBEAFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+  },
+  improvedAvatarCustomer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#D1FAE5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#10B981',
+  },
+  improvedAvatarText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    textTransform: 'uppercase',
+  },
+  improvedPersonInfo: {
+    flex: 1,
+  },
+  improvedPersonName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  improvedPersonEmail: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  selectedPersonCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F0F9FF',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
+  },
+  selectedPersonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  selectedAvatarPT: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedAvatarCustomer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedAvatarText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFF',
+    textTransform: 'uppercase',
+  },
+  selectedPersonInfo: {
+    flex: 1,
+  },
+  selectedPersonName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  selectedPersonRole: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  selectedPersonEmail: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  changeButton: {
+    backgroundColor: '#FFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+  },
+  changeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3B82F6',
+  },
+  noResultsContainer: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noResultsText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  // Select button styles
+  selectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    borderStyle: 'dashed',
+    padding: 16,
+  },
+  selectButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  selectButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  selectedCustomerCard: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#10B981',
+  },
+  // Picker Modal Styles
+  pickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerModalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    paddingTop: 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  pickerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  pickerSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  pickerSearchIcon: {
+    marginRight: 10,
+  },
+  pickerSearchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
+    padding: 0,
+  },
+  pickerClearButton: {
+    padding: 4,
+  },
+  pickerListContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  pickerPersonItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+  },
+  pickerPersonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
+  },
+  pickerAvatarPT: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#DBEAFE',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerAvatarCustomer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#D1FAE5',
+    borderWidth: 2,
+    borderColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerAvatarText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#374151',
+    textTransform: 'uppercase',
+  },
+  pickerPersonInfo: {
+    flex: 1,
+  },
+  pickerPersonName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 3,
+  },
+  pickerPersonEmail: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  pickerSeparator: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  pickerEmptyContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerEmptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 16,
+    marginBottom: 6,
+  },
+  pickerEmptyText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
 });

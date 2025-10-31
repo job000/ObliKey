@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
@@ -128,19 +129,20 @@ export default function AnalyticsScreen({ navigation }: any) {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <Container>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Rapporter & Analyse</Text>
-            <Text style={styles.subtitle}>Se statistikk og rapporter</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <Container>
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.title}>Rapporter & Analyse</Text>
+              <Text style={styles.subtitle}>Se statistikk og rapporter</Text>
+            </View>
           </View>
-        </View>
 
         {/* Time Range Filter */}
         <View style={styles.timeRangeContainer}>
@@ -378,8 +380,12 @@ export default function AnalyticsScreen({ navigation }: any) {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Bottom Spacer */}
+        <View style={styles.bottomSpacer} />
       </Container>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -588,6 +594,7 @@ const styles = StyleSheet.create({
   actionCard: {
     flex: 1,
     minWidth: Platform.OS === 'web' ? '23%' : '47%',
+    minHeight: 120,
     backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 20,
@@ -605,5 +612,8 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginTop: 12,
     textAlign: 'center',
+  },
+  bottomSpacer: {
+    height: 40,
   },
 });
