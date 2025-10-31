@@ -371,19 +371,55 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
     );
   };
 
-  const renderAccounts = () => {
-    if (accounts.length === 0) {
-      return (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="wallet-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyText}>Ingen kontoer funnet</Text>
-        </View>
+  const handleInitializeAccounts = async () => {
+    try {
+      Alert.alert(
+        'Initialiser norsk kontoplan',
+        'Dette vil opprette standard norske kontoer basert på NS 4102. Ønsker du å fortsette?',
+        [
+          { text: 'Avbryt', style: 'cancel' },
+          {
+            text: 'Initialiser',
+            onPress: async () => {
+              const response = await api.seedNorwegianAccounts();
+              if (response.success) {
+                Alert.alert('Suksess', 'Norsk kontoplan initialisert');
+                loadAccounts();
+              }
+            },
+          },
+        ]
       );
+    } catch (error: any) {
+      Alert.alert('Feil', error.response?.data?.error || 'Kunne ikke initialisere kontoplan');
     }
+  };
 
+  const renderAccounts = () => {
     return (
       <View style={styles.content}>
-        {accounts.map((account) => (
+        {accounts.length < 50 && (
+          <TouchableOpacity
+            style={styles.initAccountsButton}
+            onPress={handleInitializeAccounts}
+          >
+            <Ionicons name="cloud-download-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={styles.initAccountsButtonText}>
+              Initialiser norsk kontoplan (NS 4102)
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {accounts.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="wallet-outline" size={64} color="#D1D5DB" />
+            <Text style={styles.emptyText}>Ingen kontoer funnet</Text>
+            <Text style={styles.emptySubtext}>
+              Trykk på knappen ovenfor for å initialisere norsk kontoplan
+            </Text>
+          </View>
+        ) : (
+          accounts.map((account) => (
           <View key={account.id} style={styles.accountCard}>
             <View style={styles.accountHeader}>
               <View style={styles.accountIconContainer}>
@@ -943,6 +979,157 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
+
+      {/* MVA Result Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showMVAResultModal}
+        onRequestClose={() => setShowMVAResultModal(false)}
+      >
+        <View style={styles.mvaModalOverlay}>
+          <View style={styles.mvaModalContent}>
+            <View style={styles.mvaModalHeader}>
+              <Text style={styles.mvaModalTitle}>MVA-beregning</Text>
+              <TouchableOpacity onPress={() => setShowMVAResultModal(false)}>
+                <Ionicons name="close" size={28} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            {mvaCalculationResult && (
+              <ScrollView style={styles.mvaModalBody}>
+                {/* Period Info */}
+                <View style={styles.mvaSection}>
+                  <Text style={styles.mvaSectionTitle}>Periode</Text>
+                  <Text style={styles.mvaText}>
+                    {new Date(mvaCalculationResult.period?.start).toLocaleDateString('nb-NO')} - {new Date(mvaCalculationResult.period?.end).toLocaleDateString('nb-NO')}
+                  </Text>
+                </View>
+
+                {/* Utgående MVA (Sales) */}
+                <View style={styles.mvaSection}>
+                  <Text style={styles.mvaSectionTitle}>Utgående MVA (Salg)</Text>
+                  <View style={styles.mvaRow}>
+                    <Text style={styles.mvaLabel}>25% MVA</Text>
+                    <Text style={styles.mvaAmount}>
+                      {formatCurrency(mvaCalculationResult.outgoingVAT?.high || 0)}
+                    </Text>
+                  </View>
+                  <View style={styles.mvaRow}>
+                    <Text style={styles.mvaLabel}>15% MVA</Text>
+                    <Text style={styles.mvaAmount}>
+                      {formatCurrency(mvaCalculationResult.outgoingVAT?.medium || 0)}
+                    </Text>
+                  </View>
+                  <View style={styles.mvaRow}>
+                    <Text style={styles.mvaLabel}>12% MVA</Text>
+                    <Text style={styles.mvaAmount}>
+                      {formatCurrency(mvaCalculationResult.outgoingVAT?.low || 0)}
+                    </Text>
+                  </View>
+                  <View style={[styles.mvaRow, styles.mvaTotalRow]}>
+                    <Text style={styles.mvaTotalLabel}>Sum utgående MVA</Text>
+                    <Text style={styles.mvaTotalAmount}>
+                      {formatCurrency(mvaCalculationResult.outgoingVAT?.total || 0)}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Inngående MVA (Purchases) */}
+                <View style={styles.mvaSection}>
+                  <Text style={styles.mvaSectionTitle}>Inngående MVA (Kjøp)</Text>
+                  <View style={styles.mvaRow}>
+                    <Text style={styles.mvaLabel}>25% MVA</Text>
+                    <Text style={styles.mvaAmount}>
+                      {formatCurrency(mvaCalculationResult.incomingVAT?.high || 0)}
+                    </Text>
+                  </View>
+                  <View style={styles.mvaRow}>
+                    <Text style={styles.mvaLabel}>15% MVA</Text>
+                    <Text style={styles.mvaAmount}>
+                      {formatCurrency(mvaCalculationResult.incomingVAT?.medium || 0)}
+                    </Text>
+                  </View>
+                  <View style={styles.mvaRow}>
+                    <Text style={styles.mvaLabel}>12% MVA</Text>
+                    <Text style={styles.mvaAmount}>
+                      {formatCurrency(mvaCalculationResult.incomingVAT?.low || 0)}
+                    </Text>
+                  </View>
+                  <View style={[styles.mvaRow, styles.mvaTotalRow]}>
+                    <Text style={styles.mvaTotalLabel}>Sum inngående MVA</Text>
+                    <Text style={styles.mvaTotalAmount}>
+                      {formatCurrency(mvaCalculationResult.incomingVAT?.total || 0)}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Net MVA */}
+                <View style={[styles.mvaSection, styles.mvaNetSection]}>
+                  <View style={styles.mvaNetRow}>
+                    <Text style={styles.mvaNetLabel}>
+                      {(mvaCalculationResult.netVAT || 0) >= 0 ? 'MVA å betale' : 'MVA til gode'}
+                    </Text>
+                    <Text style={[
+                      styles.mvaNetAmount,
+                      (mvaCalculationResult.netVAT || 0) >= 0 ? styles.mvaNetPositive : styles.mvaNetNegative
+                    ]}>
+                      {formatCurrency(Math.abs(mvaCalculationResult.netVAT || 0))}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View style={styles.mvaButtonContainer}>
+                  <TouchableOpacity
+                    style={styles.mvaSaveButton}
+                    onPress={async () => {
+                      try {
+                        const response = await api.saveMVAReport({
+                          ...mvaCalculationResult,
+                          submit: false
+                        });
+                        if (response.success) {
+                          Alert.alert('Suksess', 'MVA-rapport lagret som utkast');
+                          setShowMVAResultModal(false);
+                          loadMVAData();
+                        }
+                      } catch (error) {
+                        Alert.alert('Feil', 'Kunne ikke lagre MVA-rapport');
+                      }
+                    }}
+                  >
+                    <Ionicons name="save-outline" size={20} color="#3B82F6" style={{ marginRight: 8 }} />
+                    <Text style={styles.mvaSaveButtonText}>Lagre som utkast</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.mvaSubmitButton}
+                    onPress={async () => {
+                      try {
+                        const response = await api.saveMVAReport({
+                          ...mvaCalculationResult,
+                          submit: true
+                        });
+                        if (response.success) {
+                          Alert.alert('Suksess', 'MVA-rapport lagret og markert for innsending');
+                          setShowMVAResultModal(false);
+                          loadMVAData();
+                        }
+                      } catch (error) {
+                        Alert.alert('Feil', 'Kunne ikke lagre MVA-rapport');
+                      }
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.mvaSubmitButtonText}>Lagre rapport</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -965,121 +1152,156 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 8 : 24,
-    paddingBottom: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 6,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#6B7280',
+    fontWeight: '500',
   },
   tabsContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
+    marginTop: 8,
   },
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginRight: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginRight: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
     backgroundColor: '#FFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   tabActive: {
     backgroundColor: '#3B82F6',
     borderColor: '#3B82F6',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: '#374151',
   },
   tabTextActive: {
     color: '#FFF',
+    fontWeight: '700',
   },
   content: {
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
   statsGrid: {
-    marginBottom: 16,
+    marginBottom: 20,
+    gap: 16,
   },
   statCard: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 12,
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   statIcon: {
-    marginBottom: 12,
+    marginBottom: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   statLabel: {
     fontSize: 14,
     color: '#6B7280',
     marginBottom: 8,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
+    letterSpacing: -0.5,
   },
   statSubtext: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#9CA3AF',
-    marginTop: 4,
+    marginTop: 6,
+    fontWeight: '500',
   },
   incomeCard: {
-    borderLeftWidth: 4,
+    borderLeftWidth: 5,
     borderLeftColor: '#10B981',
+    backgroundColor: '#FEFFFE',
   },
   expenseCard: {
-    borderLeftWidth: 4,
+    borderLeftWidth: 5,
     borderLeftColor: '#EF4444',
+    backgroundColor: '#FFFEFE',
   },
   profitCard: {
-    borderLeftWidth: 4,
+    borderLeftWidth: 5,
     borderLeftColor: '#3B82F6',
+    backgroundColor: '#FEFEFF',
   },
   receivableCard: {
-    borderLeftWidth: 4,
+    borderLeftWidth: 5,
     borderLeftColor: '#F59E0B',
+    backgroundColor: '#FFFFFE',
   },
   payableCard: {
-    borderLeftWidth: 4,
+    borderLeftWidth: 5,
     borderLeftColor: '#8B5CF6',
+    backgroundColor: '#FEFFFE',
   },
   accountCard: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   accountHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   accountIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   accountInfo: {
     flex: 1,
@@ -1088,19 +1310,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 5,
+    letterSpacing: -0.2,
   },
   accountType: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#6B7280',
+    fontWeight: '500',
   },
   accountBalanceContainer: {
     alignItems: 'flex-end',
   },
   accountBalance: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: 'bold',
     color: '#10B981',
+    letterSpacing: -0.3,
   },
   negativeBalance: {
     color: '#EF4444',
@@ -1110,27 +1335,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#3B82F6',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 24,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   addButtonText: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   transactionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   transactionIcon: {
     marginRight: 12,
@@ -1163,14 +1396,16 @@ const styles = StyleSheet.create({
   },
   supplierCard: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   supplierHeader: {
     flexDirection: 'row',
@@ -1247,14 +1482,16 @@ const styles = StyleSheet.create({
   },
   mvaCard: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   mvaHeader: {
     flexDirection: 'row',
@@ -1329,12 +1566,15 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: 64,
+    paddingVertical: 72,
+    paddingHorizontal: 32,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    marginTop: 16,
+    fontSize: 17,
+    color: '#6B7280',
+    marginTop: 20,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
@@ -1440,5 +1680,160 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // MVA Result Modal Styles
+  mvaModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  mvaModalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+  },
+  mvaModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  mvaModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  mvaModalBody: {
+    padding: 20,
+  },
+  mvaSection: {
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+  },
+  mvaSectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  mvaText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  mvaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  mvaLabel: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  mvaAmount: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  mvaTotalRow: {
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#D1D5DB',
+  },
+  mvaTotalLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  mvaTotalAmount: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  mvaNetSection: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+  },
+  mvaNetRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  mvaNetLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  mvaNetAmount: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  mvaNetPositive: {
+    color: '#DC2626',
+  },
+  mvaNetNegative: {
+    color: '#10B981',
+  },
+  mvaButtonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+    marginBottom: 20,
+  },
+  mvaSaveButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    borderRadius: 8,
+    paddingVertical: 14,
+  },
+  mvaSaveButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#3B82F6',
+  },
+  mvaSubmitButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3B82F6',
+    borderRadius: 8,
+    paddingVertical: 14,
+  },
+  mvaSubmitButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  initAccountsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10B981',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+  },
+  initAccountsButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });

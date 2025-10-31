@@ -703,6 +703,11 @@ class ApiService {
     return response.data;
   }
 
+  async seedNorwegianAccounts() {
+    const response = await this.axiosInstance.post('/accounting/seed-norwegian-accounts');
+    return response.data;
+  }
+
   async getTransactions(params?: any) {
     const response = await this.axiosInstance.get('/accounting/transactions', { params });
     return response.data;
