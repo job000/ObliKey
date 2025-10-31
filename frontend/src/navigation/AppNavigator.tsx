@@ -43,6 +43,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import ActivityLogsScreen from '../screens/ActivityLogsScreen';
 import ProductAnalyticsScreen from '../screens/ProductAnalyticsScreen';
 import EnhancedAccountingScreen from '../screens/EnhancedAccountingScreen';
+import ResultatregnskapScreen from '../screens/ResultatregnskapScreen';
 import CreatePTSessionScreen from '../screens/CreatePTSessionScreen';
 import EditPTSessionScreen from '../screens/EditPTSessionScreen';
 import SessionDetailScreen from '../screens/SessionDetailScreen';
@@ -308,6 +309,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="ActivityLogs" component={ActivityLogsScreen} />
             <Stack.Screen name="ProductAnalytics" component={ProductAnalyticsScreen} />
+            <Stack.Screen name="Resultatregnskap" component={ResultatregnskapScreen} />
             <Stack.Screen name="CreatePTSession" component={CreatePTSessionScreen} />
             <Stack.Screen name="EditPTSession" component={EditPTSessionScreen} />
             <Stack.Screen name="SessionDetail" component={SessionDetailScreen} />

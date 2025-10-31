@@ -367,6 +367,48 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
             </Text>
           </View>
         </View>
+
+        {/* Quick Actions / Reports Section */}
+        <View style={styles.reportsSection}>
+          <Text style={styles.reportsSectionTitle}>Rapporter</Text>
+          <Text style={styles.reportsSectionSubtitle}>
+            Detaljerte økonomiske rapporter og analyser
+          </Text>
+
+          <View style={styles.reportsGrid}>
+            <TouchableOpacity
+              style={styles.reportCard}
+              onPress={() => navigation.navigate('Resultatregnskap')}
+            >
+              <View style={[styles.reportIconContainer, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="stats-chart" size={28} color="#3B82F6" />
+              </View>
+              <Text style={styles.reportTitle}>Resultatregnskap</Text>
+              <Text style={styles.reportDescription}>
+                Profit & Loss statement med detaljert inntekts- og kostnadsoversikt
+              </Text>
+              <View style={styles.reportArrow}>
+                <Ionicons name="arrow-forward" size={20} color="#3B82F6" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.reportCard, styles.reportCardDisabled]}
+              disabled={true}
+            >
+              <View style={[styles.reportIconContainer, { backgroundColor: '#F3F4F6' }]}>
+                <Ionicons name="document-text" size={28} color="#9CA3AF" />
+              </View>
+              <Text style={[styles.reportTitle, { color: '#9CA3AF' }]}>Balanse</Text>
+              <Text style={[styles.reportDescription, { color: '#D1D5DB' }]}>
+                Balance sheet - Kommer snart
+              </Text>
+              <View style={styles.reportArrow}>
+                <Ionicons name="lock-closed" size={20} color="#9CA3AF" />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     );
   };
@@ -1835,5 +1877,68 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     marginTop: 8,
+  },
+  reportsSection: {
+    marginTop: 32,
+    marginBottom: 24,
+  },
+  reportsSectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 6,
+    letterSpacing: -0.3,
+  },
+  reportsSectionSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
+    fontWeight: '500',
+  },
+  reportsGrid: {
+    gap: 16,
+  },
+  reportCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    position: 'relative',
+  },
+  reportCardDisabled: {
+    opacity: 0.6,
+  },
+  reportIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  reportTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 8,
+    letterSpacing: -0.3,
+  },
+  reportDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  reportArrow: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
   },
 });
