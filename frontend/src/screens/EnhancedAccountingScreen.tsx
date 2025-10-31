@@ -1127,9 +1127,14 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                   <TouchableOpacity
                     style={styles.mvaSaveButton}
                     onPress={async () => {
+                      if (!currentMVAPeriod || !currentMVAPeriod.start || !currentMVAPeriod.end) {
+                        Alert.alert('Feil', 'Ingen MVA-periode funnet');
+                        return;
+                      }
                       try {
                         const response = await api.saveMVAReport({
-                          ...mvaCalculationResult,
+                          startDate: currentMVAPeriod.start,
+                          endDate: currentMVAPeriod.end,
                           submit: false
                         });
                         if (response.success) {
@@ -1137,8 +1142,9 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                           setShowMVAResultModal(false);
                           loadMVAData();
                         }
-                      } catch (error) {
-                        Alert.alert('Feil', 'Kunne ikke lagre MVA-rapport');
+                      } catch (error: any) {
+                        const errorMsg = error.response?.data?.error || 'Kunne ikke lagre MVA-rapport';
+                        Alert.alert('Feil', errorMsg);
                       }
                     }}
                   >
@@ -1149,9 +1155,14 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                   <TouchableOpacity
                     style={styles.mvaSubmitButton}
                     onPress={async () => {
+                      if (!currentMVAPeriod || !currentMVAPeriod.start || !currentMVAPeriod.end) {
+                        Alert.alert('Feil', 'Ingen MVA-periode funnet');
+                        return;
+                      }
                       try {
                         const response = await api.saveMVAReport({
-                          ...mvaCalculationResult,
+                          startDate: currentMVAPeriod.start,
+                          endDate: currentMVAPeriod.end,
                           submit: true
                         });
                         if (response.success) {
@@ -1159,8 +1170,9 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                           setShowMVAResultModal(false);
                           loadMVAData();
                         }
-                      } catch (error) {
-                        Alert.alert('Feil', 'Kunne ikke lagre MVA-rapport');
+                      } catch (error: any) {
+                        const errorMsg = error.response?.data?.error || 'Kunne ikke lagre MVA-rapport';
+                        Alert.alert('Feil', errorMsg);
                       }
                     }}
                   >
