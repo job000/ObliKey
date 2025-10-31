@@ -7,7 +7,7 @@ const doorAccessRuleController = new DoorAccessRuleController();
 
 // All routes require authentication and admin/trainer role
 router.use(authenticate);
-router.use(authorize('ADMIN', 'TRAINER'));
+router.use(authorize('ADMIN', 'SUPER_ADMIN', 'TRAINER'));
 
 // Access Rule Management
 router.get('/doors/:doorId/access-rules', (req, res) =>

@@ -21,7 +21,7 @@ router.get('/doors/:doorId/status', (req, res) =>
   accessController.getDoorStatus(req, res)
 );
 
-router.get('/doors/:doorId/stats', authorize('ADMIN', 'TRAINER'), (req, res) =>
+router.get('/doors/:doorId/stats', authorize('ADMIN', 'SUPER_ADMIN', 'TRAINER'), (req, res) =>
   accessController.getDoorAccessStats(req, res)
 );
 
@@ -31,23 +31,23 @@ router.get('/my-accessible-doors', (req, res) =>
 );
 
 // Access Logs (Admin/Trainer only)
-router.get('/access-logs', authorize('ADMIN', 'TRAINER'), (req, res) =>
+router.get('/access-logs', authorize('ADMIN', 'SUPER_ADMIN', 'TRAINER'), (req, res) =>
   accessController.queryAccessLogs(req, res)
 );
 
-router.get('/access-logs/stats', authorize('ADMIN', 'TRAINER'), (req, res) =>
+router.get('/access-logs/stats', authorize('ADMIN', 'SUPER_ADMIN', 'TRAINER'), (req, res) =>
   accessController.getAccessLogStats(req, res)
 );
 
-router.get('/access-logs/suspicious', authorize('ADMIN'), (req, res) =>
+router.get('/access-logs/suspicious', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) =>
   accessController.getSuspiciousActivity(req, res)
 );
 
-router.get('/access-logs/export', authorize('ADMIN'), (req, res) =>
+router.get('/access-logs/export', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) =>
   accessController.exportAccessLogs(req, res)
 );
 
-router.get('/access-logs/:logId', authorize('ADMIN', 'TRAINER'), (req, res) =>
+router.get('/access-logs/:logId', authorize('ADMIN', 'SUPER_ADMIN', 'TRAINER'), (req, res) =>
   accessController.getAccessLogDetails(req, res)
 );
 
