@@ -195,9 +195,11 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
 
     try {
       const response = await api.createTransaction({
-        ...newTransaction,
+        type: newTransaction.type,
+        accountId: newTransaction.accountId,
+        description: newTransaction.description,
         amount: parseFloat(newTransaction.amount),
-        date: new Date().toISOString(),
+        transactionDate: new Date().toISOString(),
       });
 
       if (response.success) {
@@ -212,7 +214,8 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
         loadTransactions();
       }
     } catch (error: any) {
-      Alert.alert('Feil', error.response?.data?.message || 'Kunne ikke opprette transaksjon');
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Kunne ikke opprette transaksjon';
+      Alert.alert('Feil', errorMsg);
     }
   };
 
