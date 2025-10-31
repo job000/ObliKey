@@ -10,9 +10,13 @@ import {
   SafeAreaView,
   Modal,
   TextInput,
-  Platform
+  Platform,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { api } from '../services/api';
 import { Membership, MembershipPayment, MembershipCheckIn } from '../types/membership';
 
@@ -25,8 +29,10 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
   const [actionModalVisible, setActionModalVisible] = useState(false);
   const [selectedAction, setSelectedAction] = useState<string>('');
   const [reason, setReason] = useState('');
-  const [freezeStartDate, setFreezeStartDate] = useState('');
-  const [freezeEndDate, setFreezeEndDate] = useState('');
+  const [freezeStartDate, setFreezeStartDate] = useState(new Date());
+  const [freezeEndDate, setFreezeEndDate] = useState(new Date());
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -55,9 +61,31 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
   const handleAction = (action: string) => {
     setSelectedAction(action);
     setReason('');
-    setFreezeStartDate('');
-    setFreezeEndDate('');
+    setFreezeStartDate(new Date());
+    setFreezeEndDate(new Date());
     setActionModalVisible(true);
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('nb-NO', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  const handleStartDateChange = (event: any, selectedDate?: Date) => {
+    setShowStartDatePicker(false);
+    if (selectedDate) {
+      setFreezeStartDate(selectedDate);
+    }
+  };
+
+  const handleEndDateChange = (event: any, selectedDate?: Date) => {
+    setShowEndDatePicker(false);
+    if (selectedDate) {
+      setFreezeEndDate(selectedDate);
+    }
   };
 
   const performAction = async () => {
@@ -92,8 +120,8 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
             return;
           }
           await api.freezeMembership(membership.id, {
-            startDate: freezeStartDate,
-            endDate: freezeEndDate,
+            startDate: freezeStartDate.toISOString(),
+            endDate: freezeEndDate.toISOString(),
             reason: reason
           });
           message = 'Medlemskap fryst';
@@ -417,8 +445,14 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
         animationType="slide"
         onRequestClose={() => setActionModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={{ flex: 1, justifyContent: 'center' }}
+            >
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
               {selectedAction === 'suspend' && 'Suspender medlemskap'}
               {selectedAction === 'reactivate' && 'Reaktiver medlemskap'}
@@ -445,23 +479,41 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
             {selectedAction === 'freeze' && (
               <>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Startdato (YYYY-MM-DD) *</Text>
-                  <TextInput
-                    style={styles.textInput}
+                  <Text style={styles.inputLabel}>Startdato *</Text>
+                  <TouchableOpacity
+                    style={styles.dateButton}
+                    onPress={() => setShowStartDatePicker(true)}
+                  >
+                    <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
+                    <Text style={styles.dateButtonText}>{formatDate(freezeStartDate)}</Text>
+                  </TouchableOpacity>
+                </View>
+                {showStartDatePicker && (
+                  <DateTimePicker
                     value={freezeStartDate}
-                    onChangeText={setFreezeStartDate}
-                    placeholder="2024-01-01"
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={handleStartDateChange}
                   />
-                </View>
+                )}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Sluttdato (YYYY-MM-DD) *</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={freezeEndDate}
-                    onChangeText={setFreezeEndDate}
-                    placeholder="2024-02-01"
-                  />
+                  <Text style={styles.inputLabel}>Sluttdato *</Text>
+                  <TouchableOpacity
+                    style={styles.dateButton}
+                    onPress={() => setShowEndDatePicker(true)}
+                  >
+                    <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
+                    <Text style={styles.dateButtonText}>{formatDate(freezeEndDate)}</Text>
+                  </TouchableOpacity>
                 </View>
+                {showEndDatePicker && (
+                  <DateTimePicker
+                    value={freezeEndDate}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={handleEndDateChange}
+                  />
+                )}
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Grunn (valgfri)</Text>
                   <TextInput
@@ -490,8 +542,11 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
                 <Text style={styles.confirmButtonText}>Bekreft</Text>
               </TouchableOpacity>
             </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </SafeAreaView>
   );
@@ -735,6 +790,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: '#111827',
+    flex: 1,
   },
 });
 
