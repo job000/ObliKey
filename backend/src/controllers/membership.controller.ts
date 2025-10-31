@@ -372,9 +372,21 @@ export class MembershipController {
       const userId = req.user!.userId;
       const userRole = req.user!.role;
       const { id } = req.params;
-      const { reason } = req.body;
+      const { reason, startDate, endDate } = req.body;
 
       const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+
+      // Validate dates
+      if (!startDate || !endDate) {
+        throw new AppError('Startdato og sluttdato er påkrevd', 400);
+      }
+
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      if (end <= start) {
+        throw new AppError('Sluttdato må være senere enn startdato', 400);
+      }
 
       const membership = await prisma.membership.findFirst({
         where: {
@@ -422,11 +434,13 @@ export class MembershipController {
         }
       });
 
-      // Create freeze record
+      // Create freeze record with dates
       await prisma.membershipFreeze.create({
         data: {
           membershipId: id,
           userId: membership.userId,
+          startDate: start,
+          endDate: end,
           reason
         }
       });
@@ -477,24 +491,6 @@ export class MembershipController {
           status: 'ACTIVE'
         }
       });
-
-      // Close current freeze record
-      const openFreeze = await prisma.membershipFreeze.findFirst({
-        where: {
-          membershipId: id,
-          endDate: null
-        },
-        orderBy: {
-          createdAt: 'desc'
-        }
-      });
-
-      if (openFreeze) {
-        await prisma.membershipFreeze.update({
-          where: { id: openFreeze.id },
-          data: { endDate: new Date() }
-        });
-      }
 
       res.json({
         success: true,

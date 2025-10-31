@@ -95,7 +95,8 @@
       "Bash(/Users/johnmichaelobligar/Documents/Development/ObliKey/backend/test-analytics.sh)",
       "Read(//Users/johnmichaelobligar/**)",
       "Bash(git config:*)",
-      "Bash(pbcopy)"
+      "Bash(pbcopy)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjZmIyMDc5Mi0yYjRhLTRjZjgtODcwMC1kN2QyOTU3NWE5NGQiLCJ0ZW5hbnRJZCI6ImI3OWYxYzJhLTdiMTItNGRlZC1hNmY4LWRmMzI3ZDRiZjEwYyIsImVtYWlsIjoidGVzdGFkbWluQG9ibGlrZXkubm8iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NjE5NDQ5MzQsImV4cCI6MTc2MjU0OTczNH0.TsS8H9xchEdrxyoXfupClYKtaXLx3wvnswAuZFLm1Wk\")"
     ],
     "deny": [],
     "ask": []

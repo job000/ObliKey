@@ -47,6 +47,9 @@ import accessRoutes from './routes/access.routes';
 import doorAccessRuleRoutes from './routes/door-access-rule.routes';
 import superAdminRoutes from './routes/super-admin.routes';
 
+// Import scheduler
+import { initScheduler } from './services/scheduler.service';
+
 dotenv.config();
 
 const app: Application = express();
@@ -135,6 +138,9 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API: http://localhost:${PORT}/api`);
   console.log(`🔗 Network: http://10.0.0.57:${PORT}/api`);
+
+  // Initialize scheduled tasks
+  initScheduler();
 });
 
 export default app;
