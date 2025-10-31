@@ -29,7 +29,7 @@ interface Account {
 interface Transaction {
   id: string;
   amount: number;
-  type: 'DEBIT' | 'CREDIT';
+  type: 'INCOME' | 'EXPENSE';
   description: string;
   date: string;
   accountId: string;
@@ -85,7 +85,7 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
     amount: '',
     description: '',
     accountId: '',
-    type: 'DEBIT' as 'DEBIT' | 'CREDIT',
+    type: 'EXPENSE' as 'INCOME' | 'EXPENSE',
   });
 
   // Suppliers data
@@ -209,7 +209,7 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
           amount: '',
           description: '',
           accountId: '',
-          type: 'DEBIT',
+          type: 'EXPENSE',
         });
         loadTransactions();
       }
@@ -514,12 +514,12 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
               <View style={styles.transactionIcon}>
                 <Ionicons
                   name={
-                    transaction.type === 'CREDIT'
+                    transaction.type === 'INCOME'
                       ? 'arrow-down-circle'
                       : 'arrow-up-circle'
                   }
                   size={24}
-                  color={transaction.type === 'CREDIT' ? '#10B981' : '#EF4444'}
+                  color={transaction.type === 'INCOME' ? '#10B981' : '#EF4444'}
                 />
               </View>
               <View style={styles.transactionInfo}>
@@ -534,12 +534,12 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                 <Text
                   style={[
                     styles.transactionAmount,
-                    transaction.type === 'CREDIT'
+                    transaction.type === 'INCOME'
                       ? styles.creditAmount
                       : styles.debitAmount,
                   ]}
                 >
-                  {`${transaction.type === 'CREDIT' ? '+' : '-'}${formatCurrency(Math.abs(transaction.amount))}`}
+                  {`${transaction.type === 'INCOME' ? '+' : '-'}${formatCurrency(Math.abs(transaction.amount))}`}
                 </Text>
               </View>
             </View>
@@ -643,16 +643,24 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                         onPress: async () => {
                           // Recalculate MVA for this period to allow editing
                           try {
+                            // Calculate correct dates based on current period
+                            if (!currentMVAPeriod) {
+                              Alert.alert('Feil', 'Ingen gjeldende MVA-periode funnet');
+                              return;
+                            }
+
                             const response = await api.calculateMVAPeriod({
-                              startDate: new Date(report.year, parseInt(report.period) - 1, 1).toISOString(),
-                              endDate: new Date(report.year, parseInt(report.period), 0).toISOString(),
+                              startDate: currentMVAPeriod.start,
+                              endDate: currentMVAPeriod.end,
                             });
                             if (response.success) {
                               setMvaCalculationResult(response.data);
                               setShowMVAResultModal(true);
                             }
                           } catch (error: any) {
-                            Alert.alert('Feil', error.response?.data?.error || 'Kunne ikke laste MVA-rapport');
+                            const errorMsg = error.response?.data?.error || 'Kunne ikke laste MVA-rapport';
+                            console.error('MVA load error:', error);
+                            Alert.alert('Feil', errorMsg);
                           }
                         }
                       }
@@ -943,37 +951,37 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                 <TouchableOpacity
                   style={[
                     styles.typeButton,
-                    newTransaction.type === 'DEBIT' && styles.typeButtonSelected,
+                    newTransaction.type === 'EXPENSE' && styles.typeButtonSelected,
                   ]}
                   onPress={() =>
-                    setNewTransaction({ ...newTransaction, type: 'DEBIT' })
+                    setNewTransaction({ ...newTransaction, type: 'EXPENSE' })
                   }
                 >
                   <Text
                     style={[
                       styles.typeButtonText,
-                      newTransaction.type === 'DEBIT' && styles.typeButtonTextSelected,
+                      newTransaction.type === 'EXPENSE' && styles.typeButtonTextSelected,
                     ]}
                   >
-                    Debet
+                    Utgift
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
                     styles.typeButton,
-                    newTransaction.type === 'CREDIT' && styles.typeButtonSelected,
+                    newTransaction.type === 'INCOME' && styles.typeButtonSelected,
                   ]}
                   onPress={() =>
-                    setNewTransaction({ ...newTransaction, type: 'CREDIT' })
+                    setNewTransaction({ ...newTransaction, type: 'INCOME' })
                   }
                 >
                   <Text
                     style={[
                       styles.typeButtonText,
-                      newTransaction.type === 'CREDIT' && styles.typeButtonTextSelected,
+                      newTransaction.type === 'INCOME' && styles.typeButtonTextSelected,
                     ]}
                   >
-                    Kredit
+                    Inntekt
                   </Text>
                 </TouchableOpacity>
               </View>
