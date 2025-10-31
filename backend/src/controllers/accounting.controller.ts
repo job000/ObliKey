@@ -63,83 +63,56 @@ export class AccountingController {
   async getDashboard(req: AuthRequest, res: Response): Promise<void> {
     try {
       const tenantId = req.tenantId!;
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-      // Get current month stats
+      // Get all-time stats for better overview
       const [
         totalIncome,
         totalExpenses,
-        unpaidInvoices,
-        overdueInvoices,
-        recentTransactions
+        accountsReceivable,
+        accountsPayable
       ] = await Promise.all([
-        // Total income this month
+        // Total income (all time)
         prisma.transaction.aggregate({
           where: {
             tenantId,
-            type: 'INCOME',
-            transactionDate: { gte: firstDayOfMonth, lte: lastDayOfMonth }
+            type: 'INCOME'
           },
           _sum: { amount: true }
         }),
-        // Total expenses this month
+        // Total expenses (all time)
         prisma.transaction.aggregate({
           where: {
             tenantId,
-            type: 'EXPENSE',
-            transactionDate: { gte: firstDayOfMonth, lte: lastDayOfMonth }
+            type: 'EXPENSE'
           },
           _sum: { amount: true }
         }),
-        // Unpaid invoices
+        // Accounts Receivable (unpaid invoices)
         prisma.invoice.aggregate({
           where: {
             tenantId,
             status: { in: ['SENT', 'OVERDUE'] }
           },
-          _sum: { total: true },
-          _count: true
+          _sum: { total: true }
         }),
-        // Overdue invoices
-        prisma.invoice.findMany({
+        // Accounts Payable (unpaid supplier invoices)
+        prisma.invoice.aggregate({
           where: {
             tenantId,
-            status: 'OVERDUE',
-            dueDate: { lt: now }
+            status: { in: ['SENT', 'OVERDUE'] }
           },
-          select: {
-            id: true,
-            invoiceNumber: true,
-            customerName: true,
-            total: true,
-            dueDate: true
-          },
-          take: 5
-        }),
-        // Recent transactions
-        prisma.transaction.findMany({
-          where: { tenantId },
-          include: {
-            account: true,
-            supplier: true
-          },
-          orderBy: { transactionDate: 'desc' },
-          take: 10
+          _sum: { total: true }
         })
       ]);
 
       res.json({
         success: true,
         data: {
-          income: totalIncome._sum.amount || 0,
-          expenses: totalExpenses._sum.amount || 0,
-          profit: (totalIncome._sum.amount || 0) - (totalExpenses._sum.amount || 0),
-          unpaidInvoicesTotal: unpaidInvoices._sum.total || 0,
-          unpaidInvoicesCount: unpaidInvoices._count,
-          overdueInvoices,
-          recentTransactions
+          totalIncome: totalIncome._sum.amount || 0,
+          totalExpenses: totalExpenses._sum.amount || 0,
+          netProfit: (totalIncome._sum.amount || 0) - (totalExpenses._sum.amount || 0),
+          accountsReceivable: accountsReceivable._sum.total || 0,
+          accountsPayable: accountsPayable._sum.total || 0
         }
       });
     } catch (error) {
@@ -281,7 +254,27 @@ export class AccountingController {
         orderBy: { accountNumber: 'asc' }
       });
 
-      res.json({ success: true, data: accounts });
+      // Calculate balance for each account based on transactions
+      const accountsWithBalance = await Promise.all(
+        accounts.map(async (account) => {
+          const transactions = await prisma.transaction.aggregate({
+            where: {
+              accountId: account.id
+            },
+            _sum: {
+              amount: true
+            }
+          });
+
+          return {
+            ...account,
+            balance: transactions._sum.amount || 0,
+            currency: 'NOK'
+          };
+        })
+      );
+
+      res.json({ success: true, data: accountsWithBalance });
     } catch (error) {
       console.error('Get accounts error:', error);
       res.status(500).json({ success: false, error: 'Kunne ikke hente kontoplan' });
