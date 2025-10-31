@@ -12,6 +12,8 @@ import {
   Modal,
   SafeAreaView,
   Switch,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
@@ -74,6 +76,15 @@ export default function DoorManagementScreen({ navigation }: any) {
   const onRefresh = () => {
     setRefreshing(true);
     fetchDoors();
+  };
+
+  const formatMacAddress = (text: string): string => {
+    // Remove all non-hex characters
+    const cleaned = text.replace(/[^0-9A-Fa-f]/g, '');
+
+    // Split into pairs and join with colons
+    const pairs = cleaned.match(/.{1,2}/g) || [];
+    return pairs.slice(0, 6).join(':').toUpperCase();
   };
 
   const handleOpenModal = (door?: Door) => {
@@ -390,7 +401,10 @@ export default function DoorManagementScreen({ navigation }: any) {
           transparent={true}
           onRequestClose={handleCloseModal}
         >
-          <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{editMode ? 'Rediger dør' : 'Legg til dør'}</Text>
@@ -427,7 +441,9 @@ export default function DoorManagementScreen({ navigation }: any) {
                     value={formData.ipAddress}
                     onChangeText={(text) => setFormData({ ...formData, ipAddress: text })}
                     placeholder="f.eks. 192.168.1.100"
-                    keyboardType="numeric"
+                    keyboardType="default"
+                    autoCapitalize="none"
+                    autoCorrect={false}
                   />
                 </View>
 
@@ -447,9 +463,10 @@ export default function DoorManagementScreen({ navigation }: any) {
                   <TextInput
                     style={styles.input}
                     value={formData.macAddress}
-                    onChangeText={(text) => setFormData({ ...formData, macAddress: text })}
+                    onChangeText={(text) => setFormData({ ...formData, macAddress: formatMacAddress(text) })}
                     placeholder="f.eks. 00:1A:2B:3C:4D:5E"
-                    autoCapitalize="none"
+                    autoCapitalize="characters"
+                    maxLength={17}
                   />
                 </View>
 
@@ -483,7 +500,7 @@ export default function DoorManagementScreen({ navigation }: any) {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </SafeAreaView>
