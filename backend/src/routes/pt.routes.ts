@@ -13,7 +13,8 @@ router.post('/sessions', (req, res) => ptController.createSession(req, res)); //
 router.get('/sessions', (req, res) => ptController.getSessions(req, res));
 router.get('/sessions/:id', (req, res) => ptController.getSessionById(req, res)); // Get single session by ID
 router.patch('/sessions/:id', (req, res) => ptController.updateSession(req, res)); // All authenticated users can update (with permission checks in controller)
-router.delete('/sessions/:id', authorize('TRAINER', 'ADMIN'), (req, res) => ptController.deleteSession(req, res)); // Only trainers and admins can delete
+router.patch('/sessions/:id/status', (req, res) => ptController.updateSessionStatus(req, res)); // Update session status
+router.delete('/sessions/:id', authorize('TRAINER', 'ADMIN', 'SUPER_ADMIN'), (req, res) => ptController.deleteSession(req, res)); // Only trainers, admins, and super admins can delete
 router.post('/sessions/:id/cancel', (req, res) => ptController.cancelSession(req, res)); // All users can cancel (with permission checks in controller)
 router.post('/sessions/:id/approve', (req, res) => ptController.approveSession(req, res)); // Customers can approve sessions
 router.post('/sessions/:id/reject', (req, res) => ptController.rejectSession(req, res)); // Customers can reject sessions
@@ -30,7 +31,7 @@ router.get('/programs/:id', (req, res) => ptController.getProgramById(req, res))
 router.patch('/programs/:id', authorize('TRAINER', 'ADMIN'), (req, res) => ptController.updateProgram(req, res));
 
 // Client and trainer management
-router.get('/clients', authorize('TRAINER', 'ADMIN'), (req, res) => ptController.getClients(req, res));
+router.get('/clients', authorize('TRAINER', 'ADMIN', 'SUPER_ADMIN'), (req, res) => ptController.getClients(req, res));
 router.get('/trainers', (req, res) => ptController.getTrainers(req, res)); // All authenticated users can view trainers
 
 // PT Credits routes

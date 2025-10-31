@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Notification, NotificationPreferences, NotificationContextType } from '../types/notification';
-import { api, storage } from '../services/api';
+import { api } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
@@ -21,16 +22,26 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const [unreadCount, setUnreadCount] = useState(0);
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user } = useAuth();
 
   const fetchNotifications = async (unreadOnly: boolean = false) => {
+    // Don't fetch if not authenticated
+    if (!user) {
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await api.getNotifications(unreadOnly);
       if (response.success) {
         setNotifications(response.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Silently handle 403 errors
+      if (error?.response?.status === 403) {
+        console.log('[Notifications] Access denied');
+        return;
+      }
       console.error('Failed to fetch notifications:', error);
     } finally {
       setLoading(false);
@@ -38,12 +49,23 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   };
 
   const fetchUnreadCount = async () => {
+    // Don't fetch if not authenticated
+    if (!user) {
+      return;
+    }
+
     try {
       const response = await api.getNotificationsUnreadCount();
       if (response.success) {
         setUnreadCount(response.data?.count || 0);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Silently handle 403 errors (likely due to deactivated tenant)
+      if (error?.response?.status === 403) {
+        console.log('[Notifications] Tenant is deactivated or access denied');
+        setUnreadCount(0);
+        return;
+      }
       console.error('Failed to fetch unread count:', error);
     }
   };
@@ -87,12 +109,22 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   };
 
   const fetchPreferences = async () => {
+    // Don't fetch if not authenticated
+    if (!user) {
+      return;
+    }
+
     try {
       const response = await api.getNotificationPreferences();
       if (response.success) {
         setPreferences(response.data);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Silently handle 403 errors
+      if (error?.response?.status === 403) {
+        console.log('[Notifications] Access denied to preferences');
+        return;
+      }
       console.error('Failed to fetch notification preferences:', error);
     }
   };
@@ -109,18 +141,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }
   };
 
-  // Check authentication status on mount
+  // Only fetch notifications when user is logged in
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = await storage.getItem('token');
-      setIsAuthenticated(!!token);
-    };
-    checkAuth();
-  }, []);
-
-  // Only fetch notifications when authenticated
-  useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!user) {
+      // Reset state when user logs out
+      setNotifications([]);
+      setUnreadCount(0);
+      setPreferences(null);
+      return;
+    }
 
     fetchNotifications();
     fetchUnreadCount();
@@ -131,7 +160,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated]);
+  }, [user]);
 
   const value: NotificationContextType = {
     notifications,

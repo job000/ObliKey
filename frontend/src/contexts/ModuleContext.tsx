@@ -36,15 +36,15 @@ interface ModuleProviderProps {
 
 export const ModuleProvider: React.FC<ModuleProviderProps> = ({ children }) => {
   const [modules, setModules] = useState<ModuleStatus>({
-    shop: true, // Default to true for backwards compatibility
-    classes: true,
-    accounting: true,
-    chat: true,
-    landingPage: true,
-    membership: true,
-    doorAccess: true, // Enabled for testing
+    shop: false, // Start with false, will be fetched from API
+    classes: false,
+    accounting: false,
+    chat: false,
+    landingPage: false,
+    membership: false,
+    doorAccess: false,
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start as loading
   const { user } = useAuth();
   const { selectedTenant } = useTenant();
 
@@ -70,7 +70,7 @@ export const ModuleProvider: React.FC<ModuleProviderProps> = ({ children }) => {
       const response = await api.getAllModuleStatuses();
 
       if (response.success && response.data) {
-        setModules({
+        const newModules = {
           shop: response.data.shop === true,
           classes: response.data.classes === true,
           accounting: response.data.accounting === true,
@@ -78,11 +78,30 @@ export const ModuleProvider: React.FC<ModuleProviderProps> = ({ children }) => {
           landingPage: response.data.landingPage === true,
           membership: response.data.membership === true,
           doorAccess: response.data.doorAccess === true,
+        };
+        console.log('[Modules] Loaded tenant features:', newModules);
+        setModules(newModules);
+      } else {
+        console.log('[Modules] Invalid response from API, disabling all modules');
+        setModules({
+          shop: false,
+          classes: false,
+          accounting: false,
+          chat: false,
+          landingPage: false,
+          membership: false,
+          doorAccess: false,
         });
       }
-    } catch (error) {
-      // On error, default to all disabled for safety
-      console.log('[Modules] Failed to fetch module statuses, disabling all modules:', error);
+    } catch (error: any) {
+      // Check if it's a 403 error (likely deactivated tenant)
+      if (error?.response?.status === 403) {
+        console.log('[Modules] Tenant is deactivated or access denied, disabling all modules');
+      } else {
+        // On other errors, log and default to all disabled for safety
+        console.error('[Modules] Failed to fetch module statuses, disabling all modules:', error);
+      }
+
       setModules({
         shop: false,
         classes: false,

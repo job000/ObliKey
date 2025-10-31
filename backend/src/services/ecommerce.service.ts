@@ -382,10 +382,19 @@ export async function createReview(data: CreateReviewDTO) {
     throw new Error('Du har allerede anmeldt dette produktet');
   }
 
+  // Get tenant settings to check if auto-approve is enabled
+  const settings = await prisma.tenantSettings.findUnique({
+    where: { tenantId: data.tenantId },
+    select: { autoApproveReviews: true }
+  });
+
+  // Auto-approve if enabled, otherwise set to PENDING for moderation
+  const status = settings?.autoApproveReviews ? 'APPROVED' : 'PENDING';
+
   return prisma.productReview.create({
     data: {
       ...data,
-      status: 'PENDING' // Requires moderation
+      status
     },
     include: {
       user: {
@@ -397,6 +406,35 @@ export async function createReview(data: CreateReviewDTO) {
         }
       }
     }
+  });
+}
+
+export async function getAllReviews(tenantId: string, status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FLAGGED') {
+  return prisma.productReview.findMany({
+    where: {
+      product: {
+        tenantId
+      },
+      ...(status ? { status } : {})
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          avatar: true
+        }
+      },
+      product: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
   });
 }
 

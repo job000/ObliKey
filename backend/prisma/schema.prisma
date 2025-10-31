@@ -98,6 +98,7 @@ model TenantSettings {
   ecommerceEnabled    Boolean  @default(false)
   membershipEnabled   Boolean  @default(false)
   doorAccessEnabled   Boolean  @default(false)
+  autoApproveReviews  Boolean  @default(false)
   companyVatNumber    String?
   companyRegNumber    String?
   createdAt           DateTime @default(now())

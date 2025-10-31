@@ -64,6 +64,7 @@ router.post('/reviews', (req, res) => ecommerceController.createReview(req, res)
 router.post('/reviews/:reviewId/vote', (req, res) => ecommerceController.voteReviewHelpful(req, res));
 
 // Admin only endpoints
+router.get('/reviews', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => ecommerceController.getAllReviews(req, res));
 router.patch('/reviews/:reviewId/moderate', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => ecommerceController.moderateReview(req, res));
 
 // ============================================

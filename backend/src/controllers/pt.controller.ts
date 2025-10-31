@@ -188,7 +188,7 @@ export class PTController {
               firstName: true,
               lastName: true,
               email: true,
-              phoneNumber: true,
+              phone: true,
               avatar: true
             }
           },
@@ -198,7 +198,7 @@ export class PTController {
               firstName: true,
               lastName: true,
               email: true,
-              phoneNumber: true,
+              phone: true,
               avatar: true
             }
           },
@@ -216,7 +216,7 @@ export class PTController {
               clientFeedback: true,
               rating: true,
               completedAt: true,
-              exercises: true
+              sessionExercises: true
             }
           }
         }
@@ -250,7 +250,7 @@ export class PTController {
   async updateSession(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { title, description, startTime, endTime, location, status, notes, price } = req.body;
+      const { title, description, startTime, endTime, location, status, notes, price, customerId, trainerId } = req.body;
       const tenantId = req.tenantId!;
       const userRole = req.user!.role;
 
@@ -264,28 +264,61 @@ export class PTController {
         return;
       }
 
-      // Only admin, trainer (if they own it), or customer (if they are the customer) can update
-      if (
-        userRole !== 'ADMIN' &&
-        userRole !== 'SUPER_ADMIN' &&
-        (userRole === 'TRAINER' && existingSession.trainerId !== req.user!.userId) &&
-        (userRole === 'CUSTOMER' && existingSession.customerId !== req.user!.userId)
-      ) {
+      // Only admin, super admin, trainer who owns it, or customer who owns it can update
+      const userId = req.user!.userId;
+      const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+      const isOwnTrainer = userRole === 'TRAINER' && existingSession.trainerId === userId;
+      const isOwnCustomer = userRole === 'CUSTOMER' && existingSession.customerId === userId;
+
+      if (!isAdmin && !isOwnTrainer && !isOwnCustomer) {
         res.status(403).json({ success: false, error: 'Ingen tilgang til å oppdatere denne økten' });
         return;
       }
 
+      // Prepare update data
+      const updateData: any = {
+        ...(title && { title }),
+        ...(description !== undefined && { description }),
+        ...(startTime && { startTime: new Date(startTime) }),
+        ...(endTime && { endTime: new Date(endTime) }),
+        ...(location !== undefined && { location }),
+        ...(status && { status }),
+        ...(notes !== undefined && { notes }),
+        ...(price !== undefined && { price: Number(price) })
+      };
+
+      // Only admins can change customer and trainer
+      if (isAdmin) {
+        if (customerId) {
+          updateData.customerId = customerId;
+        }
+        if (trainerId) {
+          updateData.trainerId = trainerId;
+        }
+      }
+
       const session = await prisma.pTSession.update({
         where: { id },
-        data: {
-          ...(title && { title }),
-          ...(description !== undefined && { description }),
-          ...(startTime && { startTime: new Date(startTime) }),
-          ...(endTime && { endTime: new Date(endTime) }),
-          ...(location !== undefined && { location }),
-          ...(status && { status }),
-          ...(notes !== undefined && { notes }),
-          ...(price !== undefined && { price: Number(price) })
+        data: updateData,
+        include: {
+          trainer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              avatar: true
+            }
+          },
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              avatar: true
+            }
+          }
         }
       });
 
@@ -296,6 +329,75 @@ export class PTController {
       });
     } catch (error) {
       res.status(500).json({ success: false, error: 'Kunne ikke oppdatere PT-økt' });
+    }
+  }
+
+  // Update PT session status
+  async updateSessionStatus(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const tenantId = req.tenantId!;
+      const userRole = req.user!.role;
+      const userId = req.user!.userId;
+
+      if (!status) {
+        res.status(400).json({ success: false, error: 'Status er påkrevd' });
+        return;
+      }
+
+      // Check if session exists
+      const existingSession = await prisma.pTSession.findFirst({
+        where: { id, tenantId }
+      });
+
+      if (!existingSession) {
+        res.status(404).json({ success: false, error: 'PT-økt ikke funnet' });
+        return;
+      }
+
+      // Only admin, super admin, trainer who owns it can update status
+      const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+      const isOwnTrainer = userRole === 'TRAINER' && existingSession.trainerId === userId;
+
+      if (!isAdmin && !isOwnTrainer) {
+        res.status(403).json({ success: false, error: 'Ingen tilgang til å oppdatere status' });
+        return;
+      }
+
+      const session = await prisma.pTSession.update({
+        where: { id },
+        data: { status },
+        include: {
+          trainer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              avatar: true
+            }
+          },
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              avatar: true
+            }
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        data: session,
+        message: 'Status oppdatert'
+      });
+    } catch (error) {
+      console.error('Update session status error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke oppdatere status' });
     }
   }
 
@@ -316,12 +418,11 @@ export class PTController {
         return;
       }
 
-      // Only admin or the trainer who created it can delete
-      if (
-        userRole !== 'ADMIN' &&
-        userRole !== 'SUPER_ADMIN' &&
-        session.trainerId !== userId
-      ) {
+      // Only admin, super admin, or the trainer who created it can delete
+      const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+      const isOwnTrainer = userRole === 'TRAINER' && session.trainerId === userId;
+
+      if (!isAdmin && !isOwnTrainer) {
         res.status(403).json({ success: false, error: 'Ingen tilgang til å slette denne økten' });
         return;
       }
@@ -1176,12 +1277,12 @@ export class PTController {
   // Approve PT session (customer accepts)
   async approveSession(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { sessionId } = req.params;
+      const { id } = req.params;
       const tenantId = req.tenantId!;
       const userId = req.user!.userId;
 
       const session = await prisma.pTSession.findFirst({
-        where: { id: sessionId, tenantId },
+        where: { id, tenantId },
         include: {
           trainer: true,
           customer: true
@@ -1204,7 +1305,7 @@ export class PTController {
       }
 
       const updatedSession = await prisma.pTSession.update({
-        where: { id: sessionId },
+        where: { id },
         data: { status: 'SCHEDULED' },
         include: {
           trainer: true,
@@ -1218,7 +1319,7 @@ export class PTController {
         tenantId,
         trainerId: session.trainerId,
         customerId: session.customerId,
-        ptSessionId: sessionId,
+        ptSessionId: id,
         type: 'PT_SESSION_APPROVED',
         trainerTitle: 'PT-økt godkjent',
         trainerMessage: `${session.customer.firstName} ${session.customer.lastName} har godtatt PT-økten "${session.title}"`,
@@ -1240,13 +1341,13 @@ export class PTController {
   // Reject PT session (customer rejects)
   async rejectSession(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { sessionId } = req.params;
+      const { id } = req.params;
       const { rejectionReason } = req.body;
       const tenantId = req.tenantId!;
       const userId = req.user!.userId;
 
       const session = await prisma.pTSession.findFirst({
-        where: { id: sessionId, tenantId },
+        where: { id, tenantId },
         include: {
           trainer: true,
           customer: true
@@ -1269,7 +1370,7 @@ export class PTController {
       }
 
       const updatedSession = await prisma.pTSession.update({
-        where: { id: sessionId },
+        where: { id },
         data: {
           status: 'REJECTED',
           rejectionReason: rejectionReason || 'Ingen grunn oppgitt'
@@ -1286,7 +1387,7 @@ export class PTController {
         tenantId,
         trainerId: session.trainerId,
         customerId: session.customerId,
-        ptSessionId: sessionId,
+        ptSessionId: id,
         type: 'PT_SESSION_REJECTED',
         trainerTitle: 'PT-økt avslått',
         trainerMessage: `${session.customer.firstName} ${session.customer.lastName} har avslått PT-økten "${session.title}". Grunn: ${rejectionReason || 'Ingen grunn oppgitt'}`,
@@ -1308,13 +1409,13 @@ export class PTController {
   // Cancel PT session
   async cancelSession(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { sessionId } = req.params;
+      const { id } = req.params;
       const { cancellationReason } = req.body;
       const tenantId = req.tenantId!;
       const userId = req.user!.userId;
 
       const session = await prisma.pTSession.findFirst({
-        where: { id: sessionId, tenantId },
+        where: { id, tenantId },
         include: {
           trainer: true,
           customer: true
@@ -1326,8 +1427,13 @@ export class PTController {
         return;
       }
 
-      // Both trainer and customer can cancel
-      if (session.trainerId !== userId && session.customerId !== userId) {
+      // Only admin, super admin, trainer who owns it, or customer who owns it can cancel
+      const userRole = req.user!.role;
+      const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+      const isOwnTrainer = userRole === 'TRAINER' && session.trainerId === userId;
+      const isOwnCustomer = session.customerId === userId;
+
+      if (!isAdmin && !isOwnTrainer && !isOwnCustomer) {
         res.status(403).json({ success: false, error: 'Du har ikke tilgang til å avlyse denne økten' });
         return;
       }
@@ -1338,7 +1444,7 @@ export class PTController {
       }
 
       const updatedSession = await prisma.pTSession.update({
-        where: { id: sessionId },
+        where: { id },
         data: {
           status: 'CANCELLED',
           cancellationReason: cancellationReason || 'Ingen grunn oppgitt'
@@ -1361,7 +1467,7 @@ export class PTController {
         tenantId,
         trainerId: session.trainerId,
         customerId: session.customerId,
-        ptSessionId: sessionId,
+        ptSessionId: id,
         type: 'PT_SESSION_CANCELLED',
         trainerTitle: 'PT-økt avlyst',
         trainerMessage: `PT-økten "${session.title}" har blitt avlyst av ${cancelledBy}. Grunn: ${cancellationReason || 'Ingen grunn oppgitt'}`,

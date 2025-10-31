@@ -64,7 +64,7 @@ export const authenticate = async (
     const viewingAsTenantHeader = req.headers['x-viewing-as-tenant'] as string | undefined;
 
     if (viewingAsTenantHeader && user.role === 'SUPER_ADMIN') {
-      // Validate that the tenant exists and is active
+      // Validate that the tenant exists
       const viewingAsTenant = await prisma.tenant.findUnique({
         where: { id: viewingAsTenantHeader },
         select: { id: true, active: true }
@@ -75,13 +75,15 @@ export const authenticate = async (
         return;
       }
 
-      if (!viewingAsTenant.active) {
-        res.status(403).json({ success: false, error: 'Denne tenanten er deaktivert' });
-        return;
-      }
+      // SUPER_ADMIN can view deactivated tenants (but with limited actions)
+      // Don't block them from viewing, just set the tenantId
+      // Individual endpoints can decide if they want to block deactivated tenants
 
       // Override tenantId with the viewing-as tenant
       req.tenantId = viewingAsTenantHeader;
+
+      // Store tenant active status for endpoints that need it
+      req.viewingAsTenantActive = viewingAsTenant.active;
     } else {
       // Use user's own tenant ID
       req.tenantId = decoded.tenantId;

@@ -145,11 +145,34 @@ export default function ProductsManagementScreen({ navigation }: any) {
         if (response.success) {
           // Add images if there are new ones
           if (selectedImages.length > 0) {
-            for (const imageUrl of selectedImages) {
-              if (!imageUrl.startsWith('http')) {
-                // This is a new image (local URI), skip for now
-                // In production, you'd upload to a service like Cloudinary or S3
+            for (let i = 0; i < selectedImages.length; i++) {
+              const imageUrl = selectedImages[i];
+
+              if (imageUrl.startsWith('http')) {
+                // This is already uploaded, skip
                 continue;
+              }
+
+              // Upload local image to backend
+              try {
+                const formData = new FormData();
+                formData.append('image', {
+                  uri: imageUrl,
+                  type: 'image/jpeg',
+                  name: `product_${Date.now()}_${i}.jpg`,
+                } as any);
+
+                const uploadResponse = await api.uploadImage(formData);
+                if (uploadResponse.success && uploadResponse.data?.url) {
+                  // Add uploaded image to product
+                  await api.addProductImage(selectedProduct.id, {
+                    url: uploadResponse.data.url,
+                    sortOrder: i,
+                    isPrimary: i === 0,
+                  });
+                }
+              } catch (err) {
+                console.error('Failed to upload/add image:', err);
               }
             }
           }
@@ -164,6 +187,7 @@ export default function ProductsManagementScreen({ navigation }: any) {
           if (selectedImages.length > 0) {
             for (let i = 0; i < selectedImages.length; i++) {
               const imageUrl = selectedImages[i];
+
               if (imageUrl.startsWith('http')) {
                 // This is a URL, add it directly
                 try {
@@ -175,8 +199,29 @@ export default function ProductsManagementScreen({ navigation }: any) {
                 } catch (err) {
                   console.error('Failed to add image:', err);
                 }
+              } else {
+                // Upload local image first
+                try {
+                  const formData = new FormData();
+                  formData.append('image', {
+                    uri: imageUrl,
+                    type: 'image/jpeg',
+                    name: `product_${Date.now()}_${i}.jpg`,
+                  } as any);
+
+                  const uploadResponse = await api.uploadImage(formData);
+                  if (uploadResponse.success && uploadResponse.data?.url) {
+                    // Add uploaded image to product
+                    await api.addProductImage(response.data.id, {
+                      url: uploadResponse.data.url,
+                      sortOrder: i,
+                      isPrimary: i === 0,
+                    });
+                  }
+                } catch (err) {
+                  console.error('Failed to upload/add image:', err);
+                }
               }
-              // For local URIs, you'd need to upload to cloud storage first
             }
           }
 

@@ -26,6 +26,7 @@ import PTSessionsScreen from '../screens/PTSessionsScreen';
 import ClassesScreen from '../screens/ClassesScreen';
 import ChatScreen from '../screens/ChatScreen';
 import PurchaseHistoryScreen from '../screens/PurchaseHistoryScreen';
+import OrderDetailsScreen from '../screens/OrderDetailsScreen';
 import TrainingProgramsScreen from '../screens/TrainingProgramsScreen';
 import SupportScreen from '../screens/SupportScreen';
 
@@ -33,6 +34,7 @@ import SupportScreen from '../screens/SupportScreen';
 import AdminScreen from '../screens/AdminScreen';
 import ProductsManagementScreen from '../screens/ProductsManagementScreen';
 import OrdersManagementScreen from '../screens/OrdersManagementScreen';
+import ReviewManagementScreen from '../screens/ReviewManagementScreen';
 import UserManagementScreen from '../screens/UserManagementScreen';
 import ClassManagementScreen from '../screens/ClassManagementScreen';
 import PTManagementScreen from '../screens/PTManagementScreen';
@@ -292,11 +294,13 @@ export default function AppNavigator() {
             <Stack.Screen name="Wishlist" component={WishlistScreen} />
             <Stack.Screen name="Classes" component={ClassesScreen} />
             <Stack.Screen name="PurchaseHistory" component={PurchaseHistoryScreen} />
+            <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
             <Stack.Screen name="TrainingPrograms" component={TrainingProgramsScreen} />
             <Stack.Screen name="Support" component={SupportScreen} />
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="ProductsManagement" component={ProductsManagementScreen} />
             <Stack.Screen name="OrdersManagement" component={OrdersManagementScreen} />
+            <Stack.Screen name="ReviewManagement" component={ReviewManagementScreen} />
             <Stack.Screen name="UserManagement" component={UserManagementScreen} />
             <Stack.Screen name="ClassManagement" component={ClassManagementScreen} />
             <Stack.Screen name="PTManagement" component={PTManagementScreen} />

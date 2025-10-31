@@ -52,6 +52,16 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         backoffMultiplier.current = 1; // Reset backoff on success
       }
     } catch (error: any) {
+      // Silently handle 403 errors (likely due to deactivated tenant)
+      if (error?.response?.status === 403) {
+        if (__DEV__) {
+          console.log('[Chat] Tenant is deactivated or access denied');
+        }
+        setUnreadCount(0);
+        consecutiveErrors.current = 0; // Don't count 403 as consecutive errors
+        return;
+      }
+
       consecutiveErrors.current++;
 
       // Check if it's a 429 error (Too Many Requests)

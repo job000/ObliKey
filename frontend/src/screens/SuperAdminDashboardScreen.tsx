@@ -94,18 +94,34 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
         sortOrder: 'desc',
       };
 
+      console.log('[SuperAdminDashboard] Fetching tenants...');
       const response = await api.getAllTenants(params);
+      console.log('[SuperAdminDashboard] Response:', response);
+
+      // Handle different response structures
+      const tenantsArray = response.data || response.tenants || response || [];
+      console.log('[SuperAdminDashboard] Tenants array:', tenantsArray);
+
+      if (!Array.isArray(tenantsArray)) {
+        console.error('[SuperAdminDashboard] Response is not an array:', tenantsArray);
+        setError('Invalid response format from server');
+        return;
+      }
 
       // Fetch user count for each tenant
       const tenantsWithStats = await Promise.all(
-        (response.data || []).map(async (tenant: any) => {
+        tenantsArray.map(async (tenant: any) => {
           try {
             const usersResponse = await api.getTenantUsers(tenant.id);
             return {
               ...tenant,
               userCount: usersResponse.data?.length || 0,
             };
-          } catch (err) {
+          } catch (err: any) {
+            // Silently fail for 403 errors (deactivated tenants)
+            if (err?.response?.status === 403) {
+              console.log(`[SuperAdminDashboard] Access denied for tenant ${tenant.id} users`);
+            }
             return {
               ...tenant,
               userCount: 0,
@@ -114,10 +130,12 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
         })
       );
 
+      console.log('[SuperAdminDashboard] Tenants with stats:', tenantsWithStats.length);
       setAllTenants(tenantsWithStats);
     } catch (err: any) {
-      console.error('Failed to load tenants:', err);
-      setError(err.response?.data?.message || 'Failed to load tenants');
+      console.error('[SuperAdminDashboard] Failed to load tenants:', err);
+      console.error('[SuperAdminDashboard] Error response:', err.response);
+      setError(err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to load tenants');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -583,9 +601,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   headerWeb: {
     marginBottom: 32,
+    paddingHorizontal: 32,
+    paddingTop: 24,
   },
   createTenantButton: {
     flexDirection: 'row',
@@ -622,6 +644,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginBottom: 24,
+    marginHorizontal: 16,
     flexDirection: isWeb ? 'row' : 'column',
     justifyContent: 'space-between',
     alignItems: isWeb ? 'center' : 'flex-start',
@@ -682,11 +705,13 @@ const styles = StyleSheet.create({
   filtersContainer: {
     gap: 12,
     marginBottom: 24,
+    paddingHorizontal: 16,
   },
   filtersContainerWeb: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 32,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -741,6 +766,7 @@ const styles = StyleSheet.create({
   errorContainer: {
     padding: 48,
     alignItems: 'center',
+    marginHorizontal: 16,
   },
   errorText: {
     marginTop: 16,

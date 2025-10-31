@@ -66,24 +66,39 @@ export default function CreatePTSessionScreen({ navigation }: any) {
   const loadUsers = async () => {
     try {
       setLoadingUsers(true);
+      console.log('[CreatePTSession] Loading users...');
+      console.log('[CreatePTSession] User role:', user?.role);
+      console.log('[CreatePTSession] isAdmin:', isAdmin);
 
       // Load customers (for trainers and admins)
       if (isAdmin || user?.role === 'TRAINER') {
+        console.log('[CreatePTSession] Loading customers...');
         const clientsResponse = await api.getPTClients();
+        console.log('[CreatePTSession] Customers response:', clientsResponse);
         if (clientsResponse.success) {
-          setCustomers(clientsResponse.data || []);
+          const customersData = clientsResponse.data || [];
+          console.log('[CreatePTSession] Loaded customers:', customersData.length);
+          setCustomers(customersData);
+        } else {
+          console.log('[CreatePTSession] Failed to load customers:', clientsResponse);
         }
       }
 
       // Load trainers (for customers and admins)
       if (isAdmin || user?.role === 'CUSTOMER') {
+        console.log('[CreatePTSession] Loading trainers...');
         const trainersResponse = await api.getPTTrainers();
+        console.log('[CreatePTSession] Trainers response:', trainersResponse);
         if (trainersResponse.success) {
-          setTrainers(trainersResponse.data || []);
+          const trainersData = trainersResponse.data || [];
+          console.log('[CreatePTSession] Loaded trainers:', trainersData.length);
+          setTrainers(trainersData);
+        } else {
+          console.log('[CreatePTSession] Failed to load trainers:', trainersResponse);
         }
       }
     } catch (error) {
-      console.error('Failed to load users:', error);
+      console.error('[CreatePTSession] Failed to load users:', error);
       Alert.alert('Feil', 'Kunne ikke laste brukere');
     } finally {
       setLoadingUsers(false);

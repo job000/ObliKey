@@ -10,6 +10,8 @@ import {
   Alert,
   Modal,
   TextInput,
+  SafeAreaView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
@@ -100,6 +102,8 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
   // MVA data
   const [mvaReports, setMvaReports] = useState<MVAReport[]>([]);
   const [currentMVAPeriod, setCurrentMVAPeriod] = useState<any>(null);
+  const [showMVAResultModal, setShowMVAResultModal] = useState(false);
+  const [mvaCalculationResult, setMvaCalculationResult] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -261,27 +265,23 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
   };
 
   const handleCalculateMVA = async () => {
-    if (!currentMVAPeriod) {
+    if (!currentMVAPeriod || !currentMVAPeriod.start || !currentMVAPeriod.end) {
       Alert.alert('Feil', 'Ingen MVA-periode funnet');
       return;
     }
 
     try {
       const response = await api.calculateMVAPeriod({
-        year: currentMVAPeriod.year,
-        period: currentMVAPeriod.period,
+        startDate: currentMVAPeriod.start,
+        endDate: currentMVAPeriod.end,
       });
 
       if (response.success) {
-        Alert.alert('Suksess', 'MVA beregnet', [
-          {
-            text: 'OK',
-            onPress: () => loadMVAData(),
-          },
-        ]);
+        setMvaCalculationResult(response.data);
+        setShowMVAResultModal(true);
       }
-    } catch (error) {
-      Alert.alert('Feil', 'Kunne ikke beregne MVA');
+    } catch (error: any) {
+      Alert.alert('Feil', error.response?.data?.error || 'Kunne ikke beregne MVA');
     }
   };
 
@@ -593,26 +593,29 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
 
   if (loading && !refreshing) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <Container>
-        <View style={styles.header}>
-          <Text style={styles.title}>Regnskap</Text>
-          <Text style={styles.subtitle}>
-            Komplett økonomioversikt
-          </Text>
-        </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <Container>
+          <View style={styles.header}>
+            <Text style={styles.title}>Regnskap</Text>
+            <Text style={styles.subtitle}>
+              Komplett økonomioversikt
+            </Text>
+          </View>
 
         {/* Tabs */}
         <ScrollView
@@ -940,11 +943,16 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
@@ -956,7 +964,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   header: {
-    paddingTop: 24,
+    paddingTop: Platform.OS === 'ios' ? 8 : 24,
     paddingBottom: 16,
   },
   title: {

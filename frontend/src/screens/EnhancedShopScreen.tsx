@@ -115,8 +115,6 @@ export default function EnhancedShopScreen({ route }: any) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [rating, setRating] = useState<ProductRating | null>(null);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [newReview, setNewReview] = useState({ rating: 5, title: '', comment: '' });
 
   useEffect(() => {
     loadCategories();
@@ -146,8 +144,14 @@ export default function EnhancedShopScreen({ route }: any) {
       if (response.success) {
         setCategories(response.data);
       }
-    } catch (error) {
-      console.error('Failed to load categories:', error);
+    } catch (error: any) {
+      // Silently handle errors if module is not enabled
+      if (error?.response?.status === 403) {
+        console.log('[EnhancedShop] Categories module not enabled for this tenant');
+      } else {
+        console.error('Failed to load categories:', error);
+      }
+      setCategories([]);
     }
   };
 
@@ -161,8 +165,14 @@ export default function EnhancedShopScreen({ route }: any) {
         categoryId: selectedCategory || undefined,
       });
       setProducts(response.data);
-    } catch (error) {
-      console.error('Failed to load products:', error);
+    } catch (error: any) {
+      // Silently handle errors if module is not enabled
+      if (error?.response?.status === 403) {
+        console.log('[EnhancedShop] Products module not enabled for this tenant');
+      } else {
+        console.error('Failed to load products:', error);
+      }
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -174,8 +184,14 @@ export default function EnhancedShopScreen({ route }: any) {
       if (response.success && response.data) {
         setWishlist(response.data.items || []);
       }
-    } catch (error) {
-      console.error('Failed to load wishlist:', error);
+    } catch (error: any) {
+      // Silently handle errors if module is not enabled
+      if (error?.response?.status === 403) {
+        console.log('[EnhancedShop] Wishlist module not enabled for this tenant');
+      } else {
+        console.error('Failed to load wishlist:', error);
+      }
+      setWishlist([]);
     }
   };
 
@@ -191,16 +207,27 @@ export default function EnhancedShopScreen({ route }: any) {
         const wishlistItem = wishlist.find(item => item.productId === product.id);
         if (wishlistItem) {
           await api.removeFromWishlist(wishlistItem.id);
-          Alert.alert('Suksess', 'Fjernet fra ønskeliste');
+          // Update local state immediately for better UX
+          setWishlist(wishlist.filter(item => item.id !== wishlistItem.id));
         }
       } else {
-        await api.addToWishlist(product.id);
-        Alert.alert('Suksess', 'Lagt til i ønskeliste');
+        const response = await api.addToWishlist(product.id);
+        // Update local state immediately for better UX
+        if (response.success && response.data) {
+          setWishlist([...wishlist, response.data]);
+        }
       }
-      await loadWishlist();
-    } catch (error) {
-      console.error('Failed to toggle wishlist:', error);
-      Alert.alert('Feil', 'Kunne ikke oppdatere ønskeliste');
+    } catch (error: any) {
+      // Silently handle errors if module is not enabled
+      if (error?.response?.status === 403) {
+        console.log('[EnhancedShop] Wishlist module not enabled for this tenant');
+        Alert.alert('Info', 'Ønskeliste-funksjonen er ikke aktivert for denne butikken');
+      } else {
+        console.error('Failed to toggle wishlist:', error);
+        Alert.alert('Feil', 'Kunne ikke oppdatere ønskeliste');
+        // Reload wishlist to sync with server
+        await loadWishlist();
+      }
     }
   };
 
@@ -238,8 +265,13 @@ export default function EnhancedShopScreen({ route }: any) {
           setSelectedVariant(variantsResponse.data[0]);
         }
       }
-    } catch (error) {
-      console.error('Failed to load variants:', error);
+    } catch (error: any) {
+      // Silently handle errors if module is not enabled
+      if (error?.response?.status === 403) {
+        console.log('[EnhancedShop] Variants module not enabled for this tenant');
+      } else {
+        console.error('Failed to load variants:', error);
+      }
       setVariants([]);
     }
 
@@ -250,8 +282,13 @@ export default function EnhancedShopScreen({ route }: any) {
         setReviews(reviewsResponse.data.reviews || []);
         setRating(reviewsResponse.data.rating);
       }
-    } catch (error) {
-      console.error('Failed to load reviews:', error);
+    } catch (error: any) {
+      // Silently handle errors if module is not enabled
+      if (error?.response?.status === 403) {
+        console.log('[EnhancedShop] Reviews module not enabled for this tenant');
+      } else {
+        console.error('Failed to load reviews:', error);
+      }
       setReviews([]);
       setRating(null);
     }
@@ -297,8 +334,14 @@ export default function EnhancedShopScreen({ route }: any) {
 
       Alert.alert('Suksess', `${product.name} lagt til i handlekurven!`);
       closeProductModal();
-    } catch (error) {
-      Alert.alert('Feil', 'Kunne ikke legge til produkt i handlekurven');
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        console.log('[EnhancedShop] Cart module not enabled for this tenant');
+        Alert.alert('Feil', 'Handlekurv-funksjonen er ikke aktivert');
+      } else {
+        console.error('Failed to add to cart:', error);
+        Alert.alert('Feil', 'Kunne ikke legge til produkt i handlekurven');
+      }
     }
   };
 
@@ -322,39 +365,14 @@ export default function EnhancedShopScreen({ route }: any) {
       });
 
       Alert.alert('Suksess', `${product.name} lagt til i handlekurven!`);
-    } catch (error) {
-      Alert.alert('Feil', 'Kunne ikke legge til produkt i handlekurven');
-    }
-  };
-
-  const submitReview = async () => {
-    if (!selectedProduct) return;
-
-    if (!newReview.comment || newReview.comment.trim().length < 10) {
-      Alert.alert('Feil', 'Kommentar må være minst 10 tegn');
-      return;
-    }
-
-    try {
-      await api.createReview({
-        productId: selectedProduct.id,
-        rating: newReview.rating,
-        title: newReview.title,
-        comment: newReview.comment,
-      });
-
-      Alert.alert('Suksess', 'Anmeldelse sendt til godkjenning');
-      setShowReviewModal(false);
-      setNewReview({ rating: 5, title: '', comment: '' });
-
-      // Reload reviews
-      const reviewsResponse = await api.getProductReviews(selectedProduct.id);
-      if (reviewsResponse.success && reviewsResponse.data) {
-        setReviews(reviewsResponse.data.reviews || []);
-        setRating(reviewsResponse.data.rating);
-      }
     } catch (error: any) {
-      Alert.alert('Feil', error.response?.data?.message || 'Kunne ikke opprette anmeldelse');
+      if (error?.response?.status === 403) {
+        console.log('[EnhancedShop] Cart module not enabled for this tenant');
+        Alert.alert('Feil', 'Handlekurv-funksjonen er ikke aktivert');
+      } else {
+        console.error('Failed to quick add to cart:', error);
+        Alert.alert('Feil', 'Kunne ikke legge til produkt i handlekurven');
+      }
     }
   };
 
@@ -827,19 +845,10 @@ export default function EnhancedShopScreen({ route }: any) {
 
                 {/* Reviews Section */}
                 <View style={styles.reviewsSection}>
-                  <View style={styles.reviewsHeader}>
-                    <Text style={styles.reviewsTitle}>Anmeldelser</Text>
-                    <TouchableOpacity
-                      style={styles.writeReviewButton}
-                      onPress={() => setShowReviewModal(true)}
-                    >
-                      <Ionicons name="create-outline" size={20} color="#3B82F6" />
-                      <Text style={styles.writeReviewText}>Skriv anmeldelse</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <Text style={styles.reviewsTitle}>Anmeldelser</Text>
 
                   {reviews.length === 0 ? (
-                    <Text style={styles.noReviewsText}>Ingen anmeldelser ennå. Vær den første!</Text>
+                    <Text style={styles.noReviewsText}>Ingen anmeldelser ennå.</Text>
                   ) : (
                     reviews.map((review) => (
                       <View key={review.id} style={styles.reviewCard}>
@@ -892,64 +901,6 @@ export default function EnhancedShopScreen({ route }: any) {
           </SafeAreaView>
         </Modal>
       )}
-
-      {/* Write Review Modal */}
-      <Modal
-        visible={showReviewModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowReviewModal(false)}
-      >
-        <View style={styles.reviewModalOverlay}>
-          <View style={styles.reviewModalContent}>
-            <View style={styles.reviewModalHeader}>
-              <Text style={styles.reviewModalTitle}>Skriv anmeldelse</Text>
-              <TouchableOpacity onPress={() => setShowReviewModal(false)}>
-                <Ionicons name="close" size={24} color="#111827" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.reviewModalLabel}>Rating:</Text>
-            <View style={styles.ratingSelector}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity
-                  key={star}
-                  onPress={() => setNewReview({ ...newReview, rating: star })}
-                 
-                >
-                  <Ionicons
-                    name={star <= newReview.rating ? 'star' : 'star-outline'}
-                    size={32}
-                    color={star <= newReview.rating ? '#EAB308' : '#D1D5DB'}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.reviewModalLabel}>Tittel (valgfritt):</Text>
-            <TextInput
-              style={styles.reviewInput}
-              placeholder="Tittel på anmeldelsen..."
-              value={newReview.title}
-              onChangeText={(text) => setNewReview({ ...newReview, title: text })}
-            />
-
-            <Text style={styles.reviewModalLabel}>Kommentar:</Text>
-            <TextInput
-              style={[styles.reviewInput, styles.reviewTextArea]}
-              placeholder="Del din erfaring..."
-              value={newReview.comment}
-              onChangeText={(text) => setNewReview({ ...newReview, comment: text })}
-              multiline
-              numberOfLines={4}
-            />
-
-            <TouchableOpacity style={styles.submitReviewButton} onPress={submitReview}>
-              <Text style={styles.submitReviewText}>Send inn anmeldelse</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -1462,25 +1413,11 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 24,
   },
-  reviewsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
   reviewsTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#111827',
-  },
-  writeReviewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  writeReviewText: {
-    color: '#3B82F6',
-    fontSize: 14,
-    fontWeight: '600',
+    marginBottom: 16,
   },
   noReviewsText: {
     fontSize: 14,
@@ -1555,65 +1492,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9CA3AF',
     textAlign: 'center',
-  },
-  // Review Modal Styles
-  reviewModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  reviewModalContent: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 500,
-  },
-  reviewModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  reviewModalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  reviewModalLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  ratingSelector: {
-    flexDirection: 'row',
-    marginBottom: 24,
-  },
-  reviewInput: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  reviewTextArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  submitReviewButton: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  submitReviewText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   starContainer: {},
   starSpacing: {

@@ -81,9 +81,15 @@ class ApiService {
         }
 
         // Add X-Viewing-As-Tenant header for Super Admin tenant switching
-        if (viewingAsTenant) {
+        // BUT exclude super-admin listing endpoints (they need to see all tenants)
+        const isSuperAdminListingEndpoint = config.url?.includes('/super-admin/tenants') &&
+                                           !config.url?.includes('/super-admin/tenants/');
+
+        if (viewingAsTenant && !isSuperAdminListingEndpoint) {
           config.headers['x-viewing-as-tenant'] = viewingAsTenant;
           console.log('  X-Viewing-As-Tenant header set:', viewingAsTenant);
+        } else if (viewingAsTenant && isSuperAdminListingEndpoint) {
+          console.log('  X-Viewing-As-Tenant header SKIPPED for tenant listing endpoint');
         }
 
         return config;
@@ -539,8 +545,12 @@ class ApiService {
     return response.data;
   }
 
+  async getOrder(id: string) {
+    return this.getOrderById(id);
+  }
+
   async updateOrderStatus(id: string, status: string) {
-    const response = await this.axiosInstance.put(`/orders/${id}/status`, { status });
+    const response = await this.axiosInstance.patch(`/orders/${id}/status`, { status });
     return response.data;
   }
 
@@ -808,10 +818,8 @@ class ApiService {
   }
 
   // Upload
-  async uploadImage(file: any) {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await this.axiosInstance.post('/upload', formData, {
+  async uploadImage(formData: FormData) {
+    const response = await this.axiosInstance.post('/upload/single', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -829,12 +837,12 @@ class ApiService {
 
   // Tenant Settings
   async getTenantSettings() {
-    const response = await this.axiosInstance.get('/tenant/settings');
+    const response = await this.axiosInstance.get('/tenant-settings');
     return response.data;
   }
 
   async updateTenantSettings(data: any) {
-    const response = await this.axiosInstance.put('/tenant/settings', data);
+    const response = await this.axiosInstance.patch('/tenant-settings', data);
     return response.data;
   }
 
@@ -978,6 +986,13 @@ class ApiService {
   }
 
   // Product Reviews
+  async getAllReviews(status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FLAGGED') {
+    const response = await this.axiosInstance.get('/ecommerce/reviews', {
+      params: { status }
+    });
+    return response.data;
+  }
+
   async getProductReviews(productId: string, includeAll: boolean = false) {
     const response = await this.axiosInstance.get(`/ecommerce/products/${productId}/reviews`, {
       params: { includeAll }

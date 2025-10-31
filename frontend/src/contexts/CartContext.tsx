@@ -41,17 +41,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [user, token]);
 
   const loadCart = async () => {
+    // Don't load cart if user is not authenticated
+    if (!user || !token) {
+      return;
+    }
+
     try {
       const response = await api.getCart();
       if (response.success && response.data) {
         setItems(response.data.items || []);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Silently handle 403 errors (not authenticated or deactivated tenant)
+      if (error?.response?.status === 403) {
+        console.log('[Cart] Access denied or tenant deactivated');
+        setItems([]);
+        return;
+      }
       console.error('Error loading cart:', error);
     }
   };
 
   const addItem = async (product: any) => {
+    if (!user || !token) {
+      throw new Error('User not authenticated');
+    }
+
     try {
       const productId = product.productId || product.id;
       const existingItem = items.find(item => item.productId === productId);
@@ -61,13 +76,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (response.success) {
         await loadCart();
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        console.log('[Cart] Access denied');
+      }
       console.error('Error adding to cart:', error);
       throw error;
     }
   };
 
   const removeItem = async (productId: string) => {
+    if (!user || !token) {
+      return;
+    }
+
     try {
       // Find the cart item by productId to get its id
       const item = items.find(item => item.productId === productId);
@@ -80,12 +102,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (response.success) {
         setItems(items.filter(item => item.productId !== productId));
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        console.log('[Cart] Access denied');
+        return;
+      }
       console.error('Error removing from cart:', error);
     }
   };
 
   const updateQuantity = async (productId: string, quantity: number) => {
+    if (!user || !token) {
+      return;
+    }
+
     if (quantity < 1) {
       await removeItem(productId);
       return;
@@ -105,18 +135,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
           item.productId === productId ? { ...item, quantity } : item
         ));
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        console.log('[Cart] Access denied');
+        return;
+      }
       console.error('Error updating quantity:', error);
     }
   };
 
   const clearCart = async () => {
+    if (!user || !token) {
+      setItems([]);
+      return;
+    }
+
     try {
       const response = await api.clearCart();
       if (response.success) {
         setItems([]);
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        console.log('[Cart] Access denied');
+        setItems([]);
+        return;
+      }
       console.error('Error clearing cart:', error);
     }
   };

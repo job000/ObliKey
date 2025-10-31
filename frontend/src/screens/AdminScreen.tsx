@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,7 +15,7 @@ import Container from '../components/Container';
 
 export default function AdminScreen({ navigation }: any) {
   const { user } = useAuth();
-  const { modules } = useModules();
+  const { modules, loading } = useModules();
 
   const allMenuItems = [
     {
@@ -23,7 +24,7 @@ export default function AdminScreen({ navigation }: any) {
       color: '#3B82F6',
       screen: 'UserManagement',
       description: 'Administrer brukere og roller',
-      show: true,
+      show: true, // Core feature - always shown
     },
     {
       title: 'Produktadministrasjon',
@@ -31,7 +32,7 @@ export default function AdminScreen({ navigation }: any) {
       color: '#10B981',
       screen: 'ProductsManagement',
       description: 'Administrer produkter og priser',
-      show: true,
+      show: modules.shop,
     },
     {
       title: 'Bestillingsadministrasjon',
@@ -39,7 +40,15 @@ export default function AdminScreen({ navigation }: any) {
       color: '#F59E0B',
       screen: 'OrdersManagement',
       description: 'Håndter bestillinger og levering',
-      show: true,
+      show: modules.shop,
+    },
+    {
+      title: 'Anmeldelsesadministrasjon',
+      icon: 'star',
+      color: '#EAB308',
+      screen: 'ReviewManagement',
+      description: 'Godkjenn og moderer produktanmeldelser',
+      show: modules.shop,
     },
     {
       title: 'Klasseadministrasjon',
@@ -47,7 +56,7 @@ export default function AdminScreen({ navigation }: any) {
       color: '#EC4899',
       screen: 'ClassManagement',
       description: 'Administrer klasser og bookinger',
-      show: true,
+      show: modules.classes,
     },
     {
       title: 'PT-administrasjon',
@@ -55,7 +64,7 @@ export default function AdminScreen({ navigation }: any) {
       color: '#8B5CF6',
       screen: 'PTManagement',
       description: 'Administrer PT-økter og kreditter',
-      show: true,
+      show: true, // Core feature - always shown
     },
     {
       title: 'Medlemskapsstyring',
@@ -63,7 +72,7 @@ export default function AdminScreen({ navigation }: any) {
       color: '#14B8A6',
       screen: 'MembershipManagement',
       description: 'Administrer medlemskap og betalinger',
-      show: true,
+      show: modules.membership,
     },
     {
       title: 'Dørstyring',
@@ -87,7 +96,7 @@ export default function AdminScreen({ navigation }: any) {
       color: '#06B6D4',
       screen: 'Analytics',
       description: 'Se statistikk og rapporter',
-      show: true,
+      show: true, // Core feature - always shown
     },
     {
       title: 'Aktivitetslogger',
@@ -95,7 +104,7 @@ export default function AdminScreen({ navigation }: any) {
       color: '#F97316',
       screen: 'ActivityLogs',
       description: 'Se brukeraktivitet og systemlogger',
-      show: true,
+      show: true, // Core feature - always shown
     },
     {
       title: 'Innstillinger',
@@ -103,11 +112,20 @@ export default function AdminScreen({ navigation }: any) {
       color: '#6B7280',
       screen: 'Settings',
       description: 'System- og tenant-innstillinger',
-      show: true,
+      show: true, // Core feature - always shown
     },
   ];
 
   const menuItems = allMenuItems.filter(item => item.show);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text style={styles.loadingText}>Laster funksjoner...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -183,6 +201,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
   },
   header: {
     paddingTop: 24,

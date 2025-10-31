@@ -206,7 +206,7 @@ export default function CartScreen({ navigation }: any) {
             </Text>
             <TouchableOpacity
               style={styles.shopButton}
-              onPress={() => navigation.navigate('Shop')}
+              onPress={() => navigation.navigate('MainTabs', { screen: 'Shop' })}
             >
               <Ionicons name="storefront-outline" size={20} color="#FFF" style={styles.buttonIcon} />
               <Text style={styles.shopButtonText}>Fortsett å handle</Text>

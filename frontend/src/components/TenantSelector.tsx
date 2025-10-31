@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
   Platform,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -83,6 +84,49 @@ export default function TenantSelector() {
   };
 
   const handleSelectTenant = async (tenant: Tenant | null) => {
+    // Check if tenant is deactivated
+    if (tenant && !tenant.active) {
+      Alert.alert(
+        'Deaktivert Tenant',
+        `Tenanten "${tenant.name}" er deaktivert og kan ikke administreres. Du må først aktivere tenanten før du kan utføre handlinger.\n\nVil du likevel vise denne tenanten?`,
+        [
+          {
+            text: 'Avbryt',
+            style: 'cancel',
+          },
+          {
+            text: 'Aktiver Tenant',
+            onPress: () => {
+              // TODO: Navigate to tenant management to activate
+              setModalVisible(false);
+              Alert.alert(
+                'Aktiver Tenant',
+                'Gå til Tenant Management for å aktivere denne tenanten.',
+                [{ text: 'OK' }]
+              );
+            },
+          },
+          {
+            text: 'Vis Likevel',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await switchTenant(tenant?.id || null);
+                setSelectedTenant(tenant);
+                setModalVisible(false);
+                setSearchQuery('');
+              } catch (error) {
+                console.error('Failed to switch tenant:', error);
+                Alert.alert('Feil', 'Kunne ikke bytte til tenant. Vennligst prøv igjen.');
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    // Normal tenant switch for active tenants or "Alle Tenants"
     try {
       await switchTenant(tenant?.id || null);
       setSelectedTenant(tenant);
@@ -90,6 +134,7 @@ export default function TenantSelector() {
       setSearchQuery('');
     } catch (error) {
       console.error('Failed to switch tenant:', error);
+      Alert.alert('Feil', 'Kunne ikke bytte til tenant. Vennligst prøv igjen.');
     }
   };
 

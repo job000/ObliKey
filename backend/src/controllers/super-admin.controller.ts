@@ -128,9 +128,10 @@ export class SuperAdminController {
         data: tenant,
       });
     } catch (error) {
+      console.error('[updateTenant] Error:', error);
       res.status(400).json({
         success: false,
-        error: 'Failed to update tenant',
+        error: error instanceof Error ? error.message : 'Failed to update tenant',
       });
     }
   }
@@ -144,6 +145,14 @@ export class SuperAdminController {
       const { tenantId } = req.params;
       const { active } = req.body;
 
+      if (typeof active !== 'boolean') {
+        res.status(400).json({
+          success: false,
+          error: 'Active must be a boolean value',
+        });
+        return;
+      }
+
       const tenant = await tenantManagementService.setTenantActive(tenantId, active);
 
       res.json({
@@ -151,9 +160,10 @@ export class SuperAdminController {
         data: tenant,
       });
     } catch (error) {
+      console.error('[setTenantStatus] Error:', error);
       res.status(400).json({
         success: false,
-        error: 'Failed to update tenant status',
+        error: error instanceof Error ? error.message : 'Failed to update tenant status',
       });
     }
   }

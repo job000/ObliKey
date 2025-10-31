@@ -18,6 +18,17 @@ import type { Order } from '../types';
 
 type OrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 
+const toNumber = (v: any) => {
+  if (v == null) return 0;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  // fjern evt. "kr", mellomrom og tusenskilletegn før parse
+  const cleaned = String(v).replace(/\skr|kr|\s| |,/gi, '').trim();
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const formatNOK = (v: any) => `${toNumber(v).toLocaleString('nb-NO')} kr`;
+
 export default function OrdersManagementScreen({ navigation }: any) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,7 +159,7 @@ export default function OrdersManagementScreen({ navigation }: any) {
     const completed = orders.filter((o) => o.status.toUpperCase() === 'DELIVERED').length;
     const totalRevenue = orders
       .filter((o) => o.status.toUpperCase() === 'DELIVERED')
-      .reduce((sum, order) => sum + order.totalAmount, 0);
+      .reduce((sum, order) => sum + order.total, 0);
 
     return { pending, processing, completed, totalRevenue };
   };
@@ -343,7 +354,7 @@ export default function OrdersManagementScreen({ navigation }: any) {
                   <View style={styles.orderDetailRow}>
                     <Ionicons name="cash-outline" size={16} color="#6B7280" />
                     <Text style={styles.orderDetailText}>
-                      {`${order.totalAmount.toLocaleString('nb-NO')} kr`}
+                      {formatNOK(order.total)}
                     </Text>
                   </View>
                 </View>
@@ -387,21 +398,22 @@ export default function OrdersManagementScreen({ navigation }: any) {
               {/* Order Items */}
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Varer</Text>
-                {selectedOrder?.items.map((item, index) => (
+                {(selectedOrder?.items ?? []).map((item, index) => (
                   <View key={index} style={styles.itemRow}>
                     <Text style={styles.itemName}>
-                      {item.product.name} x{item.quantity}
+                      {(item?.productName ?? 'Ukjent produkt')} x{toNumber(item?.quantity)}
                     </Text>
                     <Text style={styles.itemPrice}>
-                      {`${(item.price * item.quantity).toLocaleString('nb-NO')} kr`}
+                      {formatNOK(toNumber(item?.subtotal))}
                     </Text>
                   </View>
                 ))}
+
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>Total:</Text>
-                  <Text style={styles.totalAmount}>
-                    {`${selectedOrder?.totalAmount.toLocaleString('nb-NO')} kr`}
-                  </Text>
+  <Text style={styles.totalAmount}>
+    {formatNOK(selectedOrder?.total)}
+  </Text>
                 </View>
               </View>
 

@@ -321,6 +321,25 @@ export class EcommerceController {
   // PRODUCT REVIEWS
   // ============================================
 
+  async getAllReviews(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+      const status = req.query.status as 'PENDING' | 'APPROVED' | 'REJECTED' | 'FLAGGED' | undefined;
+
+      const reviews = await EcommerceService.getAllReviews(tenantId, status);
+
+      res.json({
+        success: true,
+        data: reviews
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new AppError(error.message, 400);
+      }
+      throw new AppError('Kunne ikke hente anmeldelser', 500);
+    }
+  }
+
   async getProductReviews(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { productId } = req.params;

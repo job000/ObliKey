@@ -27,6 +27,14 @@ export default function SessionDetailScreen({ route, navigation }: any) {
   const [feedbackNotes, setFeedbackNotes] = useState('');
   const [clientFeedback, setClientFeedback] = useState('');
 
+  // Check if user can edit/delete
+  const canEdit = () => {
+    if (!session || !user) return false;
+    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+    const isOwnTrainer = user.role === 'TRAINER' && session.trainerId === user.userId;
+    return isAdmin || isOwnTrainer;
+  };
+
   useEffect(() => {
     loadSession();
   }, [sessionId]);
@@ -45,6 +53,36 @@ export default function SessionDetailScreen({ route, navigation }: any) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = () => {
+    navigation.navigate('EditPTSession', { sessionId: session?.id });
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Slett PT-økt',
+      'Er du sikker på at du vil slette denne økten?',
+      [
+        { text: 'Avbryt', style: 'cancel' },
+        {
+          text: 'Slett',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await api.deletePTSession(sessionId);
+              Alert.alert('Suksess', 'PT-økt slettet');
+              navigation.goBack();
+            } catch (error: any) {
+              Alert.alert('Feil', error.response?.data?.error || 'Kunne ikke slette PT-økt');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const submitFeedback = async () => {
@@ -162,7 +200,18 @@ export default function SessionDetailScreen({ route, navigation }: any) {
               <Ionicons name="arrow-back" size={24} color="#111827" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>PT-økt detaljer</Text>
-            <View style={{ width: 24 }} />
+            {canEdit() ? (
+              <View style={styles.headerActions}>
+                <TouchableOpacity onPress={handleEdit} style={styles.headerButton}>
+                  <Ionicons name="create-outline" size={22} color="#3B82F6" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleDelete} style={styles.headerButton}>
+                  <Ionicons name="trash-outline" size={22} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ width: 24 }} />
+            )}
           </View>
         </Container>
       </View>
@@ -455,6 +504,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#111827',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerButton: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
   },
   loadingContainer: {
     flex: 1,

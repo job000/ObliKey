@@ -4,12 +4,14 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
   Platform,
   SafeAreaView,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -54,6 +56,12 @@ export default function EditPTSessionScreen({ route, navigation }: any) {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+
+  // Dropdown modals
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [showTrainerDropdown, setShowTrainerDropdown] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [trainerSearch, setTrainerSearch] = useState('');
 
   useEffect(() => {
     loadData();
@@ -110,6 +118,25 @@ export default function EditPTSessionScreen({ route, navigation }: any) {
     } finally {
       setLoadingSession(false);
     }
+  };
+
+  // Filter functions
+  const filterCustomers = () => {
+    if (!customerSearch.trim()) return customers;
+    const search = customerSearch.toLowerCase();
+    return customers.filter(customer =>
+      `${customer.firstName} ${customer.lastName}`.toLowerCase().includes(search) ||
+      customer.email?.toLowerCase().includes(search)
+    );
+  };
+
+  const filterTrainers = () => {
+    if (!trainerSearch.trim()) return trainers;
+    const search = trainerSearch.toLowerCase();
+    return trainers.filter(trainer =>
+      `${trainer.firstName} ${trainer.lastName}`.toLowerCase().includes(search) ||
+      trainer.email?.toLowerCase().includes(search)
+    );
   };
 
   // Helper function to close all pickers
@@ -344,22 +371,34 @@ export default function EditPTSessionScreen({ route, navigation }: any) {
             <Text style={styles.label}>
               Kunde <Text style={styles.required}>*</Text>
             </Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={selectedCustomerId}
-                onValueChange={(value) => setSelectedCustomerId(value)}
-                style={styles.picker}
-              >
-                <Picker.Item label="Velg kunde..." value="" />
-                {customers.map((customer) => (
-                  <Picker.Item
-                    key={customer.id}
-                    label={`${customer.firstName} ${customer.lastName}`}
-                    value={customer.id}
-                  />
-                ))}
-              </Picker>
-            </View>
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => setShowCustomerDropdown(true)}
+            >
+              <View style={styles.dropdownContent}>
+                {selectedCustomerId ? (
+                  <>
+                    <View style={styles.dropdownAvatar}>
+                      <Text style={styles.dropdownAvatarText}>
+                        {customers.find(c => c.id === selectedCustomerId)?.firstName?.charAt(0)}
+                        {customers.find(c => c.id === selectedCustomerId)?.lastName?.charAt(0)}
+                      </Text>
+                    </View>
+                    <View style={styles.dropdownInfo}>
+                      <Text style={styles.dropdownName}>
+                        {customers.find(c => c.id === selectedCustomerId)?.firstName} {customers.find(c => c.id === selectedCustomerId)?.lastName}
+                      </Text>
+                      <Text style={styles.dropdownEmail}>
+                        {customers.find(c => c.id === selectedCustomerId)?.email}
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <Text style={styles.dropdownPlaceholder}>Velg kunde...</Text>
+                )}
+              </View>
+              <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
           </View>
 
           {/* Trainer Selection (Admin only) */}
@@ -368,22 +407,34 @@ export default function EditPTSessionScreen({ route, navigation }: any) {
               <Text style={styles.label}>
                 Trener <Text style={styles.required}>*</Text>
               </Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={selectedTrainerId}
-                  onValueChange={(value) => setSelectedTrainerId(value)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Velg trener..." value="" />
-                  {trainers.map((trainer) => (
-                    <Picker.Item
-                      key={trainer.id}
-                      label={`${trainer.firstName} ${trainer.lastName}`}
-                      value={trainer.id}
-                    />
-                  ))}
-                </Picker>
-              </View>
+              <TouchableOpacity
+                style={styles.dropdownButton}
+                onPress={() => setShowTrainerDropdown(true)}
+              >
+                <View style={styles.dropdownContent}>
+                  {selectedTrainerId ? (
+                    <>
+                      <View style={[styles.dropdownAvatar, styles.dropdownAvatarTrainer]}>
+                        <Text style={styles.dropdownAvatarText}>
+                          {trainers.find(t => t.id === selectedTrainerId)?.firstName?.charAt(0)}
+                          {trainers.find(t => t.id === selectedTrainerId)?.lastName?.charAt(0)}
+                        </Text>
+                      </View>
+                      <View style={styles.dropdownInfo}>
+                        <Text style={styles.dropdownName}>
+                          {trainers.find(t => t.id === selectedTrainerId)?.firstName} {trainers.find(t => t.id === selectedTrainerId)?.lastName}
+                        </Text>
+                        <Text style={styles.dropdownEmail}>
+                          {trainers.find(t => t.id === selectedTrainerId)?.email}
+                        </Text>
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={styles.dropdownPlaceholder}>Velg trener...</Text>
+                  )}
+                </View>
+                <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
             </View>
           )}
 
@@ -578,6 +629,168 @@ export default function EditPTSessionScreen({ route, navigation }: any) {
           }}
         />
       )}
+
+      {/* Customer Dropdown Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showCustomerDropdown}
+        onRequestClose={() => setShowCustomerDropdown(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Velg kunde</Text>
+              <TouchableOpacity onPress={() => setShowCustomerDropdown(false)}>
+                <Ionicons name="close" size={28} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalSearchContainer}>
+              <Ionicons name="search" size={20} color="#9CA3AF" style={styles.modalSearchIcon} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Søk etter kunde..."
+                placeholderTextColor="#9CA3AF"
+                value={customerSearch}
+                onChangeText={setCustomerSearch}
+                autoCapitalize="none"
+              />
+              {customerSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setCustomerSearch('')}>
+                  <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <FlatList
+              data={filterCustomers()}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalPersonItem}
+                  onPress={() => {
+                    setSelectedCustomerId(item.id);
+                    setCustomerSearch('');
+                    setShowCustomerDropdown(false);
+                  }}
+                >
+                  <View style={styles.modalPersonContent}>
+                    <View style={styles.modalAvatarCustomer}>
+                      <Text style={styles.modalAvatarText}>
+                        {item.firstName?.charAt(0)}{item.lastName?.charAt(0)}
+                      </Text>
+                    </View>
+                    <View style={styles.modalPersonInfo}>
+                      <Text style={styles.modalPersonName}>
+                        {item.firstName} {item.lastName}
+                      </Text>
+                      {item.email && (
+                        <Text style={styles.modalPersonEmail}>{item.email}</Text>
+                      )}
+                    </View>
+                  </View>
+                  {selectedCustomerId === item.id && (
+                    <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                  )}
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.modalEmptyContainer}>
+                  <Ionicons name="search-outline" size={48} color="#D1D5DB" />
+                  <Text style={styles.modalEmptyTitle}>
+                    {customerSearch ? 'Ingen treff' : 'Ingen kunder funnet'}
+                  </Text>
+                </View>
+              }
+              ItemSeparatorComponent={() => <View style={styles.modalSeparator} />}
+              contentContainerStyle={styles.modalListContent}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Trainer Dropdown Modal */}
+      {isAdmin && (
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showTrainerDropdown}
+          onRequestClose={() => setShowTrainerDropdown(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Velg trener</Text>
+                <TouchableOpacity onPress={() => setShowTrainerDropdown(false)}>
+                  <Ionicons name="close" size={28} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.modalSearchContainer}>
+                <Ionicons name="search" size={20} color="#9CA3AF" style={styles.modalSearchIcon} />
+                <TextInput
+                  style={styles.modalSearchInput}
+                  placeholder="Søk etter trener..."
+                  placeholderTextColor="#9CA3AF"
+                  value={trainerSearch}
+                  onChangeText={setTrainerSearch}
+                  autoCapitalize="none"
+                />
+                {trainerSearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setTrainerSearch('')}>
+                    <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <FlatList
+                data={filterTrainers()}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.modalPersonItem}
+                    onPress={() => {
+                      setSelectedTrainerId(item.id);
+                      setTrainerSearch('');
+                      setShowTrainerDropdown(false);
+                    }}
+                  >
+                    <View style={styles.modalPersonContent}>
+                      <View style={styles.modalAvatarTrainer}>
+                        <Text style={styles.modalAvatarText}>
+                          {item.firstName?.charAt(0)}{item.lastName?.charAt(0)}
+                        </Text>
+                      </View>
+                      <View style={styles.modalPersonInfo}>
+                        <Text style={styles.modalPersonName}>
+                          {item.firstName} {item.lastName}
+                        </Text>
+                        {item.email && (
+                          <Text style={styles.modalPersonEmail}>{item.email}</Text>
+                        )}
+                      </View>
+                    </View>
+                    {selectedTrainerId === item.id && (
+                      <Ionicons name="checkmark-circle" size={24} color="#3B82F6" />
+                    )}
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <View style={styles.modalEmptyContainer}>
+                    <Ionicons name="search-outline" size={48} color="#D1D5DB" />
+                    <Text style={styles.modalEmptyTitle}>
+                      {trainerSearch ? 'Ingen treff' : 'Ingen trenere funnet'}
+                    </Text>
+                  </View>
+                }
+                ItemSeparatorComponent={() => <View style={styles.modalSeparator} />}
+                contentContainerStyle={styles.modalListContent}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
       </View>
     </SafeAreaView>
   );
@@ -728,5 +941,179 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#EF4444',
+  },
+  // Dropdown styles
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 56,
+  },
+  dropdownContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  dropdownAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#D1FAE5',
+    borderWidth: 2,
+    borderColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dropdownAvatarTrainer: {
+    backgroundColor: '#DBEAFE',
+    borderColor: '#3B82F6',
+  },
+  dropdownAvatarText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    textTransform: 'uppercase',
+  },
+  dropdownInfo: {
+    flex: 1,
+  },
+  dropdownName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  dropdownEmail: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  dropdownPlaceholder: {
+    fontSize: 15,
+    color: '#9CA3AF',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    paddingTop: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  modalSearchIcon: {
+    marginRight: 10,
+  },
+  modalSearchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
+    padding: 0,
+  },
+  modalListContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  modalPersonItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+  },
+  modalPersonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
+  },
+  modalAvatarCustomer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#D1FAE5',
+    borderWidth: 2,
+    borderColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalAvatarTrainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#DBEAFE',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalAvatarText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#374151',
+    textTransform: 'uppercase',
+  },
+  modalPersonInfo: {
+    flex: 1,
+  },
+  modalPersonName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 3,
+  },
+  modalPersonEmail: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  modalSeparator: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  modalEmptyContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalEmptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 16,
   },
 });

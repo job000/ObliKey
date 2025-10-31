@@ -102,7 +102,7 @@ export interface PTSession {
   status: PTSessionStatus;
   notes?: string;
   trainerId?: string;
-  clientId?: string;
+  customerId?: string;
   trainer: {
     id: string;
     firstName: string;

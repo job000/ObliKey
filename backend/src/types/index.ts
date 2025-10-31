@@ -14,6 +14,7 @@ export interface JwtPayload {
 export interface AuthRequest extends Request {
   user?: JwtPayload;
   tenantId?: string;
+  viewingAsTenantActive?: boolean; // For SUPER_ADMIN viewing as tenant
 }
 
 // ============================================

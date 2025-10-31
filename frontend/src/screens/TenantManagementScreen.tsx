@@ -136,11 +136,17 @@ export default function TenantManagementScreen({ navigation }: any) {
           style: tenant.active ? 'destructive' : 'default',
           onPress: async () => {
             try {
-              await api.updateTenant(tenant.id, { active: !tenant.active });
+              // Use the more specific setTenantStatus method
+              await api.setTenantStatus(tenant.id, !tenant.active);
               Alert.alert('Suksess', `Tenant ${action}t vellykket`);
               loadData(); // Reload the list
             } catch (err: any) {
-              Alert.alert('Feil', err.response?.data?.error || `Kunne ikke ${action} tenant`);
+              console.error(`Failed to ${action} tenant:`, err);
+              const errorMessage = err.response?.data?.error ||
+                                   err.response?.data?.message ||
+                                   err.message ||
+                                   `Kunne ikke ${action} tenant`;
+              Alert.alert('Feil', errorMessage);
             }
           },
         },

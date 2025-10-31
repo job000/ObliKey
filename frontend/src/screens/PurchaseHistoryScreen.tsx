@@ -206,9 +206,11 @@ export default function PurchaseHistoryScreen({ navigation }: any) {
             </View>
           ) : (
             filteredOrders.map((order) => (
-              <View
+              <TouchableOpacity
                 key={order.id}
                 style={styles.orderCard}
+                onPress={() => navigation.navigate('OrderDetails', { orderId: order.id })}
+                activeOpacity={0.7}
               >
                 <View style={styles.orderHeader}>
                   <View style={styles.orderInfo}>
@@ -263,7 +265,7 @@ export default function PurchaseHistoryScreen({ navigation }: any) {
                   <Text style={styles.viewDetailsText}>Se detaljer</Text>
                   <Ionicons name="chevron-forward" size={20} color="#3B82F6" />
                 </View>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </View>

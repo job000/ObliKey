@@ -14,11 +14,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../contexts/AuthContext';
+import { useModules } from '../contexts/ModuleContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
 
 export default function ProfileScreen({ navigation }: any) {
   const { user, logout, updateUser } = useAuth();
+  const { modules } = useModules();
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -341,38 +343,44 @@ export default function ProfileScreen({ navigation }: any) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Handlinger</Text>
             <View style={styles.actionsCard}>
-              <TouchableOpacity
-                style={styles.actionItem}
-                onPress={() => navigation.navigate('PurchaseHistory')}
-              >
-                <View style={styles.actionIcon}>
-                  <Ionicons name="receipt-outline" size={24} color="#3B82F6" />
-                </View>
-                <Text style={styles.actionText}>Kjøpshistorikk</Text>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
+              {modules.shop && (
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={() => navigation.navigate('PurchaseHistory')}
+                >
+                  <View style={styles.actionIcon}>
+                    <Ionicons name="receipt-outline" size={24} color="#3B82F6" />
+                  </View>
+                  <Text style={styles.actionText}>Kjøpshistorikk</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
 
-              <TouchableOpacity
-                style={styles.actionItem}
-                onPress={() => navigation.navigate('Classes', { filter: 'my' })}
-              >
-                <View style={styles.actionIcon}>
-                  <Ionicons name="calendar-outline" size={24} color="#EC4899" />
-                </View>
-                <Text style={styles.actionText}>Mine bookinger</Text>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
+              {modules.classes && (
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={() => navigation.navigate('Classes', { filter: 'my' })}
+                >
+                  <View style={styles.actionIcon}>
+                    <Ionicons name="calendar-outline" size={24} color="#EC4899" />
+                  </View>
+                  <Text style={styles.actionText}>Mine bookinger</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
 
-              <TouchableOpacity
-                style={styles.actionItem}
-                onPress={() => navigation.navigate('Chat')}
-              >
-                <View style={styles.actionIcon}>
-                  <Ionicons name="chatbubbles-outline" size={24} color="#8B5CF6" />
-                </View>
-                <Text style={styles.actionText}>Chat</Text>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
+              {modules.chat && (
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={() => navigation.navigate('Chat')}
+                >
+                  <View style={styles.actionIcon}>
+                    <Ionicons name="chatbubbles-outline" size={24} color="#8B5CF6" />
+                  </View>
+                  <Text style={styles.actionText}>Chat</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={styles.actionItem}
