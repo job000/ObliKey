@@ -462,28 +462,29 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
           </View>
         ) : (
           accounts.map((account) => (
-          <View key={account.id} style={styles.accountCard}>
-            <View style={styles.accountHeader}>
-              <View style={styles.accountIconContainer}>
-                <Ionicons name="card" size={24} color="#3B82F6" />
-              </View>
-              <View style={styles.accountInfo}>
-                <Text style={styles.accountName}>{account.name}</Text>
-                <Text style={styles.accountType}>{account.type}</Text>
-              </View>
-              <View style={styles.accountBalanceContainer}>
-                <Text
-                  style={[
-                    styles.accountBalance,
-                    account.balance < 0 && styles.negativeBalance,
-                  ]}
-                >
-                  {formatCurrency(account.balance, account.currency)}
-                </Text>
+            <View key={account.id} style={styles.accountCard}>
+              <View style={styles.accountHeader}>
+                <View style={styles.accountIconContainer}>
+                  <Ionicons name="card" size={24} color="#3B82F6" />
+                </View>
+                <View style={styles.accountInfo}>
+                  <Text style={styles.accountName}>{account.name}</Text>
+                  <Text style={styles.accountType}>{account.type}</Text>
+                </View>
+                <View style={styles.accountBalanceContainer}>
+                  <Text
+                    style={[
+                      styles.accountBalance,
+                      account.balance < 0 && styles.negativeBalance,
+                    ]}
+                  >
+                    {formatCurrency(account.balance, account.currency)}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
-        ))}
+          ))
+        )}
       </View>
     );
   };
