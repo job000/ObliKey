@@ -453,95 +453,101 @@ const MembershipDetailScreen = ({ route, navigation }: any) => {
             >
               <TouchableWithoutFeedback onPress={() => {}}>
                 <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {selectedAction === 'suspend' && 'Suspender medlemskap'}
-              {selectedAction === 'reactivate' && 'Reaktiver medlemskap'}
-              {selectedAction === 'blacklist' && 'Svarteliste medlem'}
-              {selectedAction === 'freeze' && 'Frys medlemskap'}
-              {selectedAction === 'unfreeze' && 'Ufrys medlemskap'}
-              {selectedAction === 'cancel' && 'Kanseller medlemskap'}
-            </Text>
+                  <Text style={styles.modalTitle}>
+                    {selectedAction === 'suspend' && 'Suspender medlemskap'}
+                    {selectedAction === 'reactivate' && 'Reaktiver medlemskap'}
+                    {selectedAction === 'blacklist' && 'Svarteliste medlem'}
+                    {selectedAction === 'freeze' && 'Frys medlemskap'}
+                    {selectedAction === 'unfreeze' && 'Ufrys medlemskap'}
+                    {selectedAction === 'cancel' && 'Kanseller medlemskap'}
+                  </Text>
 
-            {(selectedAction === 'suspend' || selectedAction === 'blacklist' || selectedAction === 'cancel') && (
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Grunn *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={reason}
-                  onChangeText={setReason}
-                  placeholder="Oppgi grunn"
-                  multiline
-                  numberOfLines={3}
-                />
-              </View>
-            )}
-
-            {selectedAction === 'freeze' && (
-              <>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Startdato *</Text>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => setShowStartDatePicker(true)}
+                  <ScrollView
+                    style={styles.modalScrollView}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
                   >
-                    <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
-                    <Text style={styles.dateButtonText}>{formatDate(freezeStartDate)}</Text>
-                  </TouchableOpacity>
-                </View>
-                {showStartDatePicker && (
-                  <DateTimePicker
-                    value={freezeStartDate}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={handleStartDateChange}
-                  />
-                )}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Sluttdato *</Text>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => setShowEndDatePicker(true)}
-                  >
-                    <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
-                    <Text style={styles.dateButtonText}>{formatDate(freezeEndDate)}</Text>
-                  </TouchableOpacity>
-                </View>
-                {showEndDatePicker && (
-                  <DateTimePicker
-                    value={freezeEndDate}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={handleEndDateChange}
-                  />
-                )}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Grunn (valgfri)</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={reason}
-                    onChangeText={setReason}
-                    placeholder="Oppgi grunn"
-                    multiline
-                    numberOfLines={2}
-                  />
-                </View>
-              </>
-            )}
+                    {(selectedAction === 'suspend' || selectedAction === 'blacklist' || selectedAction === 'cancel') && (
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Grunn *</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          value={reason}
+                          onChangeText={setReason}
+                          placeholder="Oppgi grunn"
+                          multiline
+                          numberOfLines={3}
+                        />
+                      </View>
+                    )}
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setActionModalVisible(false)}
-              >
-                <Text style={styles.cancelButtonText}>Avbryt</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={performAction}
-              >
-                <Text style={styles.confirmButtonText}>Bekreft</Text>
-              </TouchableOpacity>
-            </View>
+                    {selectedAction === 'freeze' && (
+                      <>
+                        <View style={styles.inputGroup}>
+                          <Text style={styles.inputLabel}>Startdato *</Text>
+                          <TouchableOpacity
+                            style={styles.dateButton}
+                            onPress={() => setShowStartDatePicker(true)}
+                          >
+                            <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
+                            <Text style={styles.dateButtonText}>{formatDate(freezeStartDate)}</Text>
+                          </TouchableOpacity>
+                        </View>
+                        {showStartDatePicker && (
+                          <DateTimePicker
+                            value={freezeStartDate}
+                            mode="date"
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            onChange={handleStartDateChange}
+                          />
+                        )}
+                        <View style={styles.inputGroup}>
+                          <Text style={styles.inputLabel}>Sluttdato *</Text>
+                          <TouchableOpacity
+                            style={styles.dateButton}
+                            onPress={() => setShowEndDatePicker(true)}
+                          >
+                            <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
+                            <Text style={styles.dateButtonText}>{formatDate(freezeEndDate)}</Text>
+                          </TouchableOpacity>
+                        </View>
+                        {showEndDatePicker && (
+                          <DateTimePicker
+                            value={freezeEndDate}
+                            mode="date"
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            onChange={handleEndDateChange}
+                          />
+                        )}
+                        <View style={styles.inputGroup}>
+                          <Text style={styles.inputLabel}>Grunn (valgfri)</Text>
+                          <TextInput
+                            style={styles.textInput}
+                            value={reason}
+                            onChangeText={setReason}
+                            placeholder="Oppgi grunn"
+                            multiline
+                            numberOfLines={2}
+                          />
+                        </View>
+                      </>
+                    )}
+                  </ScrollView>
+
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity
+                      style={[styles.modalButton, styles.cancelButton]}
+                      onPress={() => setActionModalVisible(false)}
+                    >
+                      <Text style={styles.cancelButtonText}>Avbryt</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modalButton, styles.confirmButton]}
+                      onPress={performAction}
+                    >
+                      <Text style={styles.confirmButtonText}>Bekreft</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
@@ -746,6 +752,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     marginBottom: 20,
+  },
+  modalScrollView: {
+    maxHeight: 400,
   },
   inputGroup: {
     marginBottom: 16,
