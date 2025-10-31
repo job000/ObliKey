@@ -51,6 +51,13 @@ export class CartController {
           id: item.id,
           productId: item.productId,
           quantity: item.quantity,
+          // Flatten key properties to item level for frontend compatibility
+          price: product?.price || 0,
+          name: product?.name || '',
+          type: product?.type || '',
+          currency: product?.currency || 'NOK',
+          image: product?.images.find(img => img.isPrimary)?.url || product?.images[0]?.url || null,
+          // Keep nested product object for backward compatibility
           product: product ? {
             id: product.id,
             name: product.name,
