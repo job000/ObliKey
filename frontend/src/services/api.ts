@@ -877,7 +877,7 @@ class ApiService {
   }
 
   async updateUserRole(userId: string, role: string) {
-    const response = await this.axiosInstance.put(`/users/${userId}/role`, { role });
+    const response = await this.axiosInstance.patch(`/users/${userId}/role`, { role });
     return response.data;
   }
 

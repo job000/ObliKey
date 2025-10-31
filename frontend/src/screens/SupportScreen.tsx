@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useModules } from '../contexts/ModuleContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
 
@@ -90,6 +91,7 @@ const SUPPORT_CATEGORIES = [
 
 export default function SupportScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { modules } = useModules();
   const [activeTab, setActiveTab] = useState<'faq' | 'contact'>('faq');
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -313,18 +315,20 @@ export default function SupportScreen({ navigation }: any) {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Hvordan vil du kontakte oss?</Text>
 
-                <TouchableOpacity style={styles.contactMethod} onPress={handleContactSupport}>
-                  <View style={styles.contactMethodIcon}>
-                    <Ionicons name="chatbubbles" size={24} color="#3B82F6" />
-                  </View>
-                  <View style={styles.contactMethodContent}>
-                    <Text style={styles.contactMethodTitle}>Chat med support</Text>
-                    <Text style={styles.contactMethodDescription}>
-                      Få rask hjelp via chat
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                </TouchableOpacity>
+                {modules.chat && (
+                  <TouchableOpacity style={styles.contactMethod} onPress={handleContactSupport}>
+                    <View style={styles.contactMethodIcon}>
+                      <Ionicons name="chatbubbles" size={24} color="#3B82F6" />
+                    </View>
+                    <View style={styles.contactMethodContent}>
+                      <Text style={styles.contactMethodTitle}>Chat med support</Text>
+                      <Text style={styles.contactMethodDescription}>
+                        Få rask hjelp via chat
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+                )}
 
                 <TouchableOpacity style={styles.contactMethod} onPress={handleEmailSupport}>
                   <View style={styles.contactMethodIcon}>
