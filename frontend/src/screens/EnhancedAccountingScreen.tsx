@@ -12,6 +12,7 @@ import {
   TextInput,
   SafeAreaView,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
@@ -91,6 +92,7 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
   // Suppliers data
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<string | null>(null);
   const [newSupplier, setNewSupplier] = useState({
     name: '',
     email: '',
@@ -227,21 +229,40 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
     }
 
     try {
-      const response = await api.createSupplier(newSupplier);
-      if (response.success) {
-        Alert.alert('Suksess', 'Leverandør opprettet');
-        setShowSupplierModal(false);
-        setNewSupplier({
-          name: '',
-          email: '',
-          phone: '',
-          organizationNumber: '',
-          address: '',
-        });
-        loadSuppliers();
+      if (editingSupplier) {
+        // Update existing supplier
+        const response = await api.updateSupplier(editingSupplier, newSupplier);
+        if (response.success) {
+          Alert.alert('Suksess', 'Leverandør oppdatert');
+          setShowSupplierModal(false);
+          setEditingSupplier(null);
+          setNewSupplier({
+            name: '',
+            email: '',
+            phone: '',
+            organizationNumber: '',
+            address: '',
+          });
+          loadSuppliers();
+        }
+      } else {
+        // Create new supplier
+        const response = await api.createSupplier(newSupplier);
+        if (response.success) {
+          Alert.alert('Suksess', 'Leverandør opprettet');
+          setShowSupplierModal(false);
+          setNewSupplier({
+            name: '',
+            email: '',
+            phone: '',
+            organizationNumber: '',
+            address: '',
+          });
+          loadSuppliers();
+        }
       }
     } catch (error: any) {
-      Alert.alert('Feil', error.response?.data?.message || 'Kunne ikke opprette leverandør');
+      Alert.alert('Feil', error.response?.data?.message || 'Kunne ikke lagre leverandør');
     }
   };
 
@@ -568,7 +589,21 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
           </View>
         ) : (
           suppliers.map((supplier) => (
-            <View key={supplier.id} style={styles.supplierCard}>
+            <TouchableOpacity
+              key={supplier.id}
+              style={styles.supplierCard}
+              onPress={() => {
+                setEditingSupplier(supplier.id);
+                setNewSupplier({
+                  name: supplier.name,
+                  email: supplier.email || '',
+                  phone: supplier.phone || '',
+                  organizationNumber: supplier.organizationNumber || '',
+                  address: supplier.address || '',
+                });
+                setShowSupplierModal(true);
+              }}
+            >
               <View style={styles.supplierHeader}>
                 <View style={styles.supplierIconContainer}>
                   <Ionicons name="business" size={24} color="#3B82F6" />
@@ -589,12 +624,15 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                 </View>
                 <TouchableOpacity
                   style={styles.deleteButton}
-                  onPress={() => handleDeleteSupplier(supplier.id)}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleDeleteSupplier(supplier.id);
+                  }}
                 >
                   <Ionicons name="trash-outline" size={20} color="#EF4444" />
                 </TouchableOpacity>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </View>
@@ -889,7 +927,10 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
         transparent={true}
         onRequestClose={() => setShowTransactionModal(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Ny transaksjon</Text>
@@ -898,7 +939,7 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.form}>
+            <ScrollView style={styles.form}>
               <Text style={styles.label}>Beløp</Text>
               <TextInput
                 style={styles.input}
@@ -993,9 +1034,9 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
               >
                 <Text style={styles.submitButtonText}>Opprett transaksjon</Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Supplier Modal */}
@@ -1003,18 +1044,43 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
         visible={showSupplierModal}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setShowSupplierModal(false)}
+        onRequestClose={() => {
+          setShowSupplierModal(false);
+          setEditingSupplier(null);
+          setNewSupplier({
+            name: '',
+            email: '',
+            phone: '',
+            organizationNumber: '',
+            address: '',
+          });
+        }}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Ny leverandør</Text>
-              <TouchableOpacity onPress={() => setShowSupplierModal(false)}>
+              <Text style={styles.modalTitle}>
+                {editingSupplier ? 'Rediger leverandør' : 'Ny leverandør'}
+              </Text>
+              <TouchableOpacity onPress={() => {
+                setShowSupplierModal(false);
+                setEditingSupplier(null);
+                setNewSupplier({
+                  name: '',
+                  email: '',
+                  phone: '',
+                  organizationNumber: '',
+                  address: '',
+                });
+              }}>
                 <Ionicons name="close" size={24} color="#111827" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.form}>
+            <ScrollView style={styles.form}>
               <Text style={styles.label}>Navn *</Text>
               <TextInput
                 style={styles.input}
@@ -1072,11 +1138,13 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
                 style={styles.submitButton}
                 onPress={handleCreateSupplier}
               >
-                <Text style={styles.submitButtonText}>Opprett leverandør</Text>
+                <Text style={styles.submitButtonText}>
+                  {editingSupplier ? 'Oppdater leverandør' : 'Opprett leverandør'}
+                </Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* MVA Result Modal */}
@@ -1086,7 +1154,10 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
         visible={showMVAResultModal}
         onRequestClose={() => setShowMVAResultModal(false)}
       >
-        <View style={styles.mvaModalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.mvaModalOverlay}
+        >
           <View style={styles.mvaModalContent}>
             <View style={styles.mvaModalHeader}>
               <Text style={styles.mvaModalTitle}>MVA-beregning</Text>
@@ -1269,7 +1340,7 @@ export default function EnhancedAccountingScreen({ navigation }: any) {
               </ScrollView>
             )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
       </ScrollView>
     </SafeAreaView>
