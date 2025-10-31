@@ -140,17 +140,17 @@ export class AccountingController {
         }
       });
 
-      // Group by account type
+      // Group by transaction type and account name
       const incomeAccounts: any = {};
       const expenseAccounts: any = {};
 
       transactions.forEach(tx => {
-        if (tx.account.type === 'INCOME') {
+        if (tx.type === 'INCOME') {
           if (!incomeAccounts[tx.account.name]) {
             incomeAccounts[tx.account.name] = 0;
           }
           incomeAccounts[tx.account.name] += tx.amount;
-        } else if (tx.account.type === 'EXPENSE') {
+        } else if (tx.type === 'EXPENSE') {
           if (!expenseAccounts[tx.account.name]) {
             expenseAccounts[tx.account.name] = 0;
           }
