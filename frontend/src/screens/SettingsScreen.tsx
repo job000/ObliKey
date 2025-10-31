@@ -15,6 +15,7 @@ import {
   Modal,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -48,6 +49,26 @@ export default function SettingsScreen({ navigation }: any) {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
+  // Color picker states
+  const [showPrimaryColorPicker, setShowPrimaryColorPicker] = useState(false);
+  const [showSecondaryColorPicker, setShowSecondaryColorPicker] = useState(false);
+
+  // Predefined color palette
+  const colorPalette = [
+    { name: 'Blå', value: '#3B82F6' },
+    { name: 'Grønn', value: '#10B981' },
+    { name: 'Lilla', value: '#8B5CF6' },
+    { name: 'Rosa', value: '#EC4899' },
+    { name: 'Rød', value: '#EF4444' },
+    { name: 'Oransje', value: '#F59E0B' },
+    { name: 'Turkis', value: '#14B8A6' },
+    { name: 'Indigo', value: '#6366F1' },
+    { name: 'Mørk Blå', value: '#1E40AF' },
+    { name: 'Mørk Grønn', value: '#059669' },
+    { name: 'Gull', value: '#D97706' },
+    { name: 'Koral', value: '#F97316' },
+  ];
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -55,9 +76,21 @@ export default function SettingsScreen({ navigation }: any) {
   const loadSettings = async () => {
     try {
       setLoading(true);
+
+      // Load cached colors from AsyncStorage first
+      const [cachedPrimaryColor, cachedSecondaryColor] = await Promise.all([
+        AsyncStorage.getItem('@primaryColor'),
+        AsyncStorage.getItem('@secondaryColor'),
+      ]);
+
       const response = await api.getTenantSettings();
       if (response.success) {
-        setSettings(response.data);
+        setSettings({
+          ...response.data,
+          // Override with cached colors if available
+          primaryColor: cachedPrimaryColor || response.data.primaryColor || '#3B82F6',
+          secondaryColor: cachedSecondaryColor || response.data.secondaryColor || '#10B981',
+        });
       } else {
         // Mock data for demonstration
         setSettings({
@@ -70,15 +103,20 @@ export default function SettingsScreen({ navigation }: any) {
           timezone: 'Europe/Oslo',
           emailNotifications: true,
           smsNotifications: false,
-          primaryColor: '#3B82F6',
-          secondaryColor: '#10B981',
+          primaryColor: cachedPrimaryColor || '#3B82F6',
+          secondaryColor: cachedSecondaryColor || '#10B981',
           companyVatNumber: '',
           companyRegNumber: '',
         });
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
-      // Set mock data on error
+      // Load from AsyncStorage if API fails
+      const [cachedPrimaryColor, cachedSecondaryColor] = await Promise.all([
+        AsyncStorage.getItem('@primaryColor'),
+        AsyncStorage.getItem('@secondaryColor'),
+      ]);
+
       setSettings({
         businessHoursStart: '06:00',
         businessHoursEnd: '22:00',
@@ -89,8 +127,8 @@ export default function SettingsScreen({ navigation }: any) {
         timezone: 'Europe/Oslo',
         emailNotifications: true,
         smsNotifications: false,
-        primaryColor: '#3B82F6',
-        secondaryColor: '#10B981',
+        primaryColor: cachedPrimaryColor || '#3B82F6',
+        secondaryColor: cachedSecondaryColor || '#10B981',
         companyVatNumber: '',
         companyRegNumber: '',
       });
@@ -121,9 +159,26 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
-  const updateSetting = (key: keyof TenantSettings, value: any) => {
+  const updateSetting = async (key: keyof TenantSettings, value: any) => {
     if (settings) {
       setSettings({ ...settings, [key]: value });
+
+      // Save colors to AsyncStorage immediately for persistence
+      if (key === 'primaryColor') {
+        await AsyncStorage.setItem('@primaryColor', value);
+      } else if (key === 'secondaryColor') {
+        await AsyncStorage.setItem('@secondaryColor', value);
+      }
+    }
+  };
+
+  const selectColorFromPalette = async (colorType: 'primary' | 'secondary', color: string) => {
+    if (colorType === 'primary') {
+      await updateSetting('primaryColor', color);
+      setShowPrimaryColorPicker(false);
+    } else {
+      await updateSetting('secondaryColor', color);
+      setShowSecondaryColorPicker(false);
     }
   };
 
@@ -434,22 +489,40 @@ export default function SettingsScreen({ navigation }: any) {
               <View style={styles.card}>
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Primærfarge</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={settings.primaryColor}
-                    onChangeText={(text) => updateSetting('primaryColor', text)}
-                    placeholder="#3B82F6"
-                  />
+                  <View style={styles.colorInputRow}>
+                    <TouchableOpacity
+                      style={[styles.colorPreview, { backgroundColor: settings.primaryColor }]}
+                      onPress={() => setShowPrimaryColorPicker(true)}
+                    >
+                      <Ionicons name="color-palette-outline" size={20} color="#FFF" />
+                    </TouchableOpacity>
+                    <TextInput
+                      style={[styles.input, styles.colorTextInput]}
+                      value={settings.primaryColor}
+                      onChangeText={(text) => updateSetting('primaryColor', text)}
+                      placeholder="#3B82F6"
+                      autoCapitalize="none"
+                    />
+                  </View>
                 </View>
 
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Sekundærfarge</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={settings.secondaryColor}
-                    onChangeText={(text) => updateSetting('secondaryColor', text)}
-                    placeholder="#10B981"
-                  />
+                  <View style={styles.colorInputRow}>
+                    <TouchableOpacity
+                      style={[styles.colorPreview, { backgroundColor: settings.secondaryColor }]}
+                      onPress={() => setShowSecondaryColorPicker(true)}
+                    >
+                      <Ionicons name="color-palette-outline" size={20} color="#FFF" />
+                    </TouchableOpacity>
+                    <TextInput
+                      style={[styles.input, styles.colorTextInput]}
+                      value={settings.secondaryColor}
+                      onChangeText={(text) => updateSetting('secondaryColor', text)}
+                      placeholder="#10B981"
+                      autoCapitalize="none"
+                    />
+                  </View>
                 </View>
               </View>
             </View>
@@ -605,6 +678,104 @@ export default function SettingsScreen({ navigation }: any) {
         onChange={handleEndTimeChange}
       />
     )}
+
+    {/* Primary Color Picker Modal */}
+    <Modal
+      visible={showPrimaryColorPicker}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowPrimaryColorPicker(false)}
+    >
+      <View style={styles.colorModalOverlay}>
+        <View style={styles.colorModalContent}>
+          <View style={styles.colorModalHeader}>
+            <Text style={styles.colorModalTitle}>Velg primærfarge</Text>
+            <TouchableOpacity onPress={() => setShowPrimaryColorPicker(false)}>
+              <Ionicons name="close" size={24} color="#111827" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.colorPaletteGrid}>
+            {colorPalette.map((color) => (
+              <TouchableOpacity
+                key={color.value}
+                style={[
+                  styles.colorOption,
+                  { backgroundColor: color.value },
+                  settings?.primaryColor === color.value && styles.colorOptionSelected,
+                ]}
+                onPress={() => selectColorFromPalette('primary', color.value)}
+              >
+                {settings?.primaryColor === color.value && (
+                  <Ionicons name="checkmark" size={24} color="#FFF" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={styles.colorNameContainer}>
+            {colorPalette.map((color) => (
+              <Text
+                key={`name-${color.value}`}
+                style={[
+                  styles.colorName,
+                  settings?.primaryColor === color.value && styles.colorNameSelected,
+                ]}
+              >
+                {color.name}
+              </Text>
+            ))}
+          </View>
+        </View>
+      </View>
+    </Modal>
+
+    {/* Secondary Color Picker Modal */}
+    <Modal
+      visible={showSecondaryColorPicker}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowSecondaryColorPicker(false)}
+    >
+      <View style={styles.colorModalOverlay}>
+        <View style={styles.colorModalContent}>
+          <View style={styles.colorModalHeader}>
+            <Text style={styles.colorModalTitle}>Velg sekundærfarge</Text>
+            <TouchableOpacity onPress={() => setShowSecondaryColorPicker(false)}>
+              <Ionicons name="close" size={24} color="#111827" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.colorPaletteGrid}>
+            {colorPalette.map((color) => (
+              <TouchableOpacity
+                key={color.value}
+                style={[
+                  styles.colorOption,
+                  { backgroundColor: color.value },
+                  settings?.secondaryColor === color.value && styles.colorOptionSelected,
+                ]}
+                onPress={() => selectColorFromPalette('secondary', color.value)}
+              >
+                {settings?.secondaryColor === color.value && (
+                  <Ionicons name="checkmark" size={24} color="#FFF" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={styles.colorNameContainer}>
+            {colorPalette.map((color) => (
+              <Text
+                key={`name-${color.value}`}
+                style={[
+                  styles.colorName,
+                  settings?.secondaryColor === color.value && styles.colorNameSelected,
+                ]}
+              >
+                {color.name}
+              </Text>
+            ))}
+          </View>
+        </View>
+      </View>
+    </Modal>
     </SafeAreaView>
   );
 }
@@ -844,5 +1015,96 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: '#FFF',
     paddingVertical: 20,
+  },
+  // Color Picker Styles
+  colorInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  colorPreview: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  colorTextInput: {
+    flex: 1,
+  },
+  colorModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  colorModalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    maxHeight: '80%',
+  },
+  colorModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  colorModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  colorPaletteGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  colorOption: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  colorOptionSelected: {
+    borderWidth: 3,
+    borderColor: '#FFF',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  colorNameContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  colorName: {
+    fontSize: 12,
+    color: '#6B7280',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+  },
+  colorNameSelected: {
+    backgroundColor: '#3B82F6',
+    color: '#FFF',
+    fontWeight: '600',
   },
 });
