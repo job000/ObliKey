@@ -7,22 +7,28 @@ const getApiUrl = () => {
   // Production Railway API URL - accessible from anywhere
   const PRODUCTION_API_URL = 'https://oblikey-production.up.railway.app/api';
 
+  // DEVELOPMENT MODE OVERRIDE
+  // Set USE_LOCAL_BACKEND to true when developing locally
+  // Set to false when you want to test against Railway production
+  const USE_LOCAL_BACKEND = true; // Toggle this for local development
+
   // For development, you can use localhost or ngrok
-  const DEV_API_URL = __DEV__
+  const DEV_API_URL = USE_LOCAL_BACKEND
     ? 'http://localhost:3000/api'
     : PRODUCTION_API_URL;
 
   // For web, use localhost in development, Railway in production
   if (Platform.OS === 'web') {
-    const apiUrl = __DEV__ ? 'http://localhost:3000/api' : PRODUCTION_API_URL;
+    const apiUrl = __DEV__ ? DEV_API_URL : PRODUCTION_API_URL;
     console.log('[API] Web platform using:', apiUrl);
     return apiUrl;
   }
 
-  // For mobile (iOS/Android), always use Railway production URL
-  // This ensures the app works from anywhere without needing ngrok
-  console.log('[API] Mobile platform using Railway:', PRODUCTION_API_URL);
-  return PRODUCTION_API_URL;
+  // For mobile (iOS/Android), use configured dev URL in dev mode
+  // In production builds, always use Railway
+  const apiUrl = __DEV__ ? DEV_API_URL : PRODUCTION_API_URL;
+  console.log(`[API] Mobile platform using: ${apiUrl} (DEV: ${__DEV__}, LOCAL: ${USE_LOCAL_BACKEND})`);
+  return apiUrl;
 };
 
 const API_URL = getApiUrl();
