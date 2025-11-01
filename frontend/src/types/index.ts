@@ -93,7 +93,7 @@ export interface Booking {
 // ============================================
 // PT TYPES
 // ============================================
-export type PTSessionStatus = 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+export type PTSessionStatus = 'SCHEDULED' | 'PENDING_APPROVAL' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'REJECTED' | 'NO_SHOW';
 
 export interface PTSession {
   id: string;

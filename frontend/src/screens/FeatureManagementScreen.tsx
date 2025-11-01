@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
   Platform,
   Alert,
   TextInput,
@@ -767,7 +768,7 @@ export default function FeatureManagementScreen({ navigation }: any) {
         style={styles.content}
         contentContainerStyle={[styles.contentContainer, isWeb && styles.webContent]}
         refreshControl={
-          <ActivityIndicator
+          <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
           />

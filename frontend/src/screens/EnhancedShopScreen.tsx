@@ -505,13 +505,13 @@ export default function EnhancedShopScreen({ route }: any) {
                 {(product._count?.wishlistItems ?? 0) > 0 && (
                   <View style={styles.statItem}>
                     <Ionicons name="heart" size={12} color="#EF4444" />
-                    <Text style={styles.statText}>{`${product._count.wishlistItems}`}</Text>
+                    <Text style={styles.statText}>{`${product._count?.wishlistItems ?? 0}`}</Text>
                   </View>
                 )}
                 {(product._count?.reviews ?? 0) > 0 && (
                   <View style={styles.statItem}>
                     <Ionicons name="chatbubble" size={12} color="#3B82F6" />
-                    <Text style={styles.statText}>{`${product._count.reviews}`}</Text>
+                    <Text style={styles.statText}>{`${product._count?.reviews ?? 0}`}</Text>
                   </View>
                 )}
               </View>
