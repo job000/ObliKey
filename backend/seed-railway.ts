@@ -1,0 +1,131 @@
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
+
+async function seedRailwayDatabase() {
+  console.log('🌱 Seeding Railway database...');
+
+  try {
+    // 1. Create demo tenant
+    console.log('Creating demo tenant...');
+    const tenant = await prisma.tenant.create({
+      data: {
+        name: 'ObliKey Demo',
+        subdomain: 'oblikey-demo',
+        email: 'demo@oblikey.com',
+        phone: '+47 123 45 678',
+        address: 'Demo Street 123, Oslo',
+        active: true,
+      },
+    });
+    console.log('✅ Tenant created:', tenant.subdomain);
+
+    // 2. Create tenant settings
+    console.log('Creating tenant settings...');
+    await prisma.tenantSettings.create({
+      data: {
+        tenantId: tenant.id,
+        businessHoursStart: '06:00',
+        businessHoursEnd: '22:00',
+        bookingCancellation: 24,
+        maxBookingsPerUser: 10,
+        requirePayment: false,
+        currency: 'NOK',
+        timezone: 'Europe/Oslo',
+        emailNotifications: true,
+        smsNotifications: false,
+        primaryColor: '#3B82F6',
+        secondaryColor: '#10B981',
+        accountingEnabled: true,
+        classesEnabled: true,
+        chatEnabled: true,
+        landingPageEnabled: false,
+        ecommerceEnabled: true,
+        membershipEnabled: true,
+        doorAccessEnabled: false,
+      },
+    });
+    console.log('✅ Tenant settings created');
+
+    // 3. Create admin user
+    console.log('Creating admin user...');
+    const hashedPassword = await bcrypt.hash('Admin123!', 10);
+    const adminUser = await prisma.user.create({
+      data: {
+        tenantId: tenant.id,
+        email: 'admin@oblikey.com',
+        password: hashedPassword,
+        firstName: 'Admin',
+        lastName: 'User',
+        username: 'admin',
+        role: 'ADMIN',
+        active: true,
+        emailVerified: true,
+      },
+    });
+    console.log('✅ Admin user created:', adminUser.email);
+
+    // 4. Create a test customer
+    console.log('Creating test customer...');
+    const customerPassword = await bcrypt.hash('Customer123!', 10);
+    const customerUser = await prisma.user.create({
+      data: {
+        tenantId: tenant.id,
+        email: 'kunde@oblikey.com',
+        password: customerPassword,
+        firstName: 'Test',
+        lastName: 'Kunde',
+        username: 'testkunde',
+        role: 'CUSTOMER',
+        active: true,
+        emailVerified: true,
+      },
+    });
+    console.log('✅ Customer user created:', customerUser.email);
+
+    // 5. Create a trainer
+    console.log('Creating trainer...');
+    const trainerPassword = await bcrypt.hash('Trainer123!', 10);
+    const trainerUser = await prisma.user.create({
+      data: {
+        tenantId: tenant.id,
+        email: 'trainer@oblikey.com',
+        password: trainerPassword,
+        firstName: 'Personal',
+        lastName: 'Trainer',
+        username: 'pttrainer',
+        role: 'TRAINER',
+        active: true,
+        emailVerified: true,
+      },
+    });
+    console.log('✅ Trainer user created:', trainerUser.email);
+
+    console.log('\n🎉 Database seeding completed!');
+    console.log('\n📝 Login credentials:');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Tenant: oblikey-demo');
+    console.log('\n👨‍💼 Admin:');
+    console.log('  Email: admin@oblikey.com');
+    console.log('  Password: Admin123!');
+    console.log('\n👤 Customer:');
+    console.log('  Email: kunde@oblikey.com');
+    console.log('  Password: Customer123!');
+    console.log('\n🏋️ Trainer:');
+    console.log('  Email: trainer@oblikey.com');
+    console.log('  Password: Trainer123!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  } catch (error) {
+    console.error('❌ Error seeding database:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+seedRailwayDatabase()
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

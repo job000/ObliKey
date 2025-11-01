@@ -106,7 +106,8 @@
       "Bash(railway logs:*)",
       "Bash(railway run npx prisma migrate:*)",
       "Bash(railway link:*)",
-      "Bash(railway open:*)"
+      "Bash(railway open:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:xbpiYucBolHrlfjwtBrikfjEzLgqDbqn@caboose.proxy.rlwy.net:34635/railway\" npx ts-node:*)"
     ],
     "deny": [],
     "ask": []
