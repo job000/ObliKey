@@ -53,7 +53,7 @@ import { initScheduler } from './services/scheduler.service';
 dotenv.config();
 
 const app: Application = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 // ============================================
 // SECURITY MIDDLEWARE
@@ -76,7 +76,7 @@ app.set('trust proxy', 1);
 // STATIC FILES
 // ============================================
 // Serve uploaded files with CORS headers
-app.use('/uploads', (req, res, next) => {
+app.use('/uploads', (_req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -86,7 +86,7 @@ app.use('/uploads', (req, res, next) => {
 // ============================================
 // HEALTH CHECK
 // ============================================
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 

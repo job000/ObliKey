@@ -105,7 +105,8 @@
       "Bash(railway service:*)",
       "Bash(railway logs:*)",
       "Bash(railway run npx prisma migrate:*)",
-      "Bash(railway link:*)"
+      "Bash(railway link:*)",
+      "Bash(railway open:*)"
     ],
     "deny": [],
     "ask": []
