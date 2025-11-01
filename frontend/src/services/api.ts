@@ -2,19 +2,27 @@ import axios, { AxiosInstance } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Use the correct API URL based on platform and device type
+// Use the correct API URL based on platform and environment
 const getApiUrl = () => {
-  // For web, always use localhost
+  // Production Railway API URL - accessible from anywhere
+  const PRODUCTION_API_URL = 'https://oblikey-production.up.railway.app/api';
+
+  // For development, you can use localhost or ngrok
+  const DEV_API_URL = __DEV__
+    ? 'http://localhost:3000/api'
+    : PRODUCTION_API_URL;
+
+  // For web, use localhost in development, Railway in production
   if (Platform.OS === 'web') {
-    return 'http://localhost:3000/api';
+    const apiUrl = __DEV__ ? 'http://localhost:3000/api' : PRODUCTION_API_URL;
+    console.log('[API] Web platform using:', apiUrl);
+    return apiUrl;
   }
 
-  // For mobile (iOS/Android), use ngrok for consistent access from anywhere
-  // This ensures the app works on local network and external networks
-  const NGROK_URL = 'https://unstubborn-rina-unaesthetically.ngrok-free.dev/api';
-
-  console.log('[API] Using ngrok URL for mobile:', NGROK_URL);
-  return NGROK_URL;
+  // For mobile (iOS/Android), always use Railway production URL
+  // This ensures the app works from anywhere without needing ngrok
+  console.log('[API] Mobile platform using Railway:', PRODUCTION_API_URL);
+  return PRODUCTION_API_URL;
 };
 
 const API_URL = getApiUrl();
