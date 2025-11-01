@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
+import TenantSelector from '../components/TenantSelector';
 import type { Class, Booking } from '../types';
 
 export default function ClassesScreen({ navigation }: any) {
@@ -187,6 +188,8 @@ export default function ClassesScreen({ navigation }: any) {
         }
       >
       <Container>
+        {/* Tenant Selector for SUPER_ADMIN */}
+        <TenantSelector />
 
         {user?.role === 'CUSTOMER' && (
           <View style={styles.filterContainer}>
