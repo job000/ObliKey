@@ -24,19 +24,5 @@
   },
   "submit": {
     "production": {}
-  },
-  "update": {
-    "development": {
-      "channel": "development"
-    },
-    "demo": {
-      "channel": "demo"
-    },
-    "staging": {
-      "channel": "staging"
-    },
-    "production": {
-      "channel": "production"
-    }
   }
 }

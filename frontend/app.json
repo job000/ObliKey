@@ -7,17 +7,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "owner": "job000",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/YOUR_PROJECT_ID"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "YOUR_PROJECT_ID"
-      }
+      "url": "https://u.expo.dev/c438718c-962d-481e-813f-c52427cc4f23"
     },
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -52,6 +46,11 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c438718c-962d-481e-813f-c52427cc4f23"
+      }
     }
   }
 }
