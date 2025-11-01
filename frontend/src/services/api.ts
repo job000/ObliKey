@@ -1,7 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 
 // Use the correct API URL based on platform and device type
 const getApiUrl = () => {

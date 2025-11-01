@@ -5,6 +5,7 @@ export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'TRAINER' | 'CUSTOMER';
 
 export interface User {
   id: string;
+  userId?: string; // Alias for id, used in some components
   email: string;
   firstName: string;
   lastName: string;
@@ -66,6 +67,8 @@ export interface Class {
   endTime: string;
   recurring: boolean;
   active: boolean;
+  published?: boolean;
+  status?: string;
   trainerId?: string;
   trainer: {
     id: string;

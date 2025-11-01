@@ -9,9 +9,8 @@ import {
   RefreshControl,
   Dimensions,
   Alert,
-  LinearGradient,
 } from 'react-native';
-import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useModules } from '../contexts/ModuleContext';
@@ -165,7 +164,7 @@ export default function DashboardScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       {/* Modern Gradient Header */}
-      <ExpoLinearGradient
+      <LinearGradient
         colors={['#6366F1', '#8B5CF6', '#A855F7']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -196,7 +195,7 @@ export default function DashboardScreen({ navigation }: any) {
               <Text style={styles.progressValue}>5 av 7 økter</Text>
             </View>
             <View style={styles.progressBarContainer}>
-              <ExpoLinearGradient
+              <LinearGradient
                 colors={['#FBBF24', '#F59E0B']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -205,7 +204,7 @@ export default function DashboardScreen({ navigation }: any) {
             </View>
           </View>
         </Container>
-      </ExpoLinearGradient>
+      </LinearGradient>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -220,7 +219,7 @@ export default function DashboardScreen({ navigation }: any) {
                 onPress={() => navigation.navigate('Classes')}
                 activeOpacity={0.7}
               >
-                <ExpoLinearGradient
+                <LinearGradient
                   colors={['#8B5CF6', '#A855F7']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
@@ -231,7 +230,7 @@ export default function DashboardScreen({ navigation }: any) {
                   </View>
                   <Text style={styles.statValue}>{stats.upcomingBookings}</Text>
                   <Text style={styles.statLabel}>Bookinger</Text>
-                </ExpoLinearGradient>
+                </LinearGradient>
               </TouchableOpacity>
             )}
 
@@ -240,7 +239,7 @@ export default function DashboardScreen({ navigation }: any) {
               onPress={() => navigation.navigate('PTSessions')}
               activeOpacity={0.7}
             >
-              <ExpoLinearGradient
+              <LinearGradient
                 colors={['#EC4899', '#F43F5E']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -251,7 +250,7 @@ export default function DashboardScreen({ navigation }: any) {
                 </View>
                 <Text style={styles.statValue}>{stats.totalSessions}</Text>
                 <Text style={styles.statLabel}>PT-Økter</Text>
-              </ExpoLinearGradient>
+              </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -259,7 +258,7 @@ export default function DashboardScreen({ navigation }: any) {
               onPress={() => navigation.navigate('TrainingPrograms')}
               activeOpacity={0.7}
             >
-              <ExpoLinearGradient
+              <LinearGradient
                 colors={['#10B981', '#14B8A6']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -270,7 +269,7 @@ export default function DashboardScreen({ navigation }: any) {
                 </View>
                 <Text style={styles.statValue}>{stats.activePrograms}</Text>
                 <Text style={styles.statLabel}>Programmer</Text>
-              </ExpoLinearGradient>
+              </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -278,7 +277,7 @@ export default function DashboardScreen({ navigation }: any) {
               onPress={() => alert('Kalorisporing kommer snart!')}
               activeOpacity={0.7}
             >
-              <ExpoLinearGradient
+              <LinearGradient
                 colors={['#F59E0B', '#EF4444']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -289,7 +288,7 @@ export default function DashboardScreen({ navigation }: any) {
                 </View>
                 <Text style={styles.statValue}>2,847</Text>
                 <Text style={styles.statLabel}>Kalorier</Text>
-              </ExpoLinearGradient>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
 
@@ -313,14 +312,14 @@ export default function DashboardScreen({ navigation }: any) {
                     onPress={action.onPress}
                     activeOpacity={0.7}
                   >
-                    <ExpoLinearGradient
+                    <LinearGradient
                       colors={gradientColors[index]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.quickActionIcon}
                     >
                       <Ionicons name={action.icon} size={24} color="#FFFFFF" />
-                    </ExpoLinearGradient>
+                    </LinearGradient>
                     <Text style={styles.quickActionLabel}>{action.label}</Text>
                   </TouchableOpacity>
                 );
@@ -345,14 +344,14 @@ export default function DashboardScreen({ navigation }: any) {
                   onPress={() => navigation.navigate('PTSessions')}
                   activeOpacity={0.7}
                 >
-                  <ExpoLinearGradient
+                  <LinearGradient
                     colors={['#EC4899', '#F43F5E']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.sessionIconCircle}
                   >
                     <Ionicons name="barbell" size={22} color="#FFFFFF" />
-                  </ExpoLinearGradient>
+                  </LinearGradient>
 
                   <View style={styles.sessionContent}>
                     <Text style={styles.sessionTitle}>PT-Økt</Text>
@@ -387,7 +386,7 @@ export default function DashboardScreen({ navigation }: any) {
           <TouchableOpacity
             activeOpacity={0.8}
           >
-            <ExpoLinearGradient
+            <LinearGradient
               colors={['#FBBF24', '#F59E0B', '#F97316']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -402,7 +401,7 @@ export default function DashboardScreen({ navigation }: any) {
                   2 økter til for å nå ditt ukentlige mål
                 </Text>
               </View>
-            </ExpoLinearGradient>
+            </LinearGradient>
           </TouchableOpacity>
 
           <View style={{ height: 40 }} />
