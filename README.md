@@ -60,8 +60,32 @@ npm run dev
 ```bash
 cd frontend
 npm install
+
+# Lokal utvikling (anbefalt)
+npm run dev  # LAN mode - mest stabil
+
+# Eller med Expo Go klassisk
 npx expo start --ios  # eller --android / --web
 ```
+
+### EAS Deployment (for Kundedemoer)
+
+ObliKey bruker **EAS Update** for stabile kundedemoer - ingen tunnel-problemer!
+
+**Førstegangs oppsett:**
+```bash
+npm install -g eas-cli
+eas login
+eas build:configure
+```
+
+**Deploy til kunde:**
+```bash
+npm run deploy:demo  # Deploy til demo-kanal
+# Send QR-kode til kunde
+```
+
+**Se full guide:** [EAS_DEPLOYMENT.md](./EAS_DEPLOYMENT.md)
 
 ## Super Admin Portal
 
@@ -112,6 +136,7 @@ Super Admin får full kontroll over:
 
 ## Dokumentasjon
 
+- [EAS Deployment Guide](./EAS_DEPLOYMENT.md) - **Anbefalt for kundedemoer**
 - [API Endpoints](./API_ENDPOINTS.md)
 - [Deployment Guide](./DEPLOYMENT_CHECKLIST.md)
 - [Security Audit](./SECURITY_AUDIT_REPORT.md)
