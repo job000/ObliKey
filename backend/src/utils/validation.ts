@@ -28,7 +28,7 @@ export const loginValidation: ValidationChain[] = [
   body('password').notEmpty().withMessage('Passord er påkrevd'),
   // Allow either email, username, or identifier (custom validation)
   body()
-    .custom((value, { req }) => {
+    .custom((_value, { req }) => {
       const { email, username, identifier } = req.body;
 
       // At least one identifier must be provided
