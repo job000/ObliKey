@@ -48,7 +48,25 @@ async function seedRailwayDatabase() {
     });
     console.log('✅ Tenant settings created');
 
-    // 3. Create admin user
+    // 3. Create SUPER_ADMIN user (global admin across all tenants)
+    console.log('Creating SUPER_ADMIN user...');
+    const superAdminPassword = await bcrypt.hash('SuperAdmin123!', 10);
+    const superAdminUser = await prisma.user.create({
+      data: {
+        tenantId: tenant.id,
+        email: 'superadmin@oblikey.com',
+        password: superAdminPassword,
+        firstName: 'Super',
+        lastName: 'Admin',
+        username: 'superadmin',
+        role: 'SUPER_ADMIN',
+        active: true,
+        emailVerified: true,
+      },
+    });
+    console.log('✅ SUPER_ADMIN user created:', superAdminUser.email);
+
+    // 4. Create admin user
     console.log('Creating admin user...');
     const hashedPassword = await bcrypt.hash('Admin123!', 10);
     const adminUser = await prisma.user.create({
@@ -66,7 +84,7 @@ async function seedRailwayDatabase() {
     });
     console.log('✅ Admin user created:', adminUser.email);
 
-    // 4. Create a test customer
+    // 5. Create a test customer
     console.log('Creating test customer...');
     const customerPassword = await bcrypt.hash('Customer123!', 10);
     const customerUser = await prisma.user.create({
@@ -84,7 +102,7 @@ async function seedRailwayDatabase() {
     });
     console.log('✅ Customer user created:', customerUser.email);
 
-    // 5. Create a trainer
+    // 6. Create a trainer
     console.log('Creating trainer...');
     const trainerPassword = await bcrypt.hash('Trainer123!', 10);
     const trainerUser = await prisma.user.create({
@@ -106,6 +124,9 @@ async function seedRailwayDatabase() {
     console.log('\n📝 Login credentials:');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Tenant: oblikey-demo');
+    console.log('\n🔐 SUPER_ADMIN (Global Access):');
+    console.log('  Email: superadmin@oblikey.com');
+    console.log('  Password: SuperAdmin123!');
     console.log('\n👨‍💼 Admin:');
     console.log('  Email: admin@oblikey.com');
     console.log('  Password: Admin123!');

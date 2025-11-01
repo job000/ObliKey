@@ -20,15 +20,21 @@ export class AuthController {
       });
 
       if (!tenant) {
-        // If tenant doesn't exist, create it (for development)
-        tenant = await prisma.tenant.create({
-          data: {
-            name: tenantId, // Use subdomain as default name
-            subdomain: tenantId,
-            email: `admin@${tenantId}.com`,
-            active: true
-          }
-        });
+        // SECURITY: Only allow auto-creation in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[DEV] Auto-creating tenant: ${tenantId}`);
+          tenant = await prisma.tenant.create({
+            data: {
+              name: tenantId, // Use subdomain as default name
+              subdomain: tenantId,
+              email: `admin@${tenantId}.com`,
+              active: true
+            }
+          });
+        } else {
+          // In production, tenant must exist (prevent unauthorized tenant creation)
+          throw new AppError('Ugyldig organisasjon. Kontakt administrator for å opprette konto.', 404);
+        }
       }
 
       // Use the actual tenant ID from database
