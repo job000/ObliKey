@@ -96,7 +96,16 @@
       "Read(//Users/johnmichaelobligar/**)",
       "Bash(git config:*)",
       "Bash(pbcopy)",
-      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjZmIyMDc5Mi0yYjRhLTRjZjgtODcwMC1kN2QyOTU3NWE5NGQiLCJ0ZW5hbnRJZCI6ImI3OWYxYzJhLTdiMTItNGRlZC1hNmY4LWRmMzI3ZDRiZjEwYyIsImVtYWlsIjoidGVzdGFkbWluQG9ibGlrZXkubm8iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NjE5NDQ5MzQsImV4cCI6MTc2MjU0OTczNH0.TsS8H9xchEdrxyoXfupClYKtaXLx3wvnswAuZFLm1Wk\")"
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjZmIyMDc5Mi0yYjRhLTRjZjgtODcwMC1kN2QyOTU3NWE5NGQiLCJ0ZW5hbnRJZCI6ImI3OWYxYzJhLTdiMTItNGRlZC1hNmY4LWRmMzI3ZDRiZjEwYyIsImVtYWlsIjoidGVzdGFkbWluQG9ibGlrZXkubm8iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NjE5NDQ5MzQsImV4cCI6MTc2MjU0OTczNH0.TsS8H9xchEdrxyoXfupClYKtaXLx3wvnswAuZFLm1Wk\")",
+      "Bash(timeout 10 npm run dev:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjZmIyMDc5Mi0yYjRhLTRjZjgtODcwMC1kN2QyOTU3NWE5NGQiLCJ0ZW5hbnRJZCI6ImI3OWYxYzJhLTdiMTItNGRlZC1hNmY4LWRmMzI3ZDRiZjEwYyIsImVtYWlsIjoidGVzdGFkbWluQG9ibGlrZXkubm8iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NjE5NDQ5MzQsImV4cCI6MTc2MjU0OTczNH0.TsS8H9xchEdrxyoXfupClYKtaXLx3wvnswAuZFLm1Wk\" curl -s -X POST http://localhost:3000/api/memberships/4ac1d330-6caf-4919-96be-07b900d89cc6/freeze -H \"Authorization: Bearer $TOKEN\" -H \"Content-Type: application/json\" -d '{\"\"\"\"startDate\"\"\"\":\"\"\"\"2025-11-01T12:00:00.000Z\"\"\"\",\"\"\"\"endDate\"\"\"\":\"\"\"\"2025-11-02T12:00:00.000Z\"\"\"\",\"\"\"\"reason\"\"\"\":\"\"\"\"Test\"\"\"\"}')",
+      "Bash(defaults read:*)",
+      "Bash([ -f .env.example ])",
+      "Bash(railway status:*)",
+      "Bash(railway service:*)",
+      "Bash(railway logs:*)",
+      "Bash(railway run npx prisma migrate:*)",
+      "Bash(railway link:*)"
     ],
     "deny": [],
     "ask": []

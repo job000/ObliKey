@@ -23,7 +23,8 @@
       "bundleIdentifier": "com.oblikey.app",
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "ObliKey needs Bluetooth access to unlock doors using proximity detection.",
-        "NSBluetoothPeripheralUsageDescription": "ObliKey needs Bluetooth access to communicate with door locks."
+        "NSBluetoothPeripheralUsageDescription": "ObliKey needs Bluetooth access to communicate with door locks.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
