@@ -451,9 +451,10 @@ export class MembershipController {
       });
     } catch (error) {
       if (error instanceof AppError) {
+        console.error('[Freeze] AppError:', error.message);
         res.status(error.statusCode).json({ success: false, error: error.message });
       } else {
-        console.error('Freeze membership error:', error);
+        console.error('[Freeze] Unexpected error:', error);
         res.status(500).json({ success: false, error: 'Kunne ikke fryse medlemskap' });
       }
     }

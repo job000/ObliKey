@@ -15,6 +15,16 @@ export interface MembershipPlan {
   updatedAt: string;
 }
 
+export interface MembershipFreeze {
+  id: string;
+  membershipId: string;
+  userId: string;
+  startDate: string;
+  endDate: string;
+  reason?: string;
+  createdAt: string;
+}
+
 export interface Membership {
   id: string;
   userId: string;
@@ -41,6 +51,7 @@ export interface Membership {
     email: string;
     phone: string;
   };
+  freezes?: MembershipFreeze[];
 }
 
 export interface MembershipPayment {

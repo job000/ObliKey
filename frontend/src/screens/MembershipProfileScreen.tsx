@@ -29,11 +29,17 @@ const MembershipProfileScreen = ({ navigation }: any) => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const membershipsResponse = await api.getMemberships({ status: 'ACTIVE' });
+      // Fetch all memberships (not just ACTIVE) to include FROZEN memberships
+      const membershipsResponse = await api.getMemberships({});
       const memberships = membershipsResponse.data || [];
 
-      if (memberships.length > 0) {
-        const userMembership = memberships[0];
+      // Filter to get active or frozen memberships (not cancelled/suspended/blacklisted)
+      const activeMemberships = memberships.filter((m: Membership) =>
+        m.status === 'ACTIVE' || m.status === 'FROZEN'
+      );
+
+      if (activeMemberships.length > 0) {
+        const userMembership = activeMemberships[0];
         setMembership(userMembership);
 
         const [activityData, checkInData] = await Promise.all([
@@ -116,6 +122,33 @@ const MembershipProfileScreen = ({ navigation }: any) => {
     return `${months} ${months === 1 ? 'måned' : 'måneder'}`;
   };
 
+  const getActiveFreezeInfo = () => {
+    if (!membership || !membership.freezes || membership.freezes.length === 0) return null;
+
+    // Get the most recent freeze
+    const mostRecentFreeze = membership.freezes[0];
+
+    // Check if this freeze is currently active
+    const now = new Date();
+    const freezeStart = new Date(mostRecentFreeze.startDate);
+    const freezeEnd = new Date(mostRecentFreeze.endDate);
+
+    if (now >= freezeStart && now <= freezeEnd) {
+      return mostRecentFreeze;
+    }
+
+    return null;
+  };
+
+  const formatFreezeDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('no-NO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -171,6 +204,21 @@ const MembershipProfileScreen = ({ navigation }: any) => {
             <Text style={styles.detailLabel}>Varighet</Text>
             <Text style={styles.detailValue}>{calculateMembershipDuration()}</Text>
           </View>
+          {membership.status === 'FROZEN' && (() => {
+            const freezeInfo = getActiveFreezeInfo();
+            if (freezeInfo) {
+              return (
+                <View style={styles.detailRow}>
+                  <Ionicons name="snow" size={20} color="#3B82F6" />
+                  <Text style={styles.detailLabel}>Fryseperiode</Text>
+                  <Text style={[styles.detailValue, styles.freezeValue]}>
+                    {formatFreezeDate(freezeInfo.startDate)} - {formatFreezeDate(freezeInfo.endDate)}
+                  </Text>
+                </View>
+              );
+            }
+            return null;
+          })()}
           {membership.nextBillingDate && (
             <View style={styles.detailRow}>
               <Ionicons name="card-outline" size={20} color="#6B7280" />
@@ -393,6 +441,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#111827',
+  },
+  freezeValue: {
+    color: '#3B82F6',
   },
   checkInCard: {
     backgroundColor: '#fff',

@@ -127,6 +127,33 @@ const MembershipManagementScreen = ({ navigation }: any) => {
     return labels[status] || status;
   };
 
+  const getActiveFreezeInfo = (membership: Membership) => {
+    if (!membership.freezes || membership.freezes.length === 0) return null;
+
+    // Get the most recent freeze (freezes are ordered by createdAt desc from backend)
+    const mostRecentFreeze = membership.freezes[0];
+
+    // Check if this freeze is currently active
+    const now = new Date();
+    const freezeStart = new Date(mostRecentFreeze.startDate);
+    const freezeEnd = new Date(mostRecentFreeze.endDate);
+
+    if (now >= freezeStart && now <= freezeEnd) {
+      return mostRecentFreeze;
+    }
+
+    return null;
+  };
+
+  const formatFreezeDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('no-NO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
   const handleAction = (membership: Membership, action: string) => {
     setSelectedMembership(membership);
     performAction(membership, action);
@@ -354,6 +381,20 @@ const MembershipManagementScreen = ({ navigation }: any) => {
                   Medlem siden {new Date(membership.startDate).toLocaleDateString('no-NO')}
                 </Text>
               </View>
+              {membership.status === 'FROZEN' && (() => {
+                const freezeInfo = getActiveFreezeInfo(membership);
+                if (freezeInfo) {
+                  return (
+                    <View style={styles.detailRow}>
+                      <Ionicons name="snow" size={16} color="#3B82F6" />
+                      <Text style={[styles.detailText, styles.freezeText]}>
+                        Fryst: {formatFreezeDate(freezeInfo.startDate)} - {formatFreezeDate(freezeInfo.endDate)}
+                      </Text>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
               {membership.lastCheckInAt && (
                 <View style={styles.detailRow}>
                   <Ionicons name="time" size={16} color="#6B7280" />
@@ -864,6 +905,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     marginLeft: 8,
+  },
+  freezeText: {
+    color: '#3B82F6',
+    fontWeight: '600',
   },
   actionsContainer: {
     flexDirection: 'row',
