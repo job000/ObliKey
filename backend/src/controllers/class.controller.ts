@@ -43,7 +43,8 @@ export class ClassController {
           startTime: startDate,
           endTime: endDate,
           recurring,
-          recurringPattern
+          recurringPattern,
+          published: true // Auto-publish classes so members can see and book them
         },
         include: {
           trainer: {
@@ -709,7 +710,8 @@ export class ClassController {
           recurringPattern: template.recurringPattern,
           // NOT a template, just a regular class
           isTemplate: false,
-          templateName: null
+          templateName: null,
+          published: true // Auto-publish classes so members can see and book them
         },
         include: {
           trainer: {

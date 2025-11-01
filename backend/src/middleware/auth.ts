@@ -103,6 +103,12 @@ export const authorize = (...roles: UserRole[]) => {
       return;
     }
 
+    // SUPER_ADMIN always has access to everything
+    if (req.user.role === 'SUPER_ADMIN') {
+      next();
+      return;
+    }
+
     if (!roles.includes(req.user.role)) {
       res.status(403).json({
         success: false,

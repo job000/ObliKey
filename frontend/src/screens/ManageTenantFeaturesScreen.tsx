@@ -123,6 +123,35 @@ export default function ManageTenantFeaturesScreen({ route, navigation }: any) {
       console.log('Currently Enabled:', currentlyEnabled);
       console.log('Will call:', currentlyEnabled ? 'DISABLE' : 'ENABLE');
 
+      // Optimistic update - update state immediately
+      const newEnabled = !currentlyEnabled;
+      const existingTenantFeature = tenantFeatures.find(tf => tf.featureId === featureId);
+
+      if (existingTenantFeature) {
+        // Update existing tenant feature
+        setTenantFeatures(prev =>
+          prev.map(tf =>
+            tf.featureId === featureId
+              ? { ...tf, enabled: newEnabled }
+              : tf
+          )
+        );
+      } else {
+        // Add new tenant feature (shouldn't happen often, but just in case)
+        const feature = allFeatures.find(f => f.id === featureId);
+        if (feature) {
+          setTenantFeatures(prev => [
+            ...prev,
+            {
+              id: `temp-${featureId}`, // Temporary ID
+              featureId: featureId,
+              enabled: newEnabled,
+              feature: feature,
+            }
+          ]);
+        }
+      }
+
       setSaving(true);
 
       if (currentlyEnabled) {
@@ -135,13 +164,25 @@ export default function ManageTenantFeaturesScreen({ route, navigation }: any) {
         console.log('Enable result:', result);
       }
 
-      console.log('Toggle successful, reloading data...');
-      await loadData();
-      console.log('Data reloaded successfully');
+      console.log('Toggle successful');
     } catch (err: any) {
       console.error('❌ Failed to toggle feature:', err);
       console.error('Error response:', JSON.stringify(err.response?.data, null, 2));
       console.error('Error status:', err.response?.status);
+
+      // Revert optimistic update on error
+      const revertEnabled = currentlyEnabled;
+      const existingTenantFeature = tenantFeatures.find(tf => tf.featureId === featureId);
+
+      if (existingTenantFeature) {
+        setTenantFeatures(prev =>
+          prev.map(tf =>
+            tf.featureId === featureId
+              ? { ...tf, enabled: revertEnabled }
+              : tf
+          )
+        );
+      }
 
       // Backend returns 'error' not 'message'
       const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Kunne ikke endre feature';

@@ -12,9 +12,19 @@ export class BookingController {
       const userId = req.user!.userId;
       const { classId, notes }: CreateBookingDto = req.body;
 
-      // Check if class exists
+      // Check if class exists and is published (for non-admin users)
+      const userRole = req.user!.role;
+      const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TRAINER'].includes(userRole);
+
       const classData = await prisma.class.findFirst({
-        where: { id: classId, tenantId },
+        where: {
+          id: classId,
+          tenantId,
+          active: true,
+          deletedAt: null,
+          // Non-admin users can only book published classes
+          ...(!isAdmin && { published: true })
+        },
         include: {
           trainer: {
             select: { firstName: true, lastName: true }
