@@ -876,4 +876,148 @@ export class UserController {
       }
     }
   }
+
+  // Transfer user to another tenant (SUPER_ADMIN only)
+  async transferUserToTenant(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id: userId } = req.params;
+      const { tenantId: newTenantId } = req.body;
+      const currentUserRole = req.user!.role;
+
+      // Verify only SUPER_ADMIN can transfer users
+      if (currentUserRole !== 'SUPER_ADMIN') {
+        throw new AppError('Kun SUPER_ADMIN kan flytte brukere mellom organisasjoner', 403);
+      }
+
+      if (!newTenantId) {
+        throw new AppError('Ny tenant ID er påkrevd', 400);
+      }
+
+      // Find user to transfer
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              subdomain: true
+            }
+          }
+        }
+      });
+
+      if (!user) {
+        throw new AppError('Bruker ikke funnet', 404);
+      }
+
+      // Check if user is already in the target tenant
+      if (user.tenantId === newTenantId) {
+        throw new AppError('Bruker er allerede i denne organisasjonen', 400);
+      }
+
+      // Verify new tenant exists and is active
+      const newTenant = await prisma.tenant.findUnique({
+        where: { id: newTenantId }
+      });
+
+      if (!newTenant) {
+        throw new AppError('Ny organisasjon ikke funnet', 404);
+      }
+
+      if (!newTenant.active) {
+        throw new AppError('Kan ikke flytte bruker til en deaktivert organisasjon', 400);
+      }
+
+      // Prevent transferring SUPER_ADMIN users
+      if (user.role === 'SUPER_ADMIN') {
+        throw new AppError('SUPER_ADMIN brukere kan ikke flyttes til andre organisasjoner', 403);
+      }
+
+      // Check if email already exists in target tenant
+      const existingUserInNewTenant = await prisma.user.findUnique({
+        where: {
+          tenantId_email: {
+            tenantId: newTenantId,
+            email: user.email
+          }
+        }
+      });
+
+      if (existingUserInNewTenant) {
+        throw new AppError(
+          `En bruker med e-post ${user.email} eksisterer allerede i ${newTenant.name}`,
+          400
+        );
+      }
+
+      const oldTenant = user.tenant;
+
+      // Transfer user to new tenant
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { tenantId: newTenantId },
+        include: {
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              subdomain: true
+            }
+          }
+        }
+      });
+
+      // Log the transfer activity
+      try {
+        await prisma.activityLog.create({
+          data: {
+            tenantId: newTenantId,
+            userId: req.user!.userId,
+            action: 'TRANSFER_USER',
+            resource: 'User',
+            resourceId: userId,
+            description: `SUPER_ADMIN flyttet ${user.firstName} ${user.lastName} fra ${oldTenant.name} til ${newTenant.name}`,
+            ipAddress: (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'Unknown',
+            userAgent: req.headers['user-agent'] || 'Unknown',
+            metadata: {
+              oldTenantId: oldTenant.id,
+              oldTenantName: oldTenant.name,
+              newTenantId: newTenant.id,
+              newTenantName: newTenant.name,
+              transferredUserEmail: user.email,
+              transferredUserRole: user.role
+            }
+          }
+        });
+      } catch (logError) {
+        console.error('Failed to log user transfer:', logError);
+      }
+
+      res.json({
+        success: true,
+        data: {
+          user: updatedUser,
+          transfer: {
+            from: {
+              id: oldTenant.id,
+              name: oldTenant.name
+            },
+            to: {
+              id: newTenant.id,
+              name: newTenant.name
+            }
+          }
+        },
+        message: `${user.firstName} ${user.lastName} ble flyttet fra ${oldTenant.name} til ${newTenant.name}`
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Transfer user error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke flytte bruker' });
+      }
+    }
+  }
 }

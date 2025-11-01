@@ -28,6 +28,7 @@ router.delete('/:id/avatar', (req, res) => userController.removeAvatar(req, res)
 router.patch('/:id/deactivate', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => userController.deactivateUser(req, res));
 router.patch('/:id/activate', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => userController.activateUser(req, res));
 router.patch('/:id/role', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => userController.updateUserRole(req, res));
+router.patch('/:id/transfer-tenant', authorize('SUPER_ADMIN'), (req, res) => userController.transferUserToTenant(req, res));
 router.delete('/:id', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => userController.deleteUser(req, res));
 
 // Rate limit management (admin only)

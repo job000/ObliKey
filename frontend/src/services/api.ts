@@ -200,6 +200,12 @@ class ApiService {
     return response.data;
   }
 
+  // Get active tenants for registration (public - no auth required)
+  async getActiveTenants() {
+    const response = await this.axiosInstance.get('/tenants/active');
+    return response.data;
+  }
+
   async forgotPassword(email: string) {
     const response = await this.axiosInstance.post('/password-reset/request', { email });
     return response.data;
@@ -905,6 +911,14 @@ class ApiService {
 
   async deleteUser(userId: string) {
     const response = await this.axiosInstance.delete(`/users/${userId}`);
+    return response.data;
+  }
+
+  // Transfer user to another tenant (SUPER_ADMIN only)
+  async transferUserToTenant(userId: string, tenantId: string) {
+    const response = await this.axiosInstance.patch(`/users/${userId}/transfer-tenant`, {
+      tenantId
+    });
     return response.data;
   }
 

@@ -104,6 +104,25 @@ export class TenantController {
     }
   }
 
+  // Get active tenants for registration (Public - no auth required)
+  async getActiveTenants(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenants = await prisma.tenant.findMany({
+        where: { active: true },
+        select: {
+          id: true,
+          name: true,
+          subdomain: true
+        },
+        orderBy: { name: 'asc' }
+      });
+
+      res.json({ success: true, data: tenants });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Kunne ikke hente gyms' });
+    }
+  }
+
   // Get tenant by ID
   async getTenantById(req: AuthRequest, res: Response): Promise<void> {
     try {

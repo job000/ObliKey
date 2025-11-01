@@ -14,9 +14,14 @@ export class AuthController {
     try {
       const { email, password, firstName, lastName, phone, dateOfBirth, username: requestedUsername, tenantId }: RegisterDto = req.body;
 
-      // Find tenant by subdomain (frontend sends subdomain as tenantId)
-      let tenant = await prisma.tenant.findUnique({
-        where: { subdomain: tenantId }
+      // Find tenant by ID or subdomain (frontend can send either)
+      let tenant = await prisma.tenant.findFirst({
+        where: {
+          OR: [
+            { id: tenantId },
+            { subdomain: tenantId }
+          ]
+        }
       });
 
       if (!tenant) {

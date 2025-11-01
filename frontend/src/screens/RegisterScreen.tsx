@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,20 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../contexts/AuthContext';
 import Container from '../components/Container';
+import { api } from '../services/api';
 
-export default function RegisterScreen({ navigation }: any) {
+interface Tenant {
+  id: string;
+  name: string;
+  subdomain: string;
+}
+
+export default function RegisterScreen({ navigation, route }: any) {
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [loadingTenants, setLoadingTenants] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -23,15 +33,45 @@ export default function RegisterScreen({ navigation }: any) {
     lastName: '',
     phone: '',
     username: '',
-    tenantId: 'oblikey-demo', // Default tenant
+    tenantId: route.params?.tenantId || '', // Pre-selected from deep link or empty
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { register } = useAuth();
 
+  // Fetch active tenants on mount
+  useEffect(() => {
+    loadActiveTenants();
+  }, []);
+
+  const loadActiveTenants = async () => {
+    try {
+      setLoadingTenants(true);
+      const response = await api.getActiveTenants();
+      if (response.success && response.data) {
+        setTenants(response.data);
+
+        // If no tenant pre-selected, set first tenant as default
+        if (!formData.tenantId && response.data.length > 0) {
+          setFormData(prev => ({ ...prev, tenantId: response.data[0].id }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load tenants:', error);
+      Alert.alert('Feil', 'Kunne ikke laste inn gyms. Prøv igjen senere.');
+    } finally {
+      setLoadingTenants(false);
+    }
+  };
+
   const handleRegister = async () => {
     if (!formData.email || !formData.password || !formData.firstName || !formData.lastName || !formData.username) {
       Alert.alert('Feil', 'Vennligst fyll ut alle obligatoriske feltene');
+      return;
+    }
+
+    if (!formData.tenantId) {
+      Alert.alert('Feil', 'Vennligst velg et gym');
       return;
     }
 
@@ -104,6 +144,31 @@ export default function RegisterScreen({ navigation }: any) {
                 textContentType="username"
                 autoComplete="username-new"
               />
+
+              <Text style={styles.label}>Velg ditt gym *</Text>
+              {loadingTenants ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color="#3B82F6" />
+                  <Text style={styles.loadingText}>Laster gyms...</Text>
+                </View>
+              ) : (
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={formData.tenantId}
+                    onValueChange={(itemValue) => setFormData({ ...formData, tenantId: itemValue })}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Velg et gym" value="" />
+                    {tenants.map((tenant) => (
+                      <Picker.Item
+                        key={tenant.id}
+                        label={tenant.name}
+                        value={tenant.id}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              )}
 
               <Text style={styles.label}>E-post *</Text>
               <TextInput
@@ -284,5 +349,30 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: -12,
     marginBottom: 12,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    marginBottom: 16,
+    backgroundColor: '#FFF',
+  },
+  picker: {
+    height: 50,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+  },
+  loadingText: {
+    marginLeft: 12,
+    fontSize: 14,
+    color: '#6B7280',
   },
 });

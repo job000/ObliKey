@@ -5,7 +5,10 @@ import { authenticate, authorize } from '../middleware/auth';
 const router = Router();
 const tenantController = new TenantController();
 
-// All routes require authentication
+// Public routes (no authentication required)
+router.get('/active', (req, res) => tenantController.getActiveTenants(req, res));
+
+// All other routes require authentication
 router.use(authenticate);
 
 // Routes
