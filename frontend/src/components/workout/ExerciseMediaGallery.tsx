@@ -73,6 +73,13 @@ export const ExerciseMediaGallery: React.FC<ExerciseMediaGalleryProps> = ({
   }, [exerciseId]);
 
   const loadMedia = async () => {
+    // Don't attempt to load if exerciseId is undefined or empty
+    if (!exerciseId || exerciseId === 'undefined') {
+      console.warn('ExerciseMediaGallery: Cannot load media, exerciseId is undefined');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await api.getExerciseMedia(exerciseId, exerciseType);
