@@ -646,6 +646,26 @@ export default function WorkoutScreen() {
     setActiveWorkout(updated);
   };
 
+  const removeSetFromExercise = (exerciseIdx: number, setIdx: number) => {
+    const updated = [...activeWorkout];
+
+    // Don't allow removal if only one set remains
+    if (updated[exerciseIdx].sets.length <= 1) {
+      Alert.alert('Kan ikke fjerne', 'Du må ha minst ett sett per øvelse');
+      return;
+    }
+
+    // Remove the set
+    updated[exerciseIdx].sets.splice(setIdx, 1);
+
+    // Renumber remaining sets
+    updated[exerciseIdx].sets.forEach((set, idx) => {
+      set.setNumber = idx + 1;
+    });
+
+    setActiveWorkout(updated);
+  };
+
   const finishWorkout = async () => {
     if (!workoutStartTime) return;
 
@@ -1172,7 +1192,7 @@ export default function WorkoutScreen() {
                     <Text style={[styles.setsTableHeaderText, { flex: 1 }]}>Reps</Text>
                   </>
                 )}
-                <View style={{ flex: 0.6 }} />
+                <View style={{ flex: 1.1 }} />
               </View>
 
               {/* Sets Rows */}
@@ -1224,7 +1244,6 @@ export default function WorkoutScreen() {
                         keyboardType="decimal-pad"
                         value={set.weight?.toString() || ''}
                         onChangeText={(val) => updateSet(exerciseIdx, setIdx, 'weight', parseFloat(val) || undefined)}
-                        editable={!set.completed}
                       />
                       <TextInput
                         style={[
@@ -1237,7 +1256,6 @@ export default function WorkoutScreen() {
                         keyboardType="number-pad"
                         value={set.reps?.toString() || ''}
                         onChangeText={(val) => updateSet(exerciseIdx, setIdx, 'reps', parseInt(val) || undefined)}
-                        editable={!set.completed}
                       />
                     </>
                   )}
@@ -1253,6 +1271,13 @@ export default function WorkoutScreen() {
                     ) : (
                       <View style={styles.setCheckboxUnchecked} />
                     )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.removeSetButton, { flex: 0.5 }]}
+                    onPress={() => removeSetFromExercise(exerciseIdx, setIdx)}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -3356,6 +3381,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: COLORS.primary,
+  },
+  removeSetButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
   },
 
   // Add Exercise Button
