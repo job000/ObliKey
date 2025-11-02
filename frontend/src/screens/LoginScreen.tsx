@@ -10,6 +10,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +33,9 @@ export default function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
 
   const handleLogin = async () => {
+    // Dismiss keyboard immediately
+    Keyboard.dismiss();
+
     if (!identifier || !password) {
       Alert.alert('Feil', 'Vennligst fyll ut alle feltene');
       return;
@@ -90,7 +94,10 @@ export default function LoginScreen({ navigation }: any) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+        >
           <Container maxWidth={500}>
             <View style={styles.content}>
               <View style={styles.tenantSelectionHeader}>
@@ -147,10 +154,13 @@ export default function LoginScreen({ navigation }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+      >
         <Container maxWidth={500}>
           <View style={styles.content}>
-            <Text style={styles.title}>ObliKey</Text>
+            <Text style={styles.title}>Otico</Text>
             <Text style={styles.subtitle}>Logg inn på din konto</Text>
 
             <View style={styles.form}>

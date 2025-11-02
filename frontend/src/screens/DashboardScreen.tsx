@@ -8,15 +8,13 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
-  Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useModules } from '../contexts/ModuleContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
-import StatCard from '../components/StatCard';
+import { theme } from '../styles/theme';
 import type { Booking, PTSession, Class } from '../types';
 
 const { width } = Dimensions.get('window');
@@ -28,10 +26,8 @@ export default function DashboardScreen({ navigation }: any) {
     upcomingBookings: 0,
     totalSessions: 0,
     activePrograms: 0,
-    weeklyProgress: 65,
   });
-  const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([]);
-  const [upcomingSessions, setUpcomingSessions] = useState<PTSession[]>([]);
+  const [upcomingActivities, setUpcomingActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -47,22 +43,67 @@ export default function DashboardScreen({ navigation }: any) {
           api.getPTSessions(),
         ]);
 
-        setUpcomingBookings(bookingsRes.data.slice(0, 3));
-        setUpcomingSessions(sessionsRes.data.slice(0, 3));
+        // Combine upcoming bookings and sessions
+        const upcomingBookings = bookingsRes.data
+          .filter((b: Booking) => new Date(b.class.startTime) > new Date())
+          .slice(0, 3)
+          .map((b: Booking) => ({
+            id: b.id,
+            type: 'class',
+            title: b.class.name,
+            startTime: b.class.startTime,
+            instructor: b.class.instructor,
+            status: b.status,
+          }));
+
+        const upcomingSessions = sessionsRes.data
+          .filter((s: PTSession) => s.startTime && new Date(s.startTime) > new Date())
+          .slice(0, 3)
+          .map((s: PTSession) => ({
+            id: s.id,
+            type: 'pt',
+            title: 'PT-Økt',
+            startTime: s.startTime,
+            trainer: s.trainer,
+            status: s.status,
+          }));
+
+        // Merge and sort by startTime
+        const combined = [...upcomingBookings, ...upcomingSessions]
+          .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+          .slice(0, 3);
+
+        setUpcomingActivities(combined);
         setStats({
-          upcomingBookings: bookingsRes.data.length,
-          totalSessions: sessionsRes.data.length,
-          activePrograms: 2,
-          weeklyProgress: 65,
+          upcomingBookings: bookingsRes.data.filter((b: Booking) =>
+            new Date(b.class.startTime) > new Date()
+          ).length,
+          totalSessions: sessionsRes.data.filter((s: PTSession) =>
+            s.startTime && new Date(s.startTime) > new Date()
+          ).length,
+          activePrograms: 0, // TODO: Fetch real data when training programs API is ready
         });
       } else if (user?.role === 'TRAINER' || user?.role === 'ADMIN') {
         const sessionsRes = await api.getPTSessions();
-        setUpcomingSessions(sessionsRes.data.slice(0, 3));
+        const upcomingSessions = sessionsRes.data
+          .filter((s: PTSession) => s.startTime && new Date(s.startTime) > new Date())
+          .slice(0, 3)
+          .map((s: PTSession) => ({
+            id: s.id,
+            type: 'pt',
+            title: 'PT-Økt',
+            startTime: s.startTime,
+            trainer: s.trainer,
+            status: s.status,
+          }));
+
+        setUpcomingActivities(upcomingSessions);
         setStats({
           upcomingBookings: 0,
-          totalSessions: sessionsRes.data.length,
+          totalSessions: sessionsRes.data.filter((s: PTSession) =>
+            s.startTime && new Date(s.startTime) > new Date()
+          ).length,
           activePrograms: 0,
-          weeklyProgress: 85,
         });
       }
     } catch (error) {
@@ -117,7 +158,7 @@ export default function DashboardScreen({ navigation }: any) {
       icon: 'barbell' as const,
       label: 'PT-Økter',
       onPress: () => navigation.navigate('PTSessions'),
-      enabled: true, // PT sessions always available
+      enabled: modules.pt,
     },
     {
       icon: 'calendar' as const,
@@ -156,62 +197,49 @@ export default function DashboardScreen({ navigation }: any) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1F2937" />
+        <ActivityIndicator size="large" color={theme.colors.primary[500]} />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Modern Gradient Header */}
-      <LinearGradient
-        colors={['#6366F1', '#8B5CF6', '#A855F7']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <Container>
-          <View style={styles.headerContent}>
-            <View>
-              <Text style={styles.greeting}>{getGreeting()}</Text>
-              <Text style={styles.userName}>
-                {user?.firstName} {user?.lastName}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.profileButton}
-              onPress={() => navigation.navigate('Profile')}
-            >
-              <View style={styles.profileAvatar}>
-                <Ionicons name="person-outline" size={22} color="#6366F1" />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Weekly Progress */}
-          <View style={styles.progressSection}>
-            <View style={styles.progressInfo}>
-              <Text style={styles.progressLabel}>Ukentlig mål</Text>
-              <Text style={styles.progressValue}>5 av 7 økter</Text>
-            </View>
-            <View style={styles.progressBarContainer}>
-              <LinearGradient
-                colors={['#FBBF24', '#F59E0B']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.progressBar, { width: `${stats.weeklyProgress}%` }]}
-              />
-            </View>
-          </View>
-        </Container>
-      </LinearGradient>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary[500]}
+          />
+        }
       >
         <Container>
-          {/* Stats Cards - Vibrant Gradient Cards */}
+          {/* Simple Header */}
+          <View style={styles.header}>
+            <View style={styles.headerContent}>
+              <View>
+                <Text style={styles.greeting}>{getGreeting()}</Text>
+                <Text style={styles.userName}>
+                  {user?.firstName} {user?.lastName}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.profileButton}
+                onPress={() => navigation.navigate('Profile')}
+              >
+                <View style={styles.profileAvatar}>
+                  <Ionicons
+                    name="person-outline"
+                    size={20}
+                    color={theme.colors.gray[600]}
+                  />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Stats Cards - Clean Metric Cards */}
           <View style={styles.statsGrid}>
             {modules.classes && (
               <TouchableOpacity
@@ -219,190 +247,167 @@ export default function DashboardScreen({ navigation }: any) {
                 onPress={() => navigation.navigate('Classes')}
                 activeOpacity={0.7}
               >
-                <LinearGradient
-                  colors={['#8B5CF6', '#A855F7']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.statCardGradient}
-                >
-                  <View style={styles.statIconContainer}>
-                    <Ionicons name="calendar" size={24} color="#FFFFFF" />
-                  </View>
-                  <Text style={styles.statValue}>{stats.upcomingBookings}</Text>
-                  <Text style={styles.statLabel}>Bookinger</Text>
-                </LinearGradient>
+                <View style={styles.statIconContainer}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={theme.colors.primary[500]}
+                  />
+                </View>
+                <Text style={styles.statValue}>{stats.upcomingBookings}</Text>
+                <Text style={styles.statLabel}>Bookinger</Text>
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity
-              style={styles.statCard}
-              onPress={() => navigation.navigate('PTSessions')}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={['#EC4899', '#F43F5E']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.statCardGradient}
+            {modules.pt && (
+              <TouchableOpacity
+                style={styles.statCard}
+                onPress={() => navigation.navigate('PTSessions')}
+                activeOpacity={0.7}
               >
                 <View style={styles.statIconContainer}>
-                  <Ionicons name="barbell" size={24} color="#FFFFFF" />
+                  <Ionicons
+                    name="barbell-outline"
+                    size={20}
+                    color={theme.colors.accent.purple}
+                  />
                 </View>
                 <Text style={styles.statValue}>{stats.totalSessions}</Text>
                 <Text style={styles.statLabel}>PT-Økter</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            )}
 
-            <TouchableOpacity
-              style={styles.statCard}
-              onPress={() => navigation.navigate('TrainingPrograms')}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={['#10B981', '#14B8A6']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.statCardGradient}
+            {stats.activePrograms > 0 && (
+              <TouchableOpacity
+                style={styles.statCard}
+                onPress={() => navigation.navigate('TrainingPrograms')}
+                activeOpacity={0.7}
               >
                 <View style={styles.statIconContainer}>
-                  <Ionicons name="fitness" size={24} color="#FFFFFF" />
+                  <Ionicons
+                    name="fitness-outline"
+                    size={20}
+                    color={theme.colors.success}
+                  />
                 </View>
                 <Text style={styles.statValue}>{stats.activePrograms}</Text>
                 <Text style={styles.statLabel}>Programmer</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.statCard}
-              onPress={() => alert('Kalorisporing kommer snart!')}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={['#F59E0B', '#EF4444']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.statCardGradient}
-              >
-                <View style={styles.statIconContainer}>
-                  <Ionicons name="flame" size={24} color="#FFFFFF" />
-                </View>
-                <Text style={styles.statValue}>2,847</Text>
-                <Text style={styles.statLabel}>Kalorier</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            )}
           </View>
 
-          {/* Quick Actions - Colorful Icons */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Hurtigvalg</Text>
-            <View style={styles.quickActionsGrid}>
-              {quickActions.map((action, index) => {
-                const gradientColors = [
-                  ['#6366F1', '#8B5CF6'], // PT
-                  ['#EC4899', '#F43F5E'], // Classes
-                  ['#10B981', '#14B8A6'], // Shop
-                  ['#F59E0B', '#EF4444'], // Programs
-                  ['#8B5CF6', '#A855F7'], // Chat
-                  ['#6366F1', '#3B82F6'], // Support
-                ];
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.quickActionItem}
-                    onPress={action.onPress}
-                    activeOpacity={0.7}
-                  >
-                    <LinearGradient
-                      colors={gradientColors[index]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.quickActionIcon}
-                    >
-                      <Ionicons name={action.icon} size={24} color="#FFFFFF" />
-                    </LinearGradient>
-                    <Text style={styles.quickActionLabel}>{action.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Upcoming Sessions - Clean Cards */}
-          {upcomingSessions.length > 0 && (
+          {/* Upcoming Activities - This Week Section */}
+          {upcomingActivities.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Kommende økter</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('PTSessions')}>
+                <Text style={styles.sectionTitle}>Denne uken</Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    navigation.navigate(
+                      modules.pt ? 'PTSessions' : 'Classes'
+                    )
+                  }
+                >
                   <Text style={styles.seeAllText}>Se alle</Text>
                 </TouchableOpacity>
               </View>
 
-              {upcomingSessions.map((session) => (
+              {upcomingActivities.map((activity) => (
                 <TouchableOpacity
-                  key={session.id}
-                  style={styles.sessionCard}
-                  onPress={() => navigation.navigate('PTSessions')}
+                  key={activity.id}
+                  style={styles.activityCard}
+                  onPress={() =>
+                    navigation.navigate(
+                      activity.type === 'pt' ? 'PTSessions' : 'Classes'
+                    )
+                  }
                   activeOpacity={0.7}
                 >
-                  <LinearGradient
-                    colors={['#EC4899', '#F43F5E']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.sessionIconCircle}
+                  <View
+                    style={[
+                      styles.activityIconCircle,
+                      {
+                        backgroundColor:
+                          activity.type === 'pt'
+                            ? theme.colors.accent.purple + '15'
+                            : theme.colors.primary[500] + '15',
+                      },
+                    ]}
                   >
-                    <Ionicons name="barbell" size={22} color="#FFFFFF" />
-                  </LinearGradient>
+                    <Ionicons
+                      name={
+                        activity.type === 'pt'
+                          ? 'barbell-outline'
+                          : 'calendar-outline'
+                      }
+                      size={20}
+                      color={
+                        activity.type === 'pt'
+                          ? theme.colors.accent.purple
+                          : theme.colors.primary[500]
+                      }
+                    />
+                  </View>
 
-                  <View style={styles.sessionContent}>
-                    <Text style={styles.sessionTitle}>PT-Økt</Text>
-                    <View style={styles.sessionDetails}>
-                      <Ionicons name="time-outline" size={12} color="#6B7280" />
-                      <Text style={styles.sessionDetailText}>
-                        {session.startTime ? `${formatDate(session.startTime)} • ${formatTime(session.startTime)}` : 'Ikke planlagt'}
+                  <View style={styles.activityContent}>
+                    <Text style={styles.activityTitle}>{activity.title}</Text>
+                    <View style={styles.activityDetails}>
+                      <Ionicons
+                        name="time-outline"
+                        size={13}
+                        color={theme.colors.gray[500]}
+                      />
+                      <Text style={styles.activityDetailText}>
+                        {formatDate(activity.startTime)} • {formatTime(activity.startTime)}
                       </Text>
                     </View>
-                    {session.trainer && (
-                      <View style={styles.sessionDetails}>
-                        <Ionicons name="person-outline" size={12} color="#6B7280" />
-                        <Text style={styles.sessionDetailText}>
-                          {session.trainer.firstName} {session.trainer.lastName}
+                    {(activity.trainer || activity.instructor) && (
+                      <View style={styles.activityDetails}>
+                        <Ionicons
+                          name="person-outline"
+                          size={13}
+                          color={theme.colors.gray[500]}
+                        />
+                        <Text style={styles.activityDetailText}>
+                          {activity.trainer
+                            ? `${activity.trainer.firstName} ${activity.trainer.lastName}`
+                            : `${activity.instructor.firstName} ${activity.instructor.lastName}`}
                         </Text>
                       </View>
                     )}
                   </View>
 
-                  <View style={styles.sessionRight}>
-                    <View style={styles.sessionStatus}>
-                      <Text style={styles.sessionStatusText}>{session.status}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="#6B7280" />
-                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={theme.colors.gray[400]}
+                  />
                 </TouchableOpacity>
               ))}
             </View>
           )}
 
-          {/* Motivational Card - Vibrant Gradient */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#FBBF24', '#F59E0B', '#F97316']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.motivationCard}
-            >
-              <View style={styles.motivationIcon}>
-                <Ionicons name="trophy" size={32} color="#FFFFFF" />
-              </View>
-              <View style={styles.motivationContent}>
-                <Text style={styles.motivationTitle}>Du er på riktig vei!</Text>
-                <Text style={styles.motivationSubtitle}>
-                  2 økter til for å nå ditt ukentlige mål
-                </Text>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+          {/* Quick Actions - Clean Button Grid */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Hurtigvalg</Text>
+            <View style={styles.quickActionsGrid}>
+              {quickActions.map((action, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.quickActionButton}
+                  onPress={action.onPress}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={action.icon}
+                    size={20}
+                    color={theme.colors.gray[700]}
+                  />
+                  <Text style={styles.quickActionLabel}>{action.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
           <View style={{ height: 40 }} />
         </Container>
@@ -414,13 +419,13 @@ export default function DashboardScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background.secondary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background.secondary,
   },
   header: {
     paddingTop: 60,
@@ -430,247 +435,140 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
   },
   greeting: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.secondary,
     marginBottom: 4,
   },
   userName: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    letterSpacing: -0.3,
   },
   profileButton: {
-    padding: 4,
+    padding: 2,
   },
   profileAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.background.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  progressSection: {
-    gap: 10,
-  },
-  progressInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  progressLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
-  },
-  progressValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  progressBarContainer: {
-    height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 4,
+    ...theme.shadows.sm,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginTop: 20,
+    marginTop: 24,
   },
   statCard: {
     flex: 1,
     minWidth: (width - 64 - 12) / 2,
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  statCardGradient: {
-    padding: 20,
-    alignItems: 'flex-start',
-    borderRadius: 20,
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.lg,
+    padding: 18,
+    ...theme.shadows.sm,
   },
   statIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.gray[100],
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   statValue: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: theme.typography.fontSize['2xl'],
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
     marginBottom: 2,
   },
   statLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.95)',
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.secondary,
   },
   section: {
-    marginTop: 32,
+    marginTop: 28,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
-    letterSpacing: -0.3,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
   },
   seeAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6366F1',
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.primary[500],
   },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 16,
-  },
-  quickActionItem: {
-    alignItems: 'center',
-    gap: 10,
-    width: (width - 64 - 24) / 3,
-  },
-  quickActionIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  quickActionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
-    textAlign: 'center',
-  },
-  sessionCard: {
+  activityCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.lg,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    marginBottom: 10,
+    ...theme.shadows.sm,
   },
-  sessionIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  activityIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
-  sessionContent: {
+  activityContent: {
     flex: 1,
-    gap: 4,
+    gap: 5,
   },
-  sessionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+  activityTitle: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
     marginBottom: 2,
   },
-  sessionDetails: {
+  activityDetails: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
-  sessionDetailText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6B7280',
+  activityDetailText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.regular,
+    color: theme.colors.text.secondary,
   },
-  sessionRight: {
-    alignItems: 'flex-end',
-    gap: 8,
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 12,
   },
-  sessionStatus: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 10,
-  },
-  sessionStatusText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6366F1',
-  },
-  motivationCard: {
+  quickActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 32,
-    borderRadius: 20,
-    padding: 20,
-    gap: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 10,
+    ...theme.shadows.sm,
   },
-  motivationIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  motivationContent: {
-    flex: 1,
-    gap: 4,
-  },
-  motivationTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  motivationSubtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.95)',
-    lineHeight: 18,
+  quickActionLabel: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.primary,
   },
 });

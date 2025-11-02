@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Alert
+  Alert,
+  SafeAreaView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
@@ -67,11 +68,12 @@ const MembershipProfileScreen = ({ navigation }: any) => {
     if (!membership) return;
 
     try {
-      await api.checkIn(membership.id, 'Hovedsenter');
+      await api.checkIn('Hovedsenter');
       Alert.alert('Suksess', 'Du er nå innsjekket');
       fetchData();
     } catch (error: any) {
-      Alert.alert('Feil', error.response?.data?.message || 'Kunne ikke sjekke inn');
+      console.error('Check-in error:', error);
+      Alert.alert('Feil', error.response?.data?.error || error.response?.data?.message || 'Kunne ikke sjekke inn');
     }
   };
 
@@ -85,6 +87,97 @@ const MembershipProfileScreen = ({ navigation }: any) => {
     } catch (error: any) {
       Alert.alert('Feil', error.response?.data?.message || 'Kunne ikke sjekke ut');
     }
+  };
+
+  const handleFreezeMembership = () => {
+    if (!membership) return;
+
+    Alert.alert(
+      'Frys medlemskap',
+      'Hvor lenge vil du fryse medlemskapet ditt?',
+      [
+        {
+          text: 'Avbryt',
+          style: 'cancel'
+        },
+        {
+          text: '1 uke',
+          onPress: () => freezeMembership(7)
+        },
+        {
+          text: '2 uker',
+          onPress: () => freezeMembership(14)
+        },
+        {
+          text: '1 måned',
+          onPress: () => freezeMembership(30)
+        }
+      ]
+    );
+  };
+
+  const freezeMembership = async (days: number) => {
+    if (!membership) return;
+
+    try {
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + days);
+
+      await api.freezeMembership(membership.id, {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        reason: `Fryst i ${days} dager`
+      });
+
+      Alert.alert('Suksess', 'Medlemskapet er nå fryst');
+      fetchData();
+    } catch (error: any) {
+      Alert.alert('Feil', error.response?.data?.message || 'Kunne ikke fryse medlemskap');
+    }
+  };
+
+  const handlePaymentHistory = () => {
+    if (!membership) return;
+
+    try {
+      // Show payment history in an Alert for now
+      const payments = membership?.payments || [];
+      if (!Array.isArray(payments) || payments.length === 0) {
+        Alert.alert('Betalingshistorikk', 'Ingen betalinger registrert ennå.');
+        return;
+      }
+
+      const paymentSummary = payments
+        .slice(0, 5)
+        .map((p: any) => {
+          const date = new Date(p.dueDate).toLocaleDateString('no-NO');
+          const status = p.status === 'PAID' ? '✓ Betalt' : p.status === 'FAILED' ? '✗ Feilet' : 'Venter';
+          return `${date}: ${p.amount} kr - ${status}`;
+        })
+        .join('\n');
+
+      Alert.alert(
+        'Betalingshistorikk',
+        `Siste betalinger:\n\n${paymentSummary}${payments.length > 5 ? '\n\n... og flere' : ''}`,
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Payment history error:', error);
+      Alert.alert('Feil', 'Kunne ikke hente betalingshistorikk');
+    }
+  };
+
+  const handleSupport = () => {
+    Alert.alert(
+      'Hjelp og support',
+      'Trenger du hjelp?\n\nKontakt oss:\n• E-post: support@oblikey.no\n• Telefon: 123 45 678\n• Åpningstid: 06:00 - 22:00',
+      [
+        { text: 'Ring oss', onPress: () => console.log('Ring oss') },
+        { text: 'Send e-post', onPress: () => console.log('Send e-post') },
+        { text: 'Lukk', style: 'cancel' }
+      ]
+    );
   };
 
   const getStatusColor = (status: string) => {
@@ -151,30 +244,31 @@ const MembershipProfileScreen = ({ navigation }: any) => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3B82F6" />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!membership) {
     return (
-      <View style={styles.emptyContainer}>
+      <SafeAreaView style={styles.emptyContainer}>
         <Ionicons name="card-outline" size={64} color="#9CA3AF" />
         <Text style={styles.emptyTitle}>Ingen aktivt medlemskap</Text>
         <Text style={styles.emptyText}>Du har ikke et aktivt medlemskap for øyeblikket</Text>
         <TouchableOpacity style={styles.primaryButton}>
           <Text style={styles.primaryButtonText}>Bli medlem</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+      <ScrollView
+        style={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Text style={styles.greeting}>Hei, {user?.firstName}!</Text>
@@ -273,25 +367,25 @@ const MembershipProfileScreen = ({ navigation }: any) => {
             <Text style={styles.statsTitle}>Statistikk</Text>
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{activity.checkInsCount}</Text>
+                <Text style={styles.statValue}>{activity.checkInsCount || 0}</Text>
                 <Text style={styles.statLabel}>Besøk totalt</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{activity.recentCheckIns.length}</Text>
+                <Text style={styles.statValue}>{activity.recentCheckIns?.length || 0}</Text>
                 <Text style={styles.statLabel}>Siste 30 dager</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{activity.totalPaid} kr</Text>
+                <Text style={styles.statValue}>{activity.totalPaid || 0} kr</Text>
                 <Text style={styles.statLabel}>Totalt betalt</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{activity.overduePayments.length}</Text>
+                <Text style={styles.statValue}>{activity.overduePayments?.length || 0}</Text>
                 <Text style={styles.statLabel}>Forfalte</Text>
               </View>
             </View>
           </View>
 
-          {activity.recentCheckIns.length > 0 && (
+          {activity.recentCheckIns && activity.recentCheckIns.length > 0 && (
             <View style={styles.historyCard}>
               <Text style={styles.historyTitle}>Siste besøk</Text>
               {activity.recentCheckIns.slice(0, 5).map((checkIn, index) => (
@@ -320,23 +414,24 @@ const MembershipProfileScreen = ({ navigation }: any) => {
       )}
 
       <View style={styles.actionsCard}>
-        <TouchableOpacity style={styles.actionItem}>
+        <TouchableOpacity style={styles.actionItem} onPress={handleFreezeMembership}>
           <Ionicons name="pause-circle-outline" size={24} color="#3B82F6" />
           <Text style={styles.actionText}>Frys medlemskap</Text>
           <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionItem}>
+        <TouchableOpacity style={styles.actionItem} onPress={handlePaymentHistory}>
           <Ionicons name="document-text-outline" size={24} color="#3B82F6" />
           <Text style={styles.actionText}>Betalingshistorikk</Text>
           <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionItem}>
+        <TouchableOpacity style={styles.actionItem} onPress={handleSupport}>
           <Ionicons name="help-circle-outline" size={24} color="#3B82F6" />
           <Text style={styles.actionText}>Hjelp og support</Text>
           <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
         </TouchableOpacity>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 

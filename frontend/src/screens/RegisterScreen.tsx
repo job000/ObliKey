@@ -10,9 +10,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Modal,
+  FlatList,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../contexts/AuthContext';
 import Container from '../components/Container';
 import { api } from '../services/api';
@@ -37,6 +39,7 @@ export default function RegisterScreen({ navigation, route }: any) {
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [tenantModalVisible, setTenantModalVisible] = useState(false);
   const { register } = useAuth();
 
   // Fetch active tenants on mount
@@ -65,6 +68,9 @@ export default function RegisterScreen({ navigation, route }: any) {
   };
 
   const handleRegister = async () => {
+    // Dismiss keyboard immediately
+    Keyboard.dismiss();
+
     if (!formData.email || !formData.password || !formData.firstName || !formData.lastName || !formData.username) {
       Alert.alert('Feil', 'Vennligst fyll ut alle obligatoriske feltene');
       return;
@@ -104,11 +110,14 @@ export default function RegisterScreen({ navigation, route }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+      >
         <Container maxWidth={500}>
           <View style={styles.content}>
             <Text style={styles.title}>Opprett konto</Text>
-            <Text style={styles.subtitle}>Bli medlem i ObliKey</Text>
+            <Text style={styles.subtitle}>Bli medlem i Otico</Text>
 
             <View style={styles.form}>
               <Text style={styles.label}>Fornavn *</Text>
@@ -152,22 +161,21 @@ export default function RegisterScreen({ navigation, route }: any) {
                   <Text style={styles.loadingText}>Laster gyms...</Text>
                 </View>
               ) : (
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={formData.tenantId}
-                    onValueChange={(itemValue) => setFormData({ ...formData, tenantId: itemValue })}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Velg et gym" value="" />
-                    {tenants.map((tenant) => (
-                      <Picker.Item
-                        key={tenant.id}
-                        label={tenant.name}
-                        value={tenant.id}
-                      />
-                    ))}
-                  </Picker>
-                </View>
+                <TouchableOpacity
+                  style={styles.tenantSelector}
+                  onPress={() => setTenantModalVisible(true)}
+                >
+                  <Ionicons name="business-outline" size={20} color="#6B7280" />
+                  <Text style={[
+                    styles.tenantSelectorText,
+                    !formData.tenantId && styles.tenantSelectorPlaceholder
+                  ]}>
+                    {formData.tenantId
+                      ? tenants.find(t => t.id === formData.tenantId)?.name
+                      : 'Velg et gym'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                </TouchableOpacity>
               )}
 
               <Text style={styles.label}>E-post *</Text>
@@ -241,6 +249,69 @@ export default function RegisterScreen({ navigation, route }: any) {
           </View>
         </Container>
       </ScrollView>
+
+      {/* Tenant Selection Modal */}
+      <Modal
+        visible={tenantModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setTenantModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Velg ditt gym</Text>
+              <TouchableOpacity
+                onPress={() => setTenantModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={tenants}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.tenantItem,
+                    formData.tenantId === item.id && styles.tenantItemSelected
+                  ]}
+                  onPress={() => {
+                    setFormData({ ...formData, tenantId: item.id });
+                    setTenantModalVisible(false);
+                  }}
+                >
+                  <View style={styles.tenantInfo}>
+                    <Text style={[
+                      styles.tenantName,
+                      formData.tenantId === item.id && styles.tenantNameSelected
+                    ]}>
+                      {item.name}
+                    </Text>
+                    <Text style={[
+                      styles.tenantSubdomain,
+                      formData.tenantId === item.id && styles.tenantSubdomainSelected
+                    ]}>
+                      {item.subdomain}.oblikey.no
+                    </Text>
+                  </View>
+                  {formData.tenantId === item.id && (
+                    <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                  )}
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="business-outline" size={48} color="#D1D5DB" />
+                  <Text style={styles.emptyText}>Ingen gyms tilgjengelig</Text>
+                </View>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -350,16 +421,6 @@ const styles = StyleSheet.create({
     marginTop: -12,
     marginBottom: 12,
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    marginBottom: 16,
-    backgroundColor: '#FFF',
-  },
-  picker: {
-    height: 50,
-  },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -374,5 +435,92 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 14,
     color: '#6B7280',
+  },
+  tenantSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    backgroundColor: '#FFF',
+    gap: 12,
+  },
+  tenantSelectorText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
+  },
+  tenantSelectorPlaceholder: {
+    color: '#9CA3AF',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  tenantItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  tenantItemSelected: {
+    backgroundColor: '#EFF6FF',
+  },
+  tenantInfo: {
+    flex: 1,
+  },
+  tenantName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  tenantNameSelected: {
+    color: '#1E40AF',
+  },
+  tenantSubdomain: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  tenantSubdomainSelected: {
+    color: '#3B82F6',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#9CA3AF',
+    marginTop: 12,
   },
 });

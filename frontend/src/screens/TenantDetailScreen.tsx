@@ -550,6 +550,34 @@ export default function TenantDetailScreen({ route, navigation }: any) {
             )}
           </View>
 
+          {/* Modules Card */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Moduler</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('TenantModules', {
+                  tenantId: tenant.id,
+                  tenantName: tenant.name
+                })}
+              >
+                <Text style={styles.linkText}>Administrer →</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.moduleDescription}>
+              Kontroller hvilke moduler (treningsprogram, regnskap, etc.) som er tilgjengelige for denne tenanten
+            </Text>
+            <TouchableOpacity
+              style={styles.manageModulesButton}
+              onPress={() => navigation.navigate('TenantModules', {
+                tenantId: tenant.id,
+                tenantName: tenant.name
+              })}
+            >
+              <Ionicons name="cube" size={20} color="#3B82F6" />
+              <Text style={styles.manageModulesButtonText}>Administrer Moduler</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Features Card */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -1204,6 +1232,28 @@ const styles = StyleSheet.create({
   },
   dangerButtonText: {
     color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  moduleDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  manageModulesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  manageModulesButtonText: {
+    color: '#3B82F6',
     fontSize: 14,
     fontWeight: '600',
   },

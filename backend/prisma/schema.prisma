@@ -77,6 +77,11 @@ model Tenant {
   // PT Relations
   ptAvailability        PTAvailability[]
   ptTimeBlocks          PTTimeBlock[]
+  // Workout Relations
+  customExercises       CustomExercise[]
+  workoutPrograms       WorkoutProgram[]
+  workoutSchedules      WorkoutSchedule[]
+  workoutSessions       WorkoutSession[]
 
   @@map("tenants")
 }
@@ -110,6 +115,8 @@ model TenantSettings {
   ptCancellationHours         Int      @default(24) // Hours before session for customer to get refund
   ptCancellationRefundEnabled Boolean  @default(true) // Enable/disable refund feature
   ptNoShowRefundEnabled       Boolean  @default(false) // Allow refund when marked as NO_SHOW
+  // Workout Settings
+  workoutEnabled              Boolean  @default(false)
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
 
@@ -192,6 +199,11 @@ model User {
   trainerTimeBlocks        PTTimeBlock[]             @relation("TrainerTimeBlocks")
   // Product Sale Alerts
   productSaleAlerts        ProductSaleAlert[]
+  // Workout Relations
+  customExercises          CustomExercise[]
+  workoutPrograms          WorkoutProgram[]
+  workoutSchedules         WorkoutSchedule[]
+  workoutSessions          WorkoutSession[]
 
   @@unique([tenantId, email])
   @@unique([tenantId, username])
@@ -450,6 +462,240 @@ model Exercise {
   ptSessionExercises PTSessionExercise[]
 
   @@map("exercises")
+}
+
+// ============================================
+// WORKOUT SYSTEM - Self-service for all users
+// ============================================
+
+enum ExerciseType {
+  STRENGTH      // Weight training with reps
+  CARDIO        // Time-based cardio
+  FLEXIBILITY   // Stretching
+  CALISTHENICS  // Bodyweight
+}
+
+enum EquipmentType {
+  BARBELL
+  DUMBBELL
+  KETTLEBELL
+  CABLE
+  MACHINE
+  BODYWEIGHT
+  RESISTANCE_BAND
+  MEDICINE_BALL
+  SMITH_MACHINE
+  EZ_BAR
+  TRAP_BAR
+  PLATE
+  TRX
+  PULL_UP_BAR
+  DIP_BAR
+  BENCH
+  OTHER
+}
+
+enum MuscleGroup {
+  CHEST
+  BACK
+  SHOULDERS
+  BICEPS
+  TRICEPS
+  FOREARMS
+  QUADS
+  HAMSTRINGS
+  GLUTES
+  CALVES
+  ABS
+  OBLIQUES
+  LOWER_BACK
+  TRAPS
+  LATS
+  CARDIO
+  FULL_BODY
+}
+
+// System exercises library (seeded globally, visible to all tenants)
+model SystemExercise {
+  id              String         @id @default(uuid())
+  name            String
+  description     String?
+  instructions    String?
+  type            ExerciseType
+  equipment       EquipmentType[]
+  primaryMuscles  MuscleGroup[]
+  secondaryMuscles MuscleGroup[]
+  difficulty      String         // Beginner, Intermediate, Advanced
+  imageUrl        String?
+  videoUrl        String?
+  tips            String?
+  warnings        String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations - users can add system exercises to their custom exercises
+  customExercises CustomExercise[]
+
+  @@map("system_exercises")
+}
+
+// Custom exercises created by users
+model CustomExercise {
+  id               String          @id @default(uuid())
+  tenantId         String
+  userId           String
+  systemExerciseId String?         // Reference to system exercise if based on one
+  name             String
+  description      String?
+  instructions     String?
+  type             ExerciseType
+  equipment        EquipmentType[]
+  primaryMuscles   MuscleGroup[]
+  secondaryMuscles MuscleGroup[]
+  imageUrl         String?
+  videoUrl         String?
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  // Relations
+  tenant          Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  systemExercise  SystemExercise?            @relation(fields: [systemExerciseId], references: [id])
+  programExercises WorkoutProgramExercise[]
+  exerciseLogs    WorkoutExerciseLog[]
+
+  @@map("custom_exercises")
+}
+
+// User's workout programs
+model WorkoutProgram {
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String
+  name        String
+  description String?
+  goals       String?
+  isActive    Boolean  @default(true)
+  isTemplate  Boolean  @default(false) // Mark program as personal template
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tenant    Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercises WorkoutProgramExercise[]
+  schedules WorkoutSchedule[]
+  sessions  WorkoutSession[]
+
+  @@map("workout_programs")
+}
+
+// Exercises in a workout program
+model WorkoutProgramExercise {
+  id                String        @id @default(uuid())
+  programId         String
+  customExerciseId  String
+  sets              Int           @default(3)
+  reps              String?       // "10" or "8-12" or null for time-based
+  duration          Int?          // Duration in seconds for cardio/time-based
+  weight            Float?        // Default weight
+  weightUnit        String        @default("kg") // kg or lb
+  restTime          Int?          // Rest time in seconds
+  notes             String?
+  sortOrder         Int           @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  // Relations
+  program        WorkoutProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  customExercise CustomExercise  @relation(fields: [customExerciseId], references: [id], onDelete: Cascade)
+
+  @@map("workout_program_exercises")
+}
+
+// Schedule for workout programs (which days to do which program)
+model WorkoutSchedule {
+  id         String         @id @default(uuid())
+  tenantId   String
+  userId     String
+  programId  String
+  dayOfWeek  Int            // 0-6 (Sunday-Saturday)
+  startTime  String?        // Optional time "HH:MM"
+  isActive   Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  // Relations
+  tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program WorkoutProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@map("workout_schedules")
+}
+
+// Actual workout sessions (tracking when user works out)
+model WorkoutSession {
+  id          String              @id @default(uuid())
+  tenantId    String
+  userId      String
+  programId   String?
+  startedAt   DateTime            @default(now())
+  completedAt DateTime?
+  duration    Int?                // Duration in seconds
+  notes       String?
+  rating      Int?                // 1-5 rating
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  // Relations
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program      WorkoutProgram?      @relation(fields: [programId], references: [id])
+  exerciseLogs WorkoutExerciseLog[]
+
+  @@map("workout_sessions")
+}
+
+// Logged exercises in a workout session
+model WorkoutExerciseLog {
+  id               String         @id @default(uuid())
+  sessionId        String
+  customExerciseId String
+  sortOrder        Int            @default(0)
+  notes            String?
+  completedAt      DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relations
+  session        WorkoutSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  customExercise CustomExercise     @relation(fields: [customExerciseId], references: [id])
+  setLogs        WorkoutSetLog[]
+
+  @@map("workout_exercise_logs")
+}
+
+// Individual set logs (detailed tracking)
+model WorkoutSetLog {
+  id             String              @id @default(uuid())
+  exerciseLogId  String
+  setNumber      Int
+  reps           Int?                // For strength exercises
+  weight         Float?              // Weight used
+  weightUnit     String              @default("kg") // kg or lb
+  duration       Int?                // Duration in seconds for cardio
+  distance       Float?              // Distance for cardio
+  distanceUnit   String?             // km or miles
+  completed      Boolean             @default(true)
+  notes          String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  // Relations
+  exerciseLog WorkoutExerciseLog @relation(fields: [exerciseLogId], references: [id], onDelete: Cascade)
+
+  @@map("workout_set_logs")
 }
 
 // Many-to-many relationship between programs and exercises

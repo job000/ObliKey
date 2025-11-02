@@ -1,0 +1,182 @@
+=== WORKOUT SCHEDULE IMPLEMENTATION GUIDE ===
+
+This patch adds program scheduling functionality to WorkoutScreen.tsx
+
+STEP 1: Add interface (after line 90)
+---
+interface WorkoutSchedule {
+  id: string;
+  programId: string;
+  dayOfWeek: number; // 0-6 (Sunday-Saturday)
+  startTime?: string;
+  isActive: boolean;
+}
+
+STEP 2: Update WorkoutProgram interface (line 92)
+Add this field:
+  schedules?: WorkoutSchedule[];
+
+STEP 3: Add state variables (after line 180, with other program states)
+---
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+
+STEP 4: Add constants (after MUSCLE_GROUPS, around line 115)
+---
+const WEEKDAYS = [
+  { key: 1, label: 'Man', fullLabel: 'Mandag' },
+  { key: 2, label: 'Tir', fullLabel: 'Tirsdag' },
+  { key: 3, label: 'Ons', fullLabel: 'Onsdag' },
+  { key: 4, label: 'Tor', fullLabel: 'Torsdag' },
+  { key: 5, label: 'Fre', fullLabel: 'Fredag' },
+  { key: 6, label: 'Lør', fullLabel: 'Lørdag' },
+  { key: 0, label: 'Søn', fullLabel: 'Søndag' },
+];
+
+STEP 5: Update saveProgram function to handle schedules
+In saveProgram function (around line 470), after creating/updating program:
+---
+// Save schedules
+if (editingProgram) {
+  // Delete old schedules
+  const oldSchedules = editingProgram.schedules || [];
+  for (const schedule of oldSchedules) {
+    await api.deleteWorkoutSchedule(schedule.id);
+  }
+}
+
+// Create new schedules for selected days
+for (const dayOfWeek of selectedDays) {
+  await api.createWorkoutSchedule({
+    programId: editingProgram?.id || response.data.id,
+    dayOfWeek,
+  });
+}
+
+STEP 6: Update edit program function
+When editingProgram is set, also set selectedDays:
+---
+const editProgram = (program: WorkoutProgram) => {
+  setEditingProgram(program);
+  setProgramName(program.name);
+  setProgramDescription(program.description || '');
+  setProgramExercises(program.exercises || []);
+  setSelectedDays(program.schedules?.map(s => s.dayOfWeek) || []);
+  setShowNewProgram(true);
+};
+
+STEP 7: Add Schedule UI in Program Modal (after description, before exercises section around line 1798)
+---
+{/* Schedule Section */}
+<View style={styles.formGroup}>
+  <Text style={styles.formLabel}>Schema</Text>
+  <Text style={styles.formHint}>
+    {selectedDays.length === 0
+      ? 'Når som helst (ingen dager valgt)'
+      : `${selectedDays.length} dag${selectedDays.length > 1 ? 'er' : ''} valgt`}
+  </Text>
+  <View style={styles.daySelector}>
+    {WEEKDAYS.map(day => {
+      const isSelected = selectedDays.includes(day.key);
+      return (
+        <TouchableOpacity
+          key={day.key}
+          style={[
+            styles.dayChip,
+            isSelected && styles.dayChipSelected,
+          ]}
+          onPress={() => {
+            if (isSelected) {
+              setSelectedDays(selectedDays.filter(d => d !== day.key));
+            } else {
+              setSelectedDays([...selectedDays, day.key]);
+            }
+          }}
+        >
+          <Text
+            style={[
+              styles.dayChipText,
+              isSelected && styles.dayChipTextSelected,
+            ]}
+          >
+            {day.label}
+          </Text>
+        </TouchableOpacity>
+      );
+    })}
+  </View>
+</View>
+
+STEP 8: Add scheduled days display on program cards (in programs tab render)
+Add this helper function before render:
+---
+const getScheduleDaysText = (schedules?: WorkoutSchedule[]) => {
+  if (!schedules || schedules.length === 0) {
+    return 'Når som helst';
+  }
+  const dayLabels = schedules
+    .map(s => WEEKDAYS.find(d => d.key === s.dayOfWeek)?.label)
+    .filter(Boolean)
+    .join(', ');
+  return dayLabels;
+};
+
+In program card display (look for where programs are rendered):
+Add after program name/description:
+---
+<View style={styles.programScheduleRow}>
+  <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} />
+  <Text style={styles.programScheduleText}>
+    {getScheduleDaysText(program.schedules)}
+  </Text>
+</View>
+
+STEP 9: Add styles (in StyleSheet.create around end of file)
+---
+daySelector: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 8,
+  marginTop: 8,
+},
+dayChip: {
+  paddingHorizontal: 16,
+  paddingVertical: 10,
+  borderRadius: 20,
+  backgroundColor: COLORS.background,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  minWidth: 50,
+  alignItems: 'center',
+},
+dayChipSelected: {
+  backgroundColor: COLORS.primary,
+  borderColor: COLORS.primary,
+},
+dayChipText: {
+  fontSize: 14,
+  fontWeight: '600',
+  color: COLORS.text,
+},
+dayChipTextSelected: {
+  color: '#FFFFFF',
+},
+formHint: {
+  fontSize: 13,
+  color: COLORS.textSecondary,
+  marginTop: 4,
+},
+programScheduleRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 6,
+  marginTop: 6,
+},
+programScheduleText: {
+  fontSize: 13,
+  color: COLORS.textSecondary,
+},
+
+STEP 10: Reset selectedDays when modal closes
+In setShowNewProgram(false) calls, also add:
+---
+setSelectedDays([]);

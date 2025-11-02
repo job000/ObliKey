@@ -167,7 +167,8 @@ export class TenantSettingsController {
         shop: 'ecommerceEnabled',
         ecommerce: 'ecommerceEnabled',
         membership: 'membershipEnabled',
-        doorAccess: 'doorAccessEnabled'
+        doorAccess: 'doorAccessEnabled',
+        workout: 'workoutEnabled'
       };
 
       const dbField = moduleFieldMap[module];
@@ -247,7 +248,9 @@ export class TenantSettingsController {
         'dooraccess': 'doorAccess',
         'door': 'doorAccess',
         'pt': 'pt',
-        'personaltraining': 'pt'
+        'personaltraining': 'pt',
+        'workout': 'workout',
+        'treningsprogram': 'workout'
       };
 
       // Get enabled tenant features
@@ -276,7 +279,8 @@ export class TenantSettingsController {
         landingPage: false,
         membership: false,
         doorAccess: false,
-        pt: false
+        pt: false,
+        workout: false
       };
 
       // Enable only features that exist in tenant_features with enabled=true

@@ -20,6 +20,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../services/api';
 import Container from '../components/Container';
 import { useCart } from '../contexts/CartContext';
+import { useModules } from '../contexts/ModuleContext';
 
 interface ProductImage {
   id: string;
@@ -102,6 +103,7 @@ interface WishlistItem {
 
 export default function EnhancedShopScreen({ route }: any) {
   const { addItem } = useCart();
+  const { modules } = useModules();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -618,14 +620,16 @@ export default function EnhancedShopScreen({ route }: any) {
                   Produkter
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.filterButton, filterType === 'PT_SERVICE' && styles.filterButtonActive]}
-                onPress={() => setFilterType('PT_SERVICE')}
-              >
-                <Text style={[styles.filterButtonText, filterType === 'PT_SERVICE' && styles.filterButtonTextActive]}>
-                  PT-tjenester
-                </Text>
-              </TouchableOpacity>
+              {modules.pt && (
+                <TouchableOpacity
+                  style={[styles.filterButton, filterType === 'PT_SERVICE' && styles.filterButtonActive]}
+                  onPress={() => setFilterType('PT_SERVICE')}
+                >
+                  <Text style={[styles.filterButtonText, filterType === 'PT_SERVICE' && styles.filterButtonTextActive]}>
+                    PT-tjenester
+                  </Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.filterButton, filterType === 'MEMBERSHIP' && styles.filterButtonActive]}
                 onPress={() => setFilterType('MEMBERSHIP')}
@@ -1098,7 +1102,7 @@ const styles = StyleSheet.create({
   },
   discountBadge: {
     position: 'absolute',
-    top: 8,
+    bottom: 8,
     right: 8,
     backgroundColor: '#EF4444',
     paddingHorizontal: 12,

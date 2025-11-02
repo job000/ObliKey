@@ -13,6 +13,7 @@ import {
   Platform,
   FlatList,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useTenant } from '../contexts/TenantContext';
@@ -41,6 +42,13 @@ export default function UserManagementScreen({ navigation }: any) {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  // Tenant Transfer States
+  const [transferModalVisible, setTransferModalVisible] = useState(false);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [loadingTenants, setLoadingTenants] = useState(false);
+  const [selectedTargetTenantId, setSelectedTargetTenantId] = useState<string>('');
+  const [transferring, setTransferring] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -152,6 +160,95 @@ export default function UserManagementScreen({ navigation }: any) {
                 'Feil',
                 error.response?.data?.error || 'Kunne ikke slette bruker'
               );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Transfer user to another tenant (SUPER_ADMIN only)
+  const openTransferModal = async (user: User) => {
+    if (!isSuperAdmin) {
+      Alert.alert('Ingen tilgang', 'Kun SUPER_ADMIN kan flytte brukere mellom organisasjoner');
+      return;
+    }
+
+    setSelectedUser(user);
+    setTransferModalVisible(true);
+
+    // Load all tenants
+    try {
+      setLoadingTenants(true);
+      const response = await api.getActiveTenants();
+      if (response.success && response.data) {
+        // Filter out current tenant
+        const availableTenants = response.data.filter((t: Tenant) => t.id !== user.tenantId);
+        setTenants(availableTenants);
+      }
+    } catch (error) {
+      console.error('Failed to load tenants:', error);
+      Alert.alert('Feil', 'Kunne ikke laste inn organisasjoner');
+    } finally {
+      setLoadingTenants(false);
+    }
+  };
+
+  const handleTransferUser = async () => {
+    if (!selectedUser || !selectedTargetTenantId) {
+      Alert.alert('Feil', 'Vennligst velg en organisasjon');
+      return;
+    }
+
+    const targetTenant = tenants.find(t => t.id === selectedTargetTenantId);
+    if (!targetTenant) return;
+
+    Alert.alert(
+      'Bekreft flytting',
+      `Er du sikker på at du vil flytte ${selectedUser.firstName} ${selectedUser.lastName} til ${targetTenant.name}?\n\nAll brukerdata (bookings, medlemskap, bestillinger osv.) vil bli flyttet.`,
+      [
+        { text: 'Avbryt', style: 'cancel' },
+        {
+          text: 'Flytt',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setTransferring(true);
+              const response = await api.transferUserToTenant(selectedUser.id, selectedTargetTenantId);
+
+              if (response.success) {
+                const transferredData = response.data?.transfer?.dataTransferred || {};
+                const dataCount = Object.values(transferredData).reduce((sum: number, val: any) => sum + (val || 0), 0);
+
+                Alert.alert(
+                  'Suksess!',
+                  `${selectedUser.firstName} ${selectedUser.lastName} ble flyttet til ${targetTenant.name}.\n\n` +
+                  `Overført data:\n` +
+                  `• Bookings: ${transferredData.bookings || 0}\n` +
+                  `• PT-økter: ${(transferredData.ptSessionsAsCustomer || 0) + (transferredData.ptSessionsAsTrainer || 0)}\n` +
+                  `• Medlemskap: ${transferredData.memberships || 0}\n` +
+                  `• Bestillinger: ${transferredData.orders || 0}\n` +
+                  `• Totalt: ${dataCount} records`,
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        setTransferModalVisible(false);
+                        setSelectedUser(null);
+                        setSelectedTargetTenantId('');
+                        loadUsers(); // Reload user list
+                      }
+                    }
+                  ]
+                );
+              }
+            } catch (error: any) {
+              Alert.alert(
+                'Feil',
+                error.response?.data?.error || 'Kunne ikke flytte bruker'
+              );
+            } finally {
+              setTransferring(false);
             }
           },
         },
@@ -465,6 +562,20 @@ export default function UserManagementScreen({ navigation }: any) {
                       </TouchableOpacity>
                     )}
 
+                    {/* Transfer button - only for SUPER_ADMIN */}
+                    {isSuperAdmin && user.role !== 'SUPER_ADMIN' && (
+                      <TouchableOpacity
+                        style={styles.actionButtonInfo}
+                        onPress={() => openTransferModal(user)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.actionButtonIcon}>
+                          <Ionicons name="swap-horizontal" size={16} color="#06B6D4" />
+                        </View>
+                        <Text style={styles.actionButtonInfoText}>Flytt</Text>
+                      </TouchableOpacity>
+                    )}
+
                     <TouchableOpacity
                       style={styles.actionButtonDanger}
                       onPress={() => handleDeleteUser(user.id)}
@@ -532,6 +643,79 @@ export default function UserManagementScreen({ navigation }: any) {
                   )
                 )}
               </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Transfer User Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={transferModalVisible}
+        onRequestClose={() => setTransferModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Flytt bruker til annen organisasjon</Text>
+              <TouchableOpacity onPress={() => setTransferModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#111827" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              {selectedUser && (
+                <>
+                  <Text style={styles.modalText}>
+                    Flytt {selectedUser.firstName} {selectedUser.lastName} til en annen organisasjon.
+                  </Text>
+                  <Text style={styles.modalSubtext}>
+                    All brukerdata (bookings, medlemskap, bestillinger, PT-økter osv.) vil bli flyttet med.
+                  </Text>
+
+                  <Text style={styles.modalLabel}>Velg organisasjon:</Text>
+
+                  {loadingTenants ? (
+                    <ActivityIndicator size="large" color="#3B82F6" style={{ marginVertical: 20 }} />
+                  ) : (
+                    <View style={styles.pickerContainer}>
+                      <Picker
+                        selectedValue={selectedTargetTenantId}
+                        onValueChange={(itemValue) => setSelectedTargetTenantId(itemValue)}
+                        style={styles.picker}
+                      >
+                        <Picker.Item label="Velg organisasjon..." value="" />
+                        {tenants.map((tenant) => (
+                          <Picker.Item
+                            key={tenant.id}
+                            label={tenant.name}
+                            value={tenant.id}
+                          />
+                        ))}
+                      </Picker>
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={[
+                      styles.transferButton,
+                      (!selectedTargetTenantId || transferring) && styles.transferButtonDisabled
+                    ]}
+                    onPress={handleTransferUser}
+                    disabled={!selectedTargetTenantId || transferring}
+                  >
+                    {transferring ? (
+                      <ActivityIndicator color="#FFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="swap-horizontal" size={20} color="#FFF" />
+                        <Text style={styles.transferButtonText}>Flytt bruker</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -874,6 +1058,30 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     textAlign: 'center',
   },
+  actionButtonInfo: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: '#ECFEFF',
+    borderWidth: 1.5,
+    borderColor: '#A5F3FC',
+    shadowColor: '#06B6D4',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  actionButtonInfoText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0891B2',
+    textAlign: 'center',
+  },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 64,
@@ -914,6 +1122,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#374151',
     marginBottom: 20,
+  },
+  modalSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  modalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    marginBottom: 20,
+    backgroundColor: '#FFF',
+  },
+  picker: {
+    height: 50,
+  },
+  transferButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#06B6D4',
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 8,
+  },
+  transferButtonDisabled: {
+    backgroundColor: '#A5F3FC',
+  },
+  transferButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   roleOptions: {
     gap: 12,

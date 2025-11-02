@@ -32,6 +32,7 @@ export default function ProductsManagementScreen({ navigation }: any) {
     name: '',
     description: '',
     price: '',
+    compareAtPrice: '',
     type: 'PHYSICAL_PRODUCT' as 'PHYSICAL_PRODUCT' | 'DIGITAL' | 'PT_SERVICE' | 'MEMBERSHIP',
     stock: '',
     trackInventory: true,
@@ -71,6 +72,7 @@ export default function ProductsManagementScreen({ navigation }: any) {
       name: '',
       description: '',
       price: '',
+      compareAtPrice: '',
       type: 'PHYSICAL_PRODUCT',
       stock: '',
       trackInventory: true,
@@ -88,6 +90,7 @@ export default function ProductsManagementScreen({ navigation }: any) {
       name: product.name,
       description: product.description || '',
       price: product.price.toString(),
+      compareAtPrice: product.compareAtPrice?.toString() || '',
       type: product.type || 'PHYSICAL_PRODUCT',
       stock: product.stock?.toString() || '0',
       trackInventory: product.trackInventory !== false,
@@ -134,6 +137,11 @@ export default function ProductsManagementScreen({ navigation }: any) {
         stock: parseInt(formData.stock) || 0,
         trackInventory: formData.trackInventory,
       };
+
+      // Add compareAtPrice if provided
+      if (formData.compareAtPrice && parseFloat(formData.compareAtPrice) > 0) {
+        productData.compareAtPrice = parseFloat(formData.compareAtPrice);
+      }
 
       // Add PT service specific fields
       if (formData.type === 'PT_SERVICE') {
@@ -437,9 +445,23 @@ export default function ProductsManagementScreen({ navigation }: any) {
                     </View>
                   </View>
                   <View style={styles.productActions}>
-                    <Text style={styles.productPrice}>
-                      {`${product.price.toLocaleString('nb-NO')} kr`}
-                    </Text>
+                    <View style={styles.priceContainer}>
+                      <Text style={styles.productPrice}>
+                        {`${product.price.toLocaleString('nb-NO')} kr`}
+                      </Text>
+                      {(product as any).compareAtPrice && (product as any).compareAtPrice > product.price && (
+                        <>
+                          <Text style={styles.comparePriceInCard}>
+                            {`${((product as any).compareAtPrice).toLocaleString('nb-NO')} kr`}
+                          </Text>
+                          <View style={styles.saleBadge}>
+                            <Text style={styles.saleBadgeText}>
+                              {`-${Math.round((1 - product.price / (product as any).compareAtPrice) * 100)}%`}
+                            </Text>
+                          </View>
+                        </>
+                      )}
+                    </View>
                   </View>
                 </View>
 
@@ -490,7 +512,7 @@ export default function ProductsManagementScreen({ navigation }: any) {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <SafeAreaView style={styles.modalOverlay}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={{ flex: 1 }}
@@ -543,6 +565,22 @@ export default function ProductsManagementScreen({ navigation }: any) {
                   placeholder="0"
                   keyboardType="decimal-pad"
                 />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Sammenlign pris (kr)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.compareAtPrice}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, compareAtPrice: text })
+                  }
+                  placeholder="0"
+                  keyboardType="decimal-pad"
+                />
+                <Text style={styles.helpText}>
+                  Valgfritt: Den originale prisen før rabatt. Vil vise tilbud med prosent og strek over gammel pris.
+                </Text>
               </View>
 
               <View style={styles.formGroup}>
@@ -693,7 +731,7 @@ export default function ProductsManagementScreen({ navigation }: any) {
             </ScrollView>
           </View>
           </KeyboardAvoidingView>
-        </View>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -848,6 +886,27 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#3B82F6',
+  },
+  priceContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  comparePriceInCard: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through',
+  },
+  saleBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  saleBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#DC2626',
   },
   actionButtons: {
     flexDirection: 'row',

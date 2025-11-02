@@ -702,7 +702,7 @@ const styles = StyleSheet.create({
   },
   discountBadge: {
     position: 'absolute',
-    top: 8,
+    bottom: 8,
     right: 8,
     backgroundColor: '#EF4444',
     paddingHorizontal: 12,

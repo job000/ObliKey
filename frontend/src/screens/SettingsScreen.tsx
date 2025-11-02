@@ -35,6 +35,13 @@ interface TenantSettings {
   secondaryColor: string;
   companyVatNumber?: string;
   companyRegNumber?: string;
+  // PT Settings
+  ptEnabled: boolean;
+  ptCancellationHours: number;
+  ptCancellationRefundEnabled: boolean;
+  ptNoShowRefundEnabled: boolean;
+  // Workout Settings
+  workoutEnabled: boolean;
 }
 
 export default function SettingsScreen({ navigation }: any) {
@@ -107,6 +114,11 @@ export default function SettingsScreen({ navigation }: any) {
           secondaryColor: cachedSecondaryColor || '#10B981',
           companyVatNumber: '',
           companyRegNumber: '',
+          ptEnabled: false,
+          ptCancellationHours: 24,
+          ptCancellationRefundEnabled: true,
+          ptNoShowRefundEnabled: false,
+          workoutEnabled: false,
         });
       }
     } catch (error) {
@@ -131,6 +143,11 @@ export default function SettingsScreen({ navigation }: any) {
         secondaryColor: cachedSecondaryColor || '#10B981',
         companyVatNumber: '',
         companyRegNumber: '',
+        ptEnabled: false,
+        ptCancellationHours: 24,
+        ptCancellationRefundEnabled: true,
+        ptNoShowRefundEnabled: false,
+        workoutEnabled: false,
       });
     } finally {
       setLoading(false);
@@ -528,6 +545,106 @@ export default function SettingsScreen({ navigation }: any) {
             </View>
 
             <View style={styles.section}>
+              <Text style={styles.sectionTitle}>PT-Innstillinger</Text>
+              <View style={styles.card}>
+                <View style={styles.switchRow}>
+                  <View style={styles.switchInfo}>
+                    <Text style={styles.switchLabel}>Aktiver PT-funksjonen</Text>
+                    <Text style={styles.switchDescription}>
+                      Slå på/av personlig treningsfunksjonalitet
+                    </Text>
+                  </View>
+                  <Switch
+                    value={settings.ptEnabled}
+                    onValueChange={(value) =>
+                      updateSetting('ptEnabled', value)
+                    }
+                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
+                    thumbColor={settings.ptEnabled ? '#3B82F6' : '#F3F4F6'}
+                  />
+                </View>
+
+                <View style={styles.switchRow}>
+                  <View style={styles.switchInfo}>
+                    <Text style={styles.switchLabel}>Kreditt-refusjon ved avlysning</Text>
+                    <Text style={styles.switchDescription}>
+                      Refunder automatisk PT-timer når økter avlyses
+                    </Text>
+                  </View>
+                  <Switch
+                    value={settings.ptCancellationRefundEnabled}
+                    onValueChange={(value) =>
+                      updateSetting('ptCancellationRefundEnabled', value)
+                    }
+                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
+                    thumbColor={settings.ptCancellationRefundEnabled ? '#3B82F6' : '#F3F4F6'}
+                  />
+                </View>
+
+                <View style={styles.switchRow}>
+                  <View style={styles.switchInfo}>
+                    <Text style={styles.switchLabel}>Refunder ved "Møter ikke"</Text>
+                    <Text style={styles.switchDescription}>
+                      Gi kreditt tilbake når PT/Admin markerer kunde som møtte ikke
+                    </Text>
+                  </View>
+                  <Switch
+                    value={settings.ptNoShowRefundEnabled}
+                    onValueChange={(value) =>
+                      updateSetting('ptNoShowRefundEnabled', value)
+                    }
+                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
+                    thumbColor={settings.ptNoShowRefundEnabled ? '#3B82F6' : '#F3F4F6'}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>
+                    Avlysningsfrist for refusjon (timer)
+                  </Text>
+                  <Text style={styles.fieldDescription}>
+                    Antall timer før økten kunden må avlyse for å få refusjon
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={settings.ptCancellationHours?.toString()}
+                    onChangeText={(text) => {
+                      const hours = parseInt(text) || 24;
+                      updateSetting('ptCancellationHours', hours);
+                    }}
+                    keyboardType="number-pad"
+                    placeholder="24"
+                  />
+                  <Text style={styles.fieldHint}>
+                    Anbefalt: 24 timer. PT/Admin får alltid refundert kunden uansett.
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Treningsprogram-Innstillinger</Text>
+              <View style={styles.card}>
+                <View style={styles.switchRow}>
+                  <View style={styles.switchInfo}>
+                    <Text style={styles.switchLabel}>Aktiver Treningsprogram-funksjonen</Text>
+                    <Text style={styles.switchDescription}>
+                      Slå på/av treningsprogram med øvelser, tracking og statistikk
+                    </Text>
+                  </View>
+                  <Switch
+                    value={settings.workoutEnabled}
+                    onValueChange={(value) =>
+                      updateSetting('workoutEnabled', value)
+                    }
+                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
+                    thumbColor={settings.workoutEnabled ? '#3B82F6' : '#F3F4F6'}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.section}>
               <Text style={styles.sectionTitle}>Hurtighandlinger</Text>
               <View style={styles.actionsCard}>
                 <TouchableOpacity
@@ -585,8 +702,8 @@ export default function SettingsScreen({ navigation }: any) {
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={styles.appInfoText}>ObliKey v1.0.0</Text>
-          <Text style={styles.appInfoText}>© 2025 Boost System</Text>
+          <Text style={styles.appInfoText}>Otico v1.0.0</Text>
+          <Text style={styles.appInfoText}>© 2025 Otico Tech</Text>
         </View>
       </Container>
     </ScrollView>
@@ -1106,5 +1223,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#3B82F6',
     color: '#FFF',
     fontWeight: '600',
+  },
+  fieldDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  fieldHint: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 6,
+    fontStyle: 'italic',
   },
 });

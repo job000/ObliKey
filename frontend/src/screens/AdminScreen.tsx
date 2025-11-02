@@ -64,7 +64,7 @@ export default function AdminScreen({ navigation }: any) {
       color: '#8B5CF6',
       screen: 'PTManagement',
       description: 'Administrer PT-økter og kreditter',
-      show: true, // Core feature - always shown
+      show: modules.pt,
     },
     {
       title: 'Medlemskapsstyring',

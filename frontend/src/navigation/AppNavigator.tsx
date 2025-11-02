@@ -2,13 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { useChat } from '../contexts/ChatContext';
 import { useModules } from '../contexts/ModuleContext';
 import { useTenant } from '../contexts/TenantContext';
+import CustomDrawerContent from '../components/CustomDrawerContent';
 
 // Auth Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -23,12 +24,16 @@ import CartScreen from '../screens/CartScreen';
 import WishlistScreen from '../screens/WishlistScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import PTSessionsScreen from '../screens/PTSessionsScreen';
+import PTShopScreen from '../screens/PTShopScreen';
+import PTBookingScreen from '../screens/PTBookingScreen';
+import PTAvailabilityScreen from '../screens/PTAvailabilityScreen';
 import ClassesScreen from '../screens/ClassesScreen';
 import ChatScreen from '../screens/ChatScreen';
 import PurchaseHistoryScreen from '../screens/PurchaseHistoryScreen';
 import OrderDetailsScreen from '../screens/OrderDetailsScreen';
 import TrainingProgramsScreen from '../screens/TrainingProgramsScreen';
 import SupportScreen from '../screens/SupportScreen';
+import WorkoutScreen from '../screens/WorkoutScreen';
 
 // Admin Screens
 import AdminScreen from '../screens/AdminScreen';
@@ -66,207 +71,148 @@ import ManageTenantFeaturesScreen from '../screens/ManageTenantFeaturesScreen';
 import SubscriptionManagementScreen from '../screens/SubscriptionManagementScreen';
 import ManageSubscriptionScreen from '../screens/ManageSubscriptionScreen';
 import CreateSubscriptionScreen from '../screens/CreateSubscriptionScreen';
+import TenantModulesScreen from '../screens/TenantModulesScreen';
 
 const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
+const Drawer = createDrawerNavigator();
 
-function MainTabs() {
+function MainDrawer() {
   const { user } = useAuth();
   const { itemCount } = useCart();
-  const { unreadCount } = useChat();
   const { modules } = useModules();
   const { selectedTenant } = useTenant();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isCustomer = user?.role === 'CUSTOMER';
 
-  // Show tenant-specific tabs if user is ADMIN, or if SUPER_ADMIN has selected a tenant
-  const showTenantTabs = isAdmin && (!isSuperAdmin || selectedTenant !== null);
+  // Show tenant-specific screens if user is ADMIN, or if SUPER_ADMIN has selected a tenant
+  const showTenantScreens = isAdmin && (!isSuperAdmin || selectedTenant !== null);
 
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: '#3B82F6',
-        tabBarInactiveTintColor: '#9CA3AF',
-        headerShown: false,
-      }}
+    <Drawer.Navigator
+      drawerContent={(props) => <CustomDrawerContent {...props} />}
+      screenOptions={({ navigation }) => ({
+        headerLeft: () => (
+          <TouchableOpacity
+            onPress={() => navigation.toggleDrawer()}
+            style={styles.menuButton}
+          >
+            <Ionicons name="menu" size={28} color="#111827" />
+          </TouchableOpacity>
+        ),
+        headerRight: () => (
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Cart')}
+            style={styles.cartButton}
+          >
+            <Ionicons name="cart-outline" size={24} color="#111827" />
+            {itemCount > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{itemCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ),
+        drawerType: 'front',
+        swipeEnabled: true,
+        drawerStyle: {
+          width: '75%', // 75% av skjermbredden
+          maxWidth: 300, // Maks 300px bred
+        },
+      })}
     >
-      {isSuperAdmin && (
-        <Tab.Screen
-          name="SuperAdminDashboard"
-          component={SuperAdminDashboardScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="shield-checkmark" size={size} color={color} />
-            ),
-            tabBarLabel: 'Super Admin',
-            headerShown: true,
-            headerTitle: 'Super Admin Portal',
-          }}
-        />
-      )}
-
-      <Tab.Screen
+      <Drawer.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={({ navigation }) => ({
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
-          headerShown: true,
-          headerTitle: 'Dashboard',
-          headerRight: () => (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Cart')}
-              style={styles.cartButton}
-            >
-              <Ionicons name="cart-outline" size={24} color="#111827" />
-              {itemCount > 0 && (
-                <View style={styles.cartBadge}>
-                  <Text style={styles.cartBadgeText}>{itemCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ),
-        })}
+        options={{ headerTitle: 'Dashboard' }}
       />
 
-      {modules.shop && (
-        <Tab.Screen
-          name="Shop"
-          component={EnhancedShopScreen}
-          options={({ navigation }) => ({
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="storefront" size={size} color={color} />
-            ),
-            tabBarLabel: 'Butikk',
-            headerShown: true,
-            headerTitle: 'Butikk',
-            headerRight: () => (
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Cart')}
-                style={styles.cartButton}
-              >
-                <Ionicons name="cart-outline" size={24} color="#111827" />
-                {itemCount > 0 && (
-                  <View style={styles.cartBadge}>
-                    <Text style={styles.cartBadgeText}>{itemCount}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ),
-          })}
+      {isSuperAdmin && (
+        <Drawer.Screen
+          name="SuperAdminDashboard"
+          component={SuperAdminDashboardScreen}
+          options={{ headerTitle: 'Super Admin Portal' }}
         />
       )}
 
-      <Tab.Screen
-        name="PTSessions"
-        component={PTSessionsScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="barbell" size={size} color={color} />
-          ),
-          tabBarLabel: 'PT-Økter',
-        }}
-      />
+      {modules.shop && (
+        <Drawer.Screen
+          name="Shop"
+          component={EnhancedShopScreen}
+          options={{ headerTitle: 'Butikk' }}
+        />
+      )}
+
+      {modules.pt && (
+        <Drawer.Screen
+          name="PTSessions"
+          component={PTSessionsScreen}
+          options={{ headerTitle: 'PT-Økter' }}
+        />
+      )}
 
       {isCustomer && modules.classes && (
-        <Tab.Screen
+        <Drawer.Screen
           name="Classes"
           component={ClassesScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="calendar" size={size} color={color} />
-            ),
-            tabBarLabel: 'Klasser',
-          }}
+          options={{ headerTitle: 'Klasser' }}
         />
       )}
 
       {isCustomer && modules.membership && (
-        <Tab.Screen
+        <Drawer.Screen
           name="Membership"
           component={MembershipProfileScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="card" size={size} color={color} />
-            ),
-            tabBarLabel: 'Medlemskap',
-          }}
+          options={{ headerTitle: 'Medlemskap' }}
+        />
+      )}
+
+      {modules.workout && (
+        <Drawer.Screen
+          name="Workout"
+          component={WorkoutScreen}
+          options={{ headerTitle: 'Treningsprogram' }}
         />
       )}
 
       {isCustomer && modules.doorAccess && (
-        <Tab.Screen
+        <Drawer.Screen
           name="DoorAccess"
           component={DoorAccessScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="key" size={size} color={color} />
-            ),
-            tabBarLabel: 'Dører',
-            headerShown: true,
-            headerTitle: 'Dørtilgang',
-          }}
+          options={{ headerTitle: 'Dørtilgang' }}
         />
       )}
 
-      {isAdmin && (
-        <Tab.Screen
-          name="Admin"
-          component={AdminScreen}
-          options={{
-            tabBarIcon: ({ color, size}) => (
-              <Ionicons name="settings" size={size} color={color} />
-            ),
-          }}
-        />
-      )}
-
-      {showTenantTabs && modules.accounting && (
-        <Tab.Screen
+      {showTenantScreens && modules.accounting && (
+        <Drawer.Screen
           name="Accounting"
           component={EnhancedAccountingScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="calculator" size={size} color={color} />
-            ),
-            tabBarLabel: 'Regnskap',
-          }}
+          options={{ headerTitle: 'Regnskap' }}
         />
       )}
 
       {modules.chat && (
-        <Tab.Screen
+        <Drawer.Screen
           name="Chat"
           component={ChatScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <View>
-                <Ionicons name="chatbubbles" size={size} color={color} />
-                {unreadCount > 0 && (
-                  <View style={styles.chatBadge}>
-                    <Text style={styles.chatBadgeText}>{unreadCount}</Text>
-                  </View>
-                )}
-              </View>
-            ),
-            tabBarLabel: 'Chat',
-          }}
+          options={{ headerTitle: 'Chat' }}
         />
       )}
 
-      <Tab.Screen
+      {isAdmin && (
+        <Drawer.Screen
+          name="Admin"
+          component={AdminScreen}
+          options={{ headerTitle: 'Admin' }}
+        />
+      )}
+
+      <Drawer.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
-          ),
-          tabBarLabel: 'Profil',
-        }}
+        options={{ headerTitle: 'Profil' }}
       />
-    </Tab.Navigator>
+    </Drawer.Navigator>
   );
 }
 
@@ -289,7 +235,7 @@ export default function AppNavigator() {
           </>
         ) : (
           <>
-            <Stack.Screen name="MainTabs" component={MainTabs} />
+            <Stack.Screen name="MainDrawer" component={MainDrawer} />
             <Stack.Screen name="Cart" component={CartScreen} />
             <Stack.Screen name="Checkout" component={CheckoutScreen} />
             <Stack.Screen name="Wishlist" component={WishlistScreen} />
@@ -297,6 +243,21 @@ export default function AppNavigator() {
             <Stack.Screen name="PurchaseHistory" component={PurchaseHistoryScreen} />
             <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
             <Stack.Screen name="TrainingPrograms" component={TrainingProgramsScreen} />
+            <Stack.Screen
+              name="PTShop"
+              component={PTShopScreen}
+              options={{ headerShown: true, headerTitle: 'PT-Timer' }}
+            />
+            <Stack.Screen
+              name="PTBooking"
+              component={PTBookingScreen}
+              options={{ headerShown: true, headerTitle: 'Book PT-time' }}
+            />
+            <Stack.Screen
+              name="PTAvailability"
+              component={PTAvailabilityScreen}
+              options={{ headerShown: true, headerTitle: 'Min Tilgjengelighet' }}
+            />
             <Stack.Screen name="Support" component={SupportScreen} />
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="ProductsManagement" component={ProductsManagementScreen} />
@@ -328,6 +289,7 @@ export default function AppNavigator() {
             <Stack.Screen name="SubscriptionManagement" component={SubscriptionManagementScreen} options={{ headerShown: true, headerTitle: 'Abonnementsstyring' }} />
             <Stack.Screen name="ManageSubscription" component={ManageSubscriptionScreen} options={{ headerShown: false }} />
             <Stack.Screen name="CreateSubscription" component={CreateSubscriptionScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TenantModules" component={TenantModulesScreen} options={{ headerShown: false }} />
           </>
         )}
       </Stack.Navigator>
@@ -336,6 +298,10 @@ export default function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
+  menuButton: {
+    marginLeft: 16,
+    padding: 4,
+  },
   cartButton: {
     marginRight: 16,
     position: 'relative',

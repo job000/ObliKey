@@ -116,9 +116,9 @@ export default function SupportScreen({ navigation }: any) {
   };
 
   const handleEmailSupport = async () => {
-    const email = 'support@oblikey.no';
+    const email = 'support@otico.no';
     const subject = 'Support henvendelse';
-    const body = `Hei ObliKey Support,\n\n\n\nMed vennlig hilsen,\n${user?.firstName} ${user?.lastName}\n${user?.email}`;
+    const body = `Hei Otico Support,\n\n\n\nMed vennlig hilsen,\n${user?.firstName} ${user?.lastName}\n${user?.email}`;
 
     const url = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
@@ -337,7 +337,7 @@ export default function SupportScreen({ navigation }: any) {
                   <View style={styles.contactMethodContent}>
                     <Text style={styles.contactMethodTitle}>Send e-post</Text>
                     <Text style={styles.contactMethodDescription}>
-                      support@oblikey.no
+                      support@otico.no
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />

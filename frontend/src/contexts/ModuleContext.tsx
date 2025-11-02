@@ -11,6 +11,8 @@ interface ModuleStatus {
   landingPage: boolean;
   membership: boolean;
   doorAccess: boolean;
+  pt: boolean;
+  workout: boolean;
 }
 
 interface ModuleContextType {
@@ -43,6 +45,8 @@ export const ModuleProvider: React.FC<ModuleProviderProps> = ({ children }) => {
     landingPage: false,
     membership: false,
     doorAccess: false,
+    pt: false,
+    workout: false,
   });
   const [loading, setLoading] = useState(true); // Start as loading
   const { user } = useAuth();
@@ -59,6 +63,8 @@ export const ModuleProvider: React.FC<ModuleProviderProps> = ({ children }) => {
         landingPage: false,
         membership: false,
         doorAccess: false,
+        pt: false,
+        workout: false,
       });
       return;
     }
@@ -80,6 +86,8 @@ export const ModuleProvider: React.FC<ModuleProviderProps> = ({ children }) => {
           landingPage: response.data.landingPage === true,
           membership: response.data.membership === true,
           doorAccess: response.data.doorAccess === true,
+          pt: response.data.pt === true,
+          workout: response.data.workout === true,
         };
         console.log('[Modules] Loaded tenant features:', newModules);
         setModules(newModules);
@@ -93,6 +101,8 @@ export const ModuleProvider: React.FC<ModuleProviderProps> = ({ children }) => {
           landingPage: false,
           membership: false,
           doorAccess: false,
+          pt: false,
+          workout: false,
         });
       }
     } catch (error: any) {
@@ -112,6 +122,8 @@ export const ModuleProvider: React.FC<ModuleProviderProps> = ({ children }) => {
         landingPage: false,
         membership: false,
         doorAccess: false,
+        pt: false,
+        workout: false,
       });
     } finally {
       setLoading(false);

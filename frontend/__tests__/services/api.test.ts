@@ -36,7 +36,7 @@ describe('API Service', () => {
         password: 'password123',
         firstName: 'New',
         lastName: 'User',
-        tenantId: 'oblikey-demo'
+        tenantId: 'otico-demo'
       };
 
       const result = await api.register(registerData);

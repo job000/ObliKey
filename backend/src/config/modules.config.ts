@@ -22,6 +22,7 @@ export enum ModuleKey {
   LANDING_PAGE = 'landingPage',
   ADMIN = 'admin',
   MEMBERSHIP = 'membership',
+  WORKOUT = 'workout',
 }
 
 export interface ModuleDefinition {
@@ -171,6 +172,18 @@ export const MODULE_DEFINITIONS: Record<ModuleKey, ModuleDefinition> = {
     routes: ['/memberships', '/admin/memberships'],
     apiEndpoints: ['/api/memberships/*'],
   },
+
+  [ModuleKey.WORKOUT]: {
+    key: ModuleKey.WORKOUT,
+    name: 'Treningsprogram',
+    description: 'Personlige treningsprogram med øvelser, tracking og statistikk',
+    icon: 'Activity',
+    category: 'business',
+    requiredRoles: ['ADMIN', 'TRAINER', 'CUSTOMER'],
+    defaultEnabled: false,
+    routes: ['/workout', '/workout/programs', '/workout/exercises', '/workout/sessions', '/workout/stats'],
+    apiEndpoints: ['/api/workouts/*'],
+  },
 };
 
 /**
@@ -228,6 +241,7 @@ export function getModuleConfig(tenantSettings: any): Set<ModuleKey> {
     accountingEnabled: ModuleKey.ACCOUNTING,
     landingPageEnabled: ModuleKey.LANDING_PAGE,
     membershipEnabled: ModuleKey.MEMBERSHIP,
+    workoutEnabled: ModuleKey.WORKOUT,
   };
 
   // Always enable core modules
@@ -266,4 +280,5 @@ export const DEFAULT_MODULE_CONFIG = {
   accountingEnabled: false,
   landingPageEnabled: false,
   membershipEnabled: false,
+  workoutEnabled: false,
 };

@@ -46,6 +46,7 @@ import doorRoutes from './routes/door.routes';
 import accessRoutes from './routes/access.routes';
 import doorAccessRuleRoutes from './routes/door-access-rule.routes';
 import superAdminRoutes from './routes/super-admin.routes';
+import workoutRoutes from './routes/workout.routes';
 
 // Import scheduler
 import { initScheduler } from './services/scheduler.service';
@@ -120,6 +121,7 @@ app.use('/api/ecommerce', ecommerceRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/programs', programRoutes);
 app.use('/api/memberships', membershipRoutes);
+app.use('/api/workouts', workoutRoutes);
 app.use('/api/door-access/doors', doorRoutes);
 app.use('/api/door-access', accessRoutes);
 app.use('/api/door-access', doorAccessRuleRoutes);

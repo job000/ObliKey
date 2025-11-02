@@ -12,11 +12,11 @@ import {
   Modal,
   TextInput,
   Platform,
-  SafeAreaView,
   TouchableWithoutFeedback,
   Keyboard,
   KeyboardAvoidingView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
@@ -30,6 +30,7 @@ export default function PTManagementScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [creditModalVisible, setCreditModalVisible] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedSession, setSelectedSession] = useState<PTSession | null>(null);
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('all');
@@ -46,6 +47,7 @@ export default function PTManagementScreen({ navigation }: any) {
   const [trainers, setTrainers] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [loadingLists, setLoadingLists] = useState(false);
+  const [customerCredits, setCustomerCredits] = useState<Record<string, number>>({});
 
   // Search states
   const [trainerSearch, setTrainerSearch] = useState('');
@@ -63,6 +65,16 @@ export default function PTManagementScreen({ navigation }: any) {
   const [startDateTime, setStartDateTime] = useState(new Date());
   const [endDateTime, setEndDateTime] = useState(new Date(Date.now() + 60 * 60 * 1000));
 
+  // Credit form state
+  const [creditFormData, setCreditFormData] = useState({
+    userId: '',
+    credits: '1',
+    notes: '',
+    action: 'add' as 'add' | 'subtract'
+  });
+  const [showCreditCustomerDropdown, setShowCreditCustomerDropdown] = useState(false);
+  const [creditCustomerSearch, setCreditCustomerSearch] = useState('');
+
   useEffect(() => {
     loadSessions();
   }, []);
@@ -78,6 +90,15 @@ export default function PTManagementScreen({ navigation }: any) {
   useEffect(() => {
     console.log('[PTManagement] Customer dropdown visibility changed:', showCustomerDropdown);
   }, [showCustomerDropdown]);
+
+  useEffect(() => {
+    console.log('[PTManagement] Credit modal visibility changed:', creditModalVisible);
+  }, [creditModalVisible]);
+
+
+  useEffect(() => {
+    console.log('[PTManagement] Customers list updated, count:', customers.length);
+  }, [customers]);
 
   const loadSessions = async () => {
     try {
@@ -309,14 +330,121 @@ export default function PTManagementScreen({ navigation }: any) {
     }
   };
 
+  const loadCustomerCredits = async (customerIds: string[]) => {
+    const creditsMap: Record<string, number> = {};
+
+    // Fetch credits for each customer
+    await Promise.all(
+      customerIds.map(async (customerId) => {
+        try {
+          const response = await api.getPTCredits(customerId);
+          if (response.success) {
+            creditsMap[customerId] = response.data.available || 0;
+          } else {
+            creditsMap[customerId] = 0;
+          }
+        } catch (error) {
+          console.error(`Failed to load credits for customer ${customerId}:`, error);
+          creditsMap[customerId] = 0;
+        }
+      })
+    );
+
+    setCustomerCredits(creditsMap);
+  };
+
+  const openCreditModal = async () => {
+    console.log('[PTManagement] Opening credit modal...');
+    setCreditFormData({
+      userId: '',
+      credits: '1',
+      notes: '',
+      action: 'add'
+    });
+    setCreditCustomerSearch('');
+
+    // Load customers if not already loaded
+    if (customers.length === 0) {
+      console.log('[PTManagement] Loading customers...');
+      await loadTrainersAndCustomers();
+    }
+
+    // Load credits for all customers
+    if (customers.length > 0) {
+      await loadCustomerCredits(customers.map(c => c.id));
+    }
+
+    console.log('[PTManagement] Setting creditModalVisible to true');
+    setCreditModalVisible(true);
+  };
+
+  const handleAddCredits = async () => {
+    if (!creditFormData.userId) {
+      Alert.alert('Feil', 'Vennligst velg en kunde');
+      return;
+    }
+
+    const creditsInput = parseInt(creditFormData.credits);
+    if (!creditsInput || creditsInput < 1) {
+      Alert.alert('Feil', 'Antall kreditter må være minst 1');
+      return;
+    }
+
+    // Calculate final credits value (negative if subtracting)
+    const credits = creditFormData.action === 'subtract' ? -creditsInput : creditsInput;
+
+    try {
+      const actionText = creditFormData.action === 'add' ? 'Lagt til' : 'Trukket fra';
+      const response = await api.addPTCredits({
+        userId: creditFormData.userId,
+        credits,
+        notes: creditFormData.notes || `${actionText} av admin/PT`
+      });
+
+      if (response.success) {
+        // Last inn kreditter på nytt for denne kunden for å få oppdatert verdi
+        try {
+          const creditsResponse = await api.getPTCredits(creditFormData.userId);
+          if (creditsResponse.success) {
+            setCustomerCredits({
+              ...customerCredits,
+              [creditFormData.userId]: creditsResponse.data.available || 0
+            });
+          }
+        } catch (err) {
+          console.error('Failed to reload credits:', err);
+        }
+
+        Alert.alert('Suksess', response.message || `${creditsInput} PT-kreditter ${creditFormData.action === 'add' ? 'lagt til' : 'trukket fra'} kunden`);
+        setCreditModalVisible(false);
+        setCreditFormData({
+          userId: '',
+          credits: '1',
+          notes: '',
+          action: 'add'
+        });
+      }
+    } catch (error: any) {
+      console.error('Add/subtract credits error:', error);
+      Alert.alert('Feil', error.response?.data?.error || 'Kunne ikke oppdatere kreditter');
+    }
+  };
+
   const handleUpdateStatus = async (sessionId: string, status: SessionStatus) => {
     try {
-      const response = await api.updatePTSessionStatus(sessionId, status);
+      let response;
+      if (status === 'NO_SHOW') {
+        // Use dedicated NO_SHOW endpoint for proper refund handling
+        response = await api.markPTSessionNoShow(sessionId);
+      } else {
+        response = await api.updatePTSessionStatus(sessionId, status);
+      }
+
       if (response.success) {
         setSessions(
           sessions.map((s) => (s.id === sessionId ? { ...s, status } : s))
         );
-        Alert.alert('Suksess', 'Status oppdatert');
+        Alert.alert('Suksess', response.message || 'Status oppdatert');
       }
     } catch (error: any) {
       Alert.alert('Feil', error.response?.data?.error || 'Kunne ikke oppdatere status');
@@ -415,6 +543,7 @@ export default function PTManagementScreen({ navigation }: any) {
   const stats = getSessionStats();
 
   return (
+    <>
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         style={styles.container}
@@ -423,15 +552,21 @@ export default function PTManagementScreen({ navigation }: any) {
         }
       >
       <Container>
-        <View style={styles.header}>
-          <View>
+        <View style={styles.headerContainer}>
+          <View style={styles.headerTop}>
             <Text style={styles.title}>PT-administrasjon</Text>
-            <Text style={styles.subtitle}>Administrer PT-økter og kreditter</Text>
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-            <Ionicons name="add" size={20} color="#FFF" />
-            <Text style={styles.addButtonText}>Ny økt</Text>
-          </TouchableOpacity>
+          <Text style={styles.subtitle}>Administrer PT-økter og kreditter</Text>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity style={styles.creditButton} onPress={openCreditModal}>
+              <Ionicons name="gift-outline" size={18} color="#8B5CF6" />
+              <Text style={styles.creditButtonText}>Gi Kreditter</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+              <Ionicons name="add" size={20} color="#FFF" />
+              <Text style={styles.addButtonText}>Ny økt</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Stats Grid */}
@@ -616,6 +751,8 @@ export default function PTManagementScreen({ navigation }: any) {
           )}
         </View>
       </Container>
+    </ScrollView>
+    </SafeAreaView>
 
       {/* Add/Edit Session Modal */}
       <Modal
@@ -965,8 +1102,8 @@ export default function PTManagementScreen({ navigation }: any) {
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+      </Modal>
 
-      {/* Dropdown Modals - Inside main modal to work on iOS */}
       {/* Trainer Dropdown Modal */}
       <Modal
         animationType="slide"
@@ -1126,9 +1263,250 @@ export default function PTManagementScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
+
+      {/* Credit Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={creditModalVisible && !showCreditCustomerDropdown}
+        onRequestClose={() => setCreditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+          <TouchableWithoutFeedback onPress={() => setCreditModalVisible(false)}>
+            <View style={styles.creditModalOverlay}>
+              <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                <View style={styles.creditModalContent}>
+                  <View style={styles.dropdownModalHeader}>
+                    <Text style={styles.modalTitle}>Gi PT-Kreditter</Text>
+                    <TouchableOpacity onPress={() => setCreditModalVisible(false)}>
+                      <Ionicons name="close" size={28} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <ScrollView
+                    style={styles.creditModalBody}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={true}
+                  >
+                    <View style={styles.formField}>
+                      <Text style={styles.fieldLabel}>Kunde *</Text>
+                      <TouchableOpacity
+                        style={styles.dropdownTrigger}
+                        onPress={() => setShowCreditCustomerDropdown(true)}
+                      >
+                        <Text style={[styles.dropdownTriggerText, !creditFormData.userId && styles.dropdownPlaceholder]}>
+                          {creditFormData.userId
+                            ? customers.find((c) => c.id === creditFormData.userId)
+                              ? `${customers.find((c) => c.id === creditFormData.userId)?.firstName} ${customers.find((c) => c.id === creditFormData.userId)?.lastName}`
+                              : 'Velg kunde'
+                            : 'Velg kunde'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.formField}>
+                      <Text style={styles.fieldLabel}>Handling *</Text>
+                      <View style={styles.actionButtonsContainer}>
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            creditFormData.action === 'add' && styles.actionButtonActive
+                          ]}
+                          onPress={() => setCreditFormData({ ...creditFormData, action: 'add' })}
+                        >
+                          <Ionicons
+                            name="add-circle"
+                            size={20}
+                            color={creditFormData.action === 'add' ? '#10B981' : '#9CA3AF'}
+                          />
+                          <Text style={[
+                            styles.actionButtonText,
+                            creditFormData.action === 'add' && styles.actionButtonTextActive
+                          ]}>
+                            Legg til
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            creditFormData.action === 'subtract' && styles.actionButtonActiveSubtract
+                          ]}
+                          onPress={() => setCreditFormData({ ...creditFormData, action: 'subtract' })}
+                        >
+                          <Ionicons
+                            name="remove-circle"
+                            size={20}
+                            color={creditFormData.action === 'subtract' ? '#EF4444' : '#9CA3AF'}
+                          />
+                          <Text style={[
+                            styles.actionButtonText,
+                            creditFormData.action === 'subtract' && styles.actionButtonTextActiveSubtract
+                          ]}>
+                            Trekk fra
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    <View style={styles.formField}>
+                      <Text style={styles.fieldLabel}>Antall kreditter *</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="1"
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="number-pad"
+                        value={creditFormData.credits}
+                        onChangeText={(text) => setCreditFormData({ ...creditFormData, credits: text })}
+                      />
+                    </View>
+
+                    <View style={styles.formField}>
+                      <Text style={styles.fieldLabel}>Notater (valgfritt)</Text>
+                      <TextInput
+                        style={[styles.textInput, styles.textArea]}
+                        placeholder="F.eks. 'Bonus for langsiktig medlemskap'"
+                        placeholderTextColor="#9CA3AF"
+                        multiline
+                        numberOfLines={3}
+                        value={creditFormData.notes}
+                        onChangeText={(text) => setCreditFormData({ ...creditFormData, notes: text })}
+                      />
+                    </View>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.submitButton,
+                        creditFormData.action === 'subtract' && styles.submitButtonSubtract
+                      ]}
+                      onPress={handleAddCredits}
+                    >
+                      <Ionicons
+                        name={creditFormData.action === 'add' ? 'add-circle' : 'remove-circle'}
+                        size={20}
+                        color="#FFF"
+                      />
+                      <Text style={styles.submitButtonText}>
+                        {creditFormData.action === 'add' ? 'Gi Kreditter' : 'Trekk fra Kreditter'}
+                      </Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
-    </ScrollView>
-    </SafeAreaView>
+
+      {/* Credit Customer Dropdown Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showCreditCustomerDropdown}
+        onRequestClose={() => setShowCreditCustomerDropdown(false)}
+        statusBarTranslucent={true}
+        presentationStyle="overFullScreen"
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <TouchableWithoutFeedback onPress={() => {
+            Keyboard.dismiss();
+            setShowCreditCustomerDropdown(false);
+          }}>
+            <View style={styles.creditDropdownModalOverlay}>
+              <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                <View style={styles.dropdownModalContent}>
+                  <View style={styles.dropdownModalHeader}>
+                    <Text style={styles.modalTitle}>Velg kunde</Text>
+                    <TouchableOpacity onPress={() => setShowCreditCustomerDropdown(false)}>
+                      <Ionicons name="close" size={28} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.modalSearchContainer}>
+                    <Ionicons name="search" size={20} color="#9CA3AF" style={styles.modalSearchIcon} />
+                    <TextInput
+                      style={styles.modalSearchInput}
+                      placeholder="Søk etter kunde..."
+                      placeholderTextColor="#9CA3AF"
+                      value={creditCustomerSearch}
+                      onChangeText={setCreditCustomerSearch}
+                      autoCapitalize="none"
+                      returnKeyType="done"
+                      onSubmitEditing={() => Keyboard.dismiss()}
+                    />
+                    {creditCustomerSearch.length > 0 && (
+                      <TouchableOpacity onPress={() => setCreditCustomerSearch('')}>
+                        <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <FlatList
+              data={customers.filter(c =>
+                `${c.firstName} ${c.lastName}`.toLowerCase().includes(creditCustomerSearch.toLowerCase())
+              )}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalPersonItem}
+                  onPress={() => {
+                    setCreditFormData({ ...creditFormData, userId: item.id });
+                    setCreditCustomerSearch('');
+                    setShowCreditCustomerDropdown(false);
+                  }}
+                >
+                  <View style={styles.modalPersonContent}>
+                    <View style={styles.modalAvatarCustomer}>
+                      <Ionicons name="person" size={20} color="#FFF" />
+                    </View>
+                    <View style={styles.modalPersonInfo}>
+                      <Text style={styles.modalPersonName}>
+                        {item.firstName} {item.lastName}
+                      </Text>
+                      {item.email && (
+                        <Text style={styles.modalPersonEmail}>{item.email}</Text>
+                      )}
+                      <View style={styles.creditBadgeContainer}>
+                        <Ionicons name="barbell" size={12} color="#8B5CF6" />
+                        <Text style={styles.creditBadgeText}>
+                          {customerCredits[item.id] ?? 0} kreditter
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  {creditFormData.userId === item.id && (
+                    <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                  )}
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.modalEmptyContainer}>
+                  <Ionicons name="search-outline" size={48} color="#D1D5DB" />
+                  <Text style={styles.modalEmptyTitle}>
+                    {creditCustomerSearch ? 'Ingen treff' : 'Ingen kunder funnet'}
+                  </Text>
+                </View>
+              }
+              ItemSeparatorComponent={() => <View style={styles.modalSeparator} />}
+              contentContainerStyle={styles.modalListContent}
+              keyboardShouldPersistTaps="handled"
+            />
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
+    </>
   );
 }
 
@@ -1147,22 +1525,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  headerContainer: {
     paddingTop: 24,
     paddingBottom: 16,
+  },
+  headerTop: {
+    marginBottom: 4,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
     color: '#6B7280',
+    marginBottom: 12,
   },
   addButton: {
     flexDirection: 'row',
@@ -1446,8 +1824,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '85%',
+    maxHeight: '80%',
     paddingTop: 20,
+    flex: 0,
   },
   dropdownModalHeader: {
     flexDirection: 'row',
@@ -1462,14 +1841,21 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-start',
-    paddingTop: 40,
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+    width: '100%',
   },
   keyboardAvoidingView: {
+    flex: 1,
     width: '100%',
-    height: '93%',
   },
   modalContent: {
+    flex: 1,
     backgroundColor: '#FFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -1573,6 +1959,9 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 16,
   },
+  modalScrollContent: {
+    padding: 20,
+  },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1622,7 +2011,7 @@ const styles = StyleSheet.create({
   },
   modalBodyContent: {
     padding: 20,
-    paddingBottom: 20,
+    paddingBottom: 100, // Extra padding to ensure content is accessible above keyboard
   },
   modalFooter: {
     flexDirection: 'row',
@@ -1657,13 +2046,66 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '500',
   },
+  formField: {
+    marginBottom: 20,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#FFF',
+  },
+  dropdownTriggerText: {
+    fontSize: 16,
+    color: '#111827',
+  },
+  dropdownPlaceholder: {
+    color: '#9CA3AF',
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#111827',
+    backgroundColor: '#FFF',
+  },
   textArea: {
     minHeight: 80,
     textAlignVertical: 'top',
   },
+  submitButton: {
+    backgroundColor: '#10B981',
+    padding: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  submitButtonSubtract: {
+    backgroundColor: '#EF4444',
+  },
+  submitButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
   dateTimeRow: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
   },
   dateButton: {
     flexDirection: 'row',
@@ -2379,5 +2821,100 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9CA3AF',
     textAlign: 'center',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  creditButton: {
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#8B5CF6',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  creditButtonText: {
+    color: '#8B5CF6',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  creditModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  creditModalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    paddingTop: 20,
+  },
+  creditModalBody: {
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 120 : 100,
+  },
+  creditBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: '#F3E8FF',
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  creditBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8B5CF6',
+    marginLeft: 4,
+  },
+  creditDropdownModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+    zIndex: 10000,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFF',
+  },
+  actionButtonActive: {
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
+  },
+  actionButtonActiveSubtract: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEE2E2',
+  },
+  actionButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+  actionButtonTextActive: {
+    color: '#10B981',
+  },
+  actionButtonTextActiveSubtract: {
+    color: '#EF4444',
   },
 });

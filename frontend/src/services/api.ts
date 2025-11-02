@@ -13,20 +13,19 @@ const getApiUrl = () => {
   const USE_LOCAL_BACKEND = true; // Toggle this for local development
 
   // For development, you can use localhost or ngrok
-  const DEV_API_URL = USE_LOCAL_BACKEND
-    ? 'http://localhost:3000/api'
-    : PRODUCTION_API_URL;
+  // Note: iOS/Android simulator cannot reach localhost - use IP address instead
 
   // For web, use localhost in development, Railway in production
   if (Platform.OS === 'web') {
-    const apiUrl = __DEV__ ? DEV_API_URL : PRODUCTION_API_URL;
+    const WEB_DEV_URL = USE_LOCAL_BACKEND ? 'http://localhost:3000/api' : PRODUCTION_API_URL;
+    const apiUrl = __DEV__ ? WEB_DEV_URL : PRODUCTION_API_URL;
     console.log('[API] Web platform using:', apiUrl);
     return apiUrl;
   }
 
-  // For mobile (iOS/Android), use configured dev URL in dev mode
-  // In production builds, always use Railway
-  const apiUrl = __DEV__ ? DEV_API_URL : PRODUCTION_API_URL;
+  // For mobile (iOS/Android), use IP address for local development
+  const MOBILE_DEV_URL = USE_LOCAL_BACKEND ? 'http://192.168.1.157:3000/api' : PRODUCTION_API_URL;
+  const apiUrl = __DEV__ ? MOBILE_DEV_URL : PRODUCTION_API_URL;
   console.log(`[API] Mobile platform using: ${apiUrl} (DEV: ${__DEV__}, LOCAL: ${USE_LOCAL_BACKEND})`);
   return apiUrl;
 };
@@ -328,6 +327,11 @@ class ApiService {
     return response.data;
   }
 
+  async markPTSessionNoShow(id: string) {
+    const response = await this.axiosInstance.post(`/pt/sessions/${id}/no-show`);
+    return response.data;
+  }
+
   async getPTSession(sessionId: string) {
     const response = await this.axiosInstance.get(`/pt/sessions/${sessionId}`);
     return response.data;
@@ -338,8 +342,14 @@ class ApiService {
     return response.data;
   }
 
-  async getPTCredits() {
-    const response = await this.axiosInstance.get('/pt/credits');
+  async getPTCredits(userId?: string) {
+    const url = userId ? `/pt/credits?userId=${userId}` : '/pt/credits';
+    const response = await this.axiosInstance.get(url);
+    return response.data;
+  }
+
+  async addPTCredits(data: { userId: string; credits: number; notes?: string }) {
+    const response = await this.axiosInstance.post('/pt/credits', data);
     return response.data;
   }
 
@@ -514,6 +524,22 @@ class ApiService {
 
   async unpublishProduct(productId: string) {
     const response = await this.axiosInstance.post(`/products/${productId}/unpublish`);
+    return response.data;
+  }
+
+  // Product Sale Alerts endpoints
+  async subscribeToSaleAlerts(productId: string) {
+    const response = await this.axiosInstance.post(`/products/${productId}/sale-alert`);
+    return response.data;
+  }
+
+  async unsubscribeFromSaleAlerts(productId: string) {
+    const response = await this.axiosInstance.delete(`/products/${productId}/sale-alert`);
+    return response.data;
+  }
+
+  async getSaleAlertSubscriptions() {
+    const response = await this.axiosInstance.get('/products/sale-alerts/subscriptions');
     return response.data;
   }
 
@@ -1171,9 +1197,8 @@ class ApiService {
   }
 
   // Check-In
-  async checkIn(membershipId: string, location?: string, notes?: string) {
+  async checkIn(location?: string, notes?: string) {
     const response = await this.axiosInstance.post('/memberships/check-in', {
-      membershipId,
       location,
       notes
     });
@@ -1733,6 +1758,326 @@ class ApiService {
 
   async getSubscriptionStats() {
     const response = await this.axiosInstance.get('/super-admin/stats/subscriptions');
+    return response.data;
+  }
+
+  // ============================================
+  // PT CREDITS & SESSIONS
+  // ============================================
+
+  // Get user's PT credits
+  async getPTCredits(userId?: string) {
+    const url = userId ? `/pt/credits?userId=${userId}` : '/pt/credits';
+    const response = await this.axiosInstance.get(url);
+    return response.data;
+  }
+
+  // Get PT package products
+  async getPTPackages() {
+    const response = await this.axiosInstance.get('/products?type=PT_SERVICE');
+    return response.data;
+  }
+
+  // Get available trainers
+  async getPTTrainers() {
+    const response = await this.axiosInstance.get('/pt/trainers');
+    return response.data;
+  }
+
+  // Create PT session (book a PT session)
+  async createPTSession(data: {
+    trainerId: string;
+    startTime: string;
+    endTime: string;
+    title?: string;
+    description?: string;
+    location?: string;
+  }) {
+    const response = await this.axiosInstance.post('/pt/sessions', data);
+    return response.data;
+  }
+
+  // Get PT sessions
+  async getPTSessions() {
+    const response = await this.axiosInstance.get('/pt/sessions');
+    return response.data;
+  }
+
+  // Get available slots for a trainer on a specific date
+  async getPTAvailableSlots(trainerId: string, date: string) {
+    const response = await this.axiosInstance.get(`/pt/slots/${trainerId}?date=${date}`);
+    return response.data;
+  }
+
+  // Get trainer availability
+  async getPTTrainerAvailability(trainerId?: string) {
+    const url = trainerId ? `/pt/availability/${trainerId}` : '/pt/availability';
+    const response = await this.axiosInstance.get(url);
+    return response.data;
+  }
+
+  // Set trainer availability
+  async setPTTrainerAvailability(data: {
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+  }) {
+    const response = await this.axiosInstance.post('/pt/availability', data);
+    return response.data;
+  }
+
+  // Update trainer availability
+  async updatePTTrainerAvailability(availabilityId: string, data: {
+    startTime?: string;
+    endTime?: string;
+    isActive?: boolean;
+  }) {
+    const response = await this.axiosInstance.patch(`/pt/availability/${availabilityId}`, data);
+    return response.data;
+  }
+
+  // Delete trainer availability
+  async deletePTTrainerAvailability(availabilityId: string) {
+    const response = await this.axiosInstance.delete(`/pt/availability/${availabilityId}`);
+    return response.data;
+  }
+
+  // ============================================
+  // WORKOUT SYSTEM
+  // ============================================
+
+  // System Exercises (Browse library)
+  async getSystemExercises(params?: {
+    muscleGroup?: string;
+    equipment?: string;
+    type?: string;
+    difficulty?: string;
+    search?: string;
+  }) {
+    const response = await this.axiosInstance.get('/workouts/exercises/library', { params });
+    return response.data;
+  }
+
+  async getSystemExercise(exerciseId: string) {
+    const response = await this.axiosInstance.get(`/workouts/exercises/library/${exerciseId}`);
+    return response.data;
+  }
+
+  // Custom Exercises (User's personal exercises)
+  async getCustomExercises() {
+    const response = await this.axiosInstance.get('/workouts/exercises');
+    return response.data;
+  }
+
+  async createCustomExercise(data: {
+    systemExerciseId?: string;
+    name: string;
+    description?: string;
+    instructions?: string;
+    type: string;
+    equipment: string[];
+    primaryMuscles: string[];
+    secondaryMuscles?: string[];
+    imageUrl?: string;
+    videoUrl?: string;
+    notes?: string;
+  }) {
+    const response = await this.axiosInstance.post('/workouts/exercises', data);
+    return response.data;
+  }
+
+  async updateCustomExercise(exerciseId: string, data: any) {
+    const response = await this.axiosInstance.patch(`/workouts/exercises/${exerciseId}`, data);
+    return response.data;
+  }
+
+  async deleteCustomExercise(exerciseId: string) {
+    const response = await this.axiosInstance.delete(`/workouts/exercises/${exerciseId}`);
+    return response.data;
+  }
+
+  // Workout Programs
+  async getWorkoutPrograms() {
+    const response = await this.axiosInstance.get('/workouts/programs');
+    return response.data;
+  }
+
+  async getWorkoutTemplates() {
+    const response = await this.axiosInstance.get('/workouts/programs/templates');
+    return response.data;
+  }
+
+  async getWorkoutProgram(programId: string) {
+    const response = await this.axiosInstance.get(`/workouts/programs/${programId}`);
+    return response.data;
+  }
+
+  async createWorkoutProgram(data: {
+    name: string;
+    description?: string;
+    goals?: string;
+    exercises?: Array<{
+      customExerciseId: string;
+      sets?: number;
+      reps?: number;
+      duration?: number;
+      weight?: number;
+      weightUnit?: string;
+      restTime?: number;
+      notes?: string;
+    }>;
+  }) {
+    const response = await this.axiosInstance.post('/workouts/programs', data);
+    return response.data;
+  }
+
+  async updateWorkoutProgram(programId: string, data: {
+    name?: string;
+    description?: string;
+    goals?: string;
+    isActive?: boolean;
+  }) {
+    const response = await this.axiosInstance.patch(`/workouts/programs/${programId}`, data);
+    return response.data;
+  }
+
+  async deleteWorkoutProgram(programId: string) {
+    const response = await this.axiosInstance.delete(`/workouts/programs/${programId}`);
+    return response.data;
+  }
+
+  async saveWorkoutProgramAsTemplate(programId: string) {
+    const response = await this.axiosInstance.post(`/workouts/programs/${programId}/save-as-template`);
+    return response.data;
+  }
+
+  // Program Exercises
+  async addExerciseToProgram(programId: string, data: {
+    customExerciseId: string;
+    sets?: number;
+    reps?: number;
+    duration?: number;
+    weight?: number;
+    weightUnit?: string;
+    restTime?: number;
+    notes?: string;
+  }) {
+    const response = await this.axiosInstance.post(`/workouts/programs/${programId}/exercises`, data);
+    return response.data;
+  }
+
+  async updateProgramExercise(programExerciseId: string, data: any) {
+    const response = await this.axiosInstance.patch(`/workouts/program-exercises/${programExerciseId}`, data);
+    return response.data;
+  }
+
+  async removeProgramExercise(programExerciseId: string) {
+    const response = await this.axiosInstance.delete(`/workouts/program-exercises/${programExerciseId}`);
+    return response.data;
+  }
+
+  // Workout Schedules
+  async getWorkoutSchedules() {
+    const response = await this.axiosInstance.get('/workouts/schedules');
+    return response.data;
+  }
+
+  async createWorkoutSchedule(data: {
+    programId: string;
+    dayOfWeek: number;
+    startTime?: string;
+  }) {
+    const response = await this.axiosInstance.post('/workouts/schedules', data);
+    return response.data;
+  }
+
+  async deleteWorkoutSchedule(scheduleId: string) {
+    const response = await this.axiosInstance.delete(`/workouts/schedules/${scheduleId}`);
+    return response.data;
+  }
+
+  // Workout Sessions (Tracking)
+  async getWorkoutSessions(params?: {
+    programId?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const response = await this.axiosInstance.get('/workouts/sessions', { params });
+    return response.data;
+  }
+
+  async startWorkoutSession(data: {
+    programId?: string;
+  }) {
+    const response = await this.axiosInstance.post('/workouts/sessions/start', data);
+    return response.data;
+  }
+
+  async completeWorkoutSession(sessionId: string, data: {
+    duration?: number;
+    notes?: string;
+    rating?: number;
+  }) {
+    const response = await this.axiosInstance.post(`/workouts/sessions/${sessionId}/complete`, data);
+    return response.data;
+  }
+
+  async logExercise(sessionId: string, data: {
+    customExerciseId: string;
+    sets: Array<{
+      setNumber: number;
+      reps?: number;
+      weight?: number;
+      weightUnit?: string;
+      duration?: number;
+      distance?: number;
+      distanceUnit?: string;
+      completed?: boolean;
+      notes?: string;
+    }>;
+    notes?: string;
+  }) {
+    const response = await this.axiosInstance.post(`/workouts/sessions/${sessionId}/exercises`, data);
+    return response.data;
+  }
+
+  // Statistics & Progress
+  async getWorkoutStats() {
+    const response = await this.axiosInstance.get('/workouts/stats');
+    return response.data;
+  }
+
+  async getExerciseProgress(customExerciseId: string, params?: {
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const response = await this.axiosInstance.get(`/workouts/exercises/${customExerciseId}/progress`, { params });
+    return response.data;
+  }
+
+  // ML Predictions & Insights
+  async getProgressionPredictions() {
+    const response = await this.axiosInstance.get('/workouts/predictions/overview');
+    return response.data;
+  }
+
+  async getOptimalTrainingTime() {
+    const response = await this.axiosInstance.get('/workouts/predictions/optimal-time');
+    return response.data;
+  }
+
+  async getExerciseInsights(exerciseId: string) {
+    const response = await this.axiosInstance.get(`/workouts/predictions/insights/${exerciseId}`);
+    return response.data;
+  }
+
+  async getVolumeIntensityAnalysis() {
+    const response = await this.axiosInstance.get('/workouts/predictions/volume-intensity');
+    return response.data;
+  }
+
+  async getSmartRecommendations() {
+    const response = await this.axiosInstance.get('/workouts/predictions/recommendations');
     return response.data;
   }
 }

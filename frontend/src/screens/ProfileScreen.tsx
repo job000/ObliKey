@@ -369,6 +369,19 @@ export default function ProfileScreen({ navigation }: any) {
                 </TouchableOpacity>
               )}
 
+              {modules.pt && (
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={() => navigation.navigate('PTShop')}
+                >
+                  <View style={styles.actionIcon}>
+                    <Ionicons name="fitness-outline" size={24} color="#F59E0B" />
+                  </View>
+                  <Text style={styles.actionText}>PT-Timer</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+
               {modules.chat && (
                 <TouchableOpacity
                   style={styles.actionItem}
@@ -420,8 +433,8 @@ export default function ProfileScreen({ navigation }: any) {
 
           {/* App Info */}
           <View style={styles.appInfo}>
-            <Text style={styles.appInfoText}>ObliKey v1.0.0</Text>
-            <Text style={styles.appInfoText}>© 2025 Boost System</Text>
+            <Text style={styles.appInfoText}>Otico v1.0.0</Text>
+            <Text style={styles.appInfoText}>© 2025 Otico Tech</Text>
           </View>
         </Container>
       </ScrollView>

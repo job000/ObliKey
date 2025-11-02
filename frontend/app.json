@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ObliKey",
-    "slug": "oblikey",
+    "name": "Otico",
+    "slug": "otico",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,10 +20,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.oblikey.app",
+      "bundleIdentifier": "com.otico.app",
       "infoPlist": {
-        "NSBluetoothAlwaysUsageDescription": "ObliKey needs Bluetooth access to unlock doors using proximity detection.",
-        "NSBluetoothPeripheralUsageDescription": "ObliKey needs Bluetooth access to communicate with door locks.",
+        "NSBluetoothAlwaysUsageDescription": "Otico needs Bluetooth access to unlock doors using proximity detection.",
+        "NSBluetoothPeripheralUsageDescription": "Otico needs Bluetooth access to communicate with door locks.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -32,7 +32,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#3B82F6"
       },
-      "package": "com.oblikey.app",
+      "package": "com.otico.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [

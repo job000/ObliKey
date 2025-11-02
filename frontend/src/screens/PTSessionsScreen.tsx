@@ -60,7 +60,7 @@ export default function PTSessionsScreen({ navigation }: any) {
       }
 
       if (creditsRes.success && user?.role === 'CUSTOMER') {
-        setCredits(creditsRes.data.credits || 0);
+        setCredits(creditsRes.data.available || 0);
       }
     } catch (error) {
       console.error('Failed to load PT sessions:', error);
@@ -315,13 +315,66 @@ export default function PTSessionsScreen({ navigation }: any) {
               <Text style={styles.creditsLabel}>PT-Kreditter</Text>
               <Text style={styles.creditsValue}>{`${credits} økter`}</Text>
             </View>
-            <TouchableOpacity
-              style={styles.buyButton}
-              onPress={() => navigation.navigate('Shop', { filter: 'PT_SESSION' })}
-            >
-              <Text style={styles.buyButtonText}>Kjøp mer</Text>
-            </TouchableOpacity>
+            {credits > 0 ? (
+              <TouchableOpacity
+                style={styles.bookButton}
+                onPress={() => navigation.navigate('PTBooking')}
+              >
+                <Ionicons name="calendar-outline" size={16} color="#FFF" />
+                <Text style={styles.bookButtonText}>Book time</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.buyButton}
+                onPress={() => navigation.navigate('PTShop')}
+              >
+                <Ionicons name="cart-outline" size={16} color="#FFF" />
+                <Text style={styles.buyButtonText}>Kjøp timer</Text>
+              </TouchableOpacity>
+            )}
           </View>
+        )}
+
+        {user?.role === 'TRAINER' && (
+          <>
+            <View style={styles.trainerCard}>
+              <View style={styles.trainerCardHeader}>
+                <View style={styles.trainerIcon}>
+                  <Ionicons name="settings" size={32} color="#8B5CF6" />
+                </View>
+                <View style={styles.trainerInfo}>
+                  <Text style={styles.trainerLabel}>PT-Administrasjon</Text>
+                  <Text style={styles.trainerSubtext}>Administrer økter og gi kreditter</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.availabilityButton}
+                onPress={() => navigation.navigate('PTManagement')}
+              >
+                <Ionicons name="cog-outline" size={16} color="#FFF" />
+                <Text style={styles.availabilityButtonText}>Åpne</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.trainerCard}>
+              <View style={styles.trainerCardHeader}>
+                <View style={styles.trainerIcon}>
+                  <Ionicons name="calendar" size={32} color="#8B5CF6" />
+                </View>
+                <View style={styles.trainerInfo}>
+                  <Text style={styles.trainerLabel}>Tilgjengelighet</Text>
+                  <Text style={styles.trainerSubtext}>Administrer din arbeidsplan</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.availabilityButton}
+                onPress={() => navigation.navigate('PTAvailability')}
+              >
+                <Ionicons name="settings-outline" size={16} color="#FFF" />
+                <Text style={styles.availabilityButtonText}>Administrer</Text>
+              </TouchableOpacity>
+            </View>
+          </>
         )}
 
         <ScrollView
@@ -483,8 +536,8 @@ export default function PTSessionsScreen({ navigation }: any) {
                     <Ionicons name="person" size={16} color="#6B7280" />
                     <Text style={styles.infoText}>
                       {user?.role === 'CUSTOMER'
-                        ? `Trener: ${session.trainer.firstName} ${session.trainer.lastName}`
-                        : `Kunde: ${session.customer.firstName} ${session.customer.lastName}`}
+                        ? `Trener: ${session.trainer?.firstName || ''} ${session.trainer?.lastName || ''}`
+                        : `Kunde: ${session.customer?.firstName || ''} ${session.customer?.lastName || ''}`}
                     </Text>
                   </View>
                   {session.location && (
@@ -772,13 +825,82 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#111827',
   },
+  bookButton: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  bookButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
+  },
   buyButton: {
     backgroundColor: '#3B82F6',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   buyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  trainerCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  trainerCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  trainerIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F3E8FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  trainerInfo: {
+    flex: 1,
+  },
+  trainerLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  trainerSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  availabilityButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  availabilityButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#FFF',

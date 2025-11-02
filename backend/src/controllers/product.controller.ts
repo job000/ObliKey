@@ -561,7 +561,7 @@ export class ProductController {
   async subscribeToSaleAlerts(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id: productId } = req.params;
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const tenantId = req.tenantId!;
 
       // Check if product exists
@@ -631,7 +631,7 @@ export class ProductController {
   async unsubscribeFromSaleAlerts(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id: productId } = req.params;
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
 
       // Find and delete subscription
       const saleAlert = await prisma.productSaleAlert.findUnique({
@@ -670,7 +670,7 @@ export class ProductController {
   // Get user's sale alert subscriptions
   async getSaleAlertSubscriptions(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const tenantId = req.tenantId!;
 
       const subscriptions = await prisma.productSaleAlert.findMany({
