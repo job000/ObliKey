@@ -261,8 +261,8 @@ export class TenantSettingsController {
       // Map TenantSettings fields to module status
       // Using !== false for modules that should be enabled by default
       const moduleStatuses: any = {
-        shop: settings.ecommerceEnabled || false,
-        ecommerce: settings.ecommerceEnabled || false,
+        shop: settings.ecommerceEnabled !== false, // Default true (core business module)
+        ecommerce: settings.ecommerceEnabled !== false, // Default true
         classes: settings.classesEnabled !== false, // Default true
         accounting: settings.accountingEnabled || false,
         chat: settings.chatEnabled !== false, // Default true (was enabled in schema)

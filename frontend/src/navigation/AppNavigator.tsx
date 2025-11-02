@@ -103,7 +103,7 @@ function MainDrawer() {
           </TouchableOpacity>
         ),
         headerRight: () => (
-          modules.shop && !isSuperAdmin ? (
+          modules.shop && (!isSuperAdmin || selectedTenant !== null) ? (
             <TouchableOpacity
               onPress={() => navigation.navigate('Cart')}
               style={styles.cartButton}
