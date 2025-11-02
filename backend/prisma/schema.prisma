@@ -515,6 +515,31 @@ enum MuscleGroup {
   FULL_BODY
 }
 
+enum ExerciseMediaType {
+  IMAGE
+  VIDEO
+}
+
+// Media files for exercises (images and videos)
+model ExerciseMedia {
+  id                 String             @id @default(uuid())
+  url                String
+  mediaType          ExerciseMediaType
+  title              String?
+  description        String?
+  sortOrder          Int                @default(0)
+  systemExerciseId   String?
+  customExerciseId   String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relations
+  systemExercise  SystemExercise?  @relation(fields: [systemExerciseId], references: [id], onDelete: Cascade)
+  customExercise  CustomExercise?  @relation(fields: [customExerciseId], references: [id], onDelete: Cascade)
+
+  @@map("exercise_media")
+}
+
 // System exercises library (seeded globally, visible to all tenants)
 model SystemExercise {
   id              String         @id @default(uuid())
@@ -535,6 +560,7 @@ model SystemExercise {
 
   // Relations - users can add system exercises to their custom exercises
   customExercises CustomExercise[]
+  media           ExerciseMedia[]
 
   @@map("system_exercises")
 }
@@ -555,6 +581,7 @@ model CustomExercise {
   imageUrl         String?
   videoUrl         String?
   notes            String?
+  published        Boolean         @default(true) // Whether exercise is visible to all users in tenant
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
@@ -564,6 +591,7 @@ model CustomExercise {
   systemExercise  SystemExercise?            @relation(fields: [systemExerciseId], references: [id])
   programExercises WorkoutProgramExercise[]
   exerciseLogs    WorkoutExerciseLog[]
+  media           ExerciseMedia[]
 
   @@map("custom_exercises")
 }
@@ -578,6 +606,7 @@ model WorkoutProgram {
   goals       String?
   isActive    Boolean  @default(true)
   isTemplate  Boolean  @default(false) // Mark program as personal template
+  isVisibleToCustomers Boolean @default(true) // Admin can control template visibility
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

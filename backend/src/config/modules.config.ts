@@ -280,5 +280,5 @@ export const DEFAULT_MODULE_CONFIG = {
   accountingEnabled: false,
   landingPageEnabled: false,
   membershipEnabled: false,
-  workoutEnabled: false,
+  workoutEnabled: true, // Enabled by default with pre-seeded templates
 };

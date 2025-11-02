@@ -181,9 +181,11 @@ export class WorkoutController {
     try {
       const { id } = req.params;
       const userId = req.user!.userId;
+      const userRole = req.user!.role;
+      const tenantId = req.user!.tenantId;
       const updateData = req.body;
 
-      // Verify ownership
+      // Verify ownership or admin access
       const exercise = await prisma.customExercise.findUnique({
         where: { id }
       });
@@ -192,7 +194,11 @@ export class WorkoutController {
         throw new AppError('Øvelse ikke funnet', 404);
       }
 
-      if (exercise.userId !== userId) {
+      // Allow owner or ADMIN/SUPER_ADMIN in the same tenant to update
+      const isOwner = exercise.userId === userId;
+      const isAdminInSameTenant = (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && exercise.tenantId === tenantId;
+
+      if (!isOwner && !isAdminInSameTenant) {
         throw new AppError('Ingen tilgang til denne øvelsen', 403);
       }
 
@@ -448,6 +454,39 @@ export class WorkoutController {
         orderBy: { createdAt: 'desc' }
       });
 
+      // Get shared tenant templates (created by other users/admins)
+      // CUSTOMER role: only visible templates
+      // ADMIN/SUPER_ADMIN: all templates
+      const userRole = req.user!.role;
+      const sharedTemplatesWhere: any = {
+        userId: { not: userId }, // Not created by current user
+        tenantId,
+        isTemplate: true
+      };
+
+      // Filter by visibility for customers
+      if (userRole === 'CUSTOMER') {
+        sharedTemplatesWhere.isVisibleToCustomers = true;
+      }
+
+      const sharedTemplates = await prisma.workoutProgram.findMany({
+        where: sharedTemplatesWhere,
+        include: {
+          exercises: {
+            include: {
+              customExercise: {
+                include: {
+                  systemExercise: true
+                }
+              }
+            },
+            orderBy: { sortOrder: 'asc' }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      console.log(`📚 Found ${sharedTemplates.length} shared templates (role: ${userRole})`);
+
       // Get common exercises from system
       const commonExercises = await prisma.systemExercise.findMany({
         where: {
@@ -494,7 +533,11 @@ export class WorkoutController {
 
       // Create a map for easy lookup
       const exerciseMap = new Map();
-      commonExercises.forEach(ex => exerciseMap.set(ex.name, ex.id));
+      const exerciseDataMap = new Map();
+      commonExercises.forEach(ex => {
+        exerciseMap.set(ex.name, ex.id);
+        exerciseDataMap.set(ex.name, ex);
+      });
       console.log('💪 Found', commonExercises.length, 'system exercises');
       console.log('📋 Exercise map size:', exerciseMap.size);
 
@@ -1884,7 +1927,13 @@ export class WorkoutController {
       // Filter out templates with missing exercises
       const validTemplates = templates.filter(template =>
         template.exercises.every(ex => ex.exerciseId)
-      );
+      ).map(template => ({
+        ...template,
+        exercises: template.exercises.map(ex => ({
+          ...ex,
+          imageUrl: exerciseDataMap.get(ex.name)?.imageUrl
+        }))
+      }));
       console.log('✅ Valid templates after filtering:', validTemplates.length, 'out of', templates.length);
       console.log('👥 Personal templates:', personalTemplates.length);
 
@@ -1921,16 +1970,59 @@ export class WorkoutController {
           }
 
           return {
-            exerciseId: ex.customExercise?.systemExercise?.id || ex.customExerciseId,
+            exerciseId: ex.customExercise?.systemExercise?.id,
+            customExerciseId: ex.customExerciseId,
             name: ex.customExercise?.name || 'Øvelse',
+            imageUrl: ex.customExercise?.systemExercise?.imageUrl,
             sets: setsArray
           };
         })
       }));
 
-      // Combine personal templates with system templates (personal first)
-      const allTemplates = [...formattedPersonalTemplates, ...validTemplates];
-      console.log('📦 Total templates being returned:', allTemplates.length);
+      // Format shared templates
+      const formattedSharedTemplates = sharedTemplates.map(template => ({
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        category: 'Delt mal',
+        difficulty: 'Variabel',
+        duration: 'Variabel',
+        isShared: true,
+        exercises: template.exercises.map(ex => {
+          let setsArray = [];
+          try {
+            if (ex.notes) {
+              const parsed = JSON.parse(ex.notes);
+              if (parsed.setConfiguration && Array.isArray(parsed.setConfiguration)) {
+                setsArray = parsed.setConfiguration;
+              }
+            }
+          } catch (e) {
+            // If parsing fails, fall back to default behavior
+          }
+
+          if (setsArray.length === 0 && ex.sets) {
+            setsArray = Array.from({ length: ex.sets }, (_, i) => ({
+              setNumber: i + 1,
+              reps: ex.reps ? parseInt(ex.reps) : undefined,
+              weight: ex.weight,
+              restTime: ex.restTime
+            }));
+          }
+
+          return {
+            exerciseId: ex.customExercise?.systemExercise?.id,
+            customExerciseId: ex.customExerciseId,
+            name: ex.customExercise?.name || 'Øvelse',
+            imageUrl: ex.customExercise?.systemExercise?.imageUrl,
+            sets: setsArray
+          };
+        })
+      }));
+
+      // Combine personal, shared, and system templates (personal first, then shared, then system)
+      const allTemplates = [...formattedPersonalTemplates, ...formattedSharedTemplates, ...validTemplates];
+      console.log('📦 Total templates being returned:', allTemplates.length, '(personal:', formattedPersonalTemplates.length, ', shared:', formattedSharedTemplates.length, ', system:', validTemplates.length, ')');
 
       res.json({
         success: true,
@@ -1939,6 +2031,69 @@ export class WorkoutController {
     } catch (error) {
       console.error('Get workout templates error:', error);
       res.status(500).json({ success: false, error: 'Kunne ikke hente maler' });
+    }
+  }
+
+  async toggleTemplateVisibility(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userRole = req.user!.role;
+      const tenantId = req.tenantId!;
+      const { templateId } = req.params;
+      const { isVisibleToCustomers } = req.body;
+
+      // Only ADMIN and SUPER_ADMIN can toggle visibility
+      if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+        res.status(403).json({
+          success: false,
+          error: 'Kun administratorer kan endre malsynlighet'
+        });
+        return;
+      }
+
+      if (typeof isVisibleToCustomers !== 'boolean') {
+        res.status(400).json({
+          success: false,
+          error: 'isVisibleToCustomers må være true eller false'
+        });
+        return;
+      }
+
+      // Find the template
+      const template = await prisma.workoutProgram.findFirst({
+        where: {
+          id: templateId,
+          tenantId,
+          isTemplate: true
+        }
+      });
+
+      if (!template) {
+        res.status(404).json({
+          success: false,
+          error: 'Mal ikke funnet'
+        });
+        return;
+      }
+
+      // Update visibility
+      const updatedTemplate = await prisma.workoutProgram.update({
+        where: { id: templateId },
+        data: { isVisibleToCustomers }
+      });
+
+      console.log(`✅ Template ${templateId} visibility updated to ${isVisibleToCustomers} by ${userRole}`);
+
+      res.json({
+        success: true,
+        data: {
+          id: updatedTemplate.id,
+          name: updatedTemplate.name,
+          isVisibleToCustomers: updatedTemplate.isVisibleToCustomers
+        }
+      });
+    } catch (error) {
+      console.error('Toggle template visibility error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke oppdatere malsynlighet' });
     }
   }
 

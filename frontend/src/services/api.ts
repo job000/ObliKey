@@ -10,7 +10,7 @@ const getApiUrl = () => {
   // DEVELOPMENT MODE OVERRIDE
   // Set USE_LOCAL_BACKEND to true when developing locally
   // Set to false when you want to test against Railway production
-  const USE_LOCAL_BACKEND = false; // Toggle this for local development
+  const USE_LOCAL_BACKEND = true; // Toggle this for local development
 
   // For development, you can use localhost or ngrok
   // Note: iOS/Android simulator cannot reach localhost - use IP address instead
@@ -1896,6 +1896,90 @@ class ApiService {
     return response.data;
   }
 
+  // Exercise Media (Images & Videos)
+  async getExerciseMedia(exerciseId: string, exerciseType: 'system' | 'custom') {
+    const response = await this.axiosInstance.get(`/workouts/exercises/${exerciseId}/media`, {
+      params: { exerciseType },
+    });
+    return response.data;
+  }
+
+  async addExerciseMedia(exerciseId: string, data: {
+    url: string;
+    mediaType: 'IMAGE' | 'VIDEO';
+    title?: string;
+    description?: string;
+    sortOrder?: number;
+    exerciseType: 'system' | 'custom';
+  }) {
+    const response = await this.axiosInstance.post(`/workouts/exercises/${exerciseId}/media`, data);
+    return response.data;
+  }
+
+  async updateExerciseMedia(exerciseId: string, mediaId: string, data: {
+    title?: string;
+    description?: string;
+    sortOrder?: number;
+  }) {
+    const response = await this.axiosInstance.patch(
+      `/workouts/exercises/${exerciseId}/media/${mediaId}`,
+      data
+    );
+    return response.data;
+  }
+
+  async deleteExerciseMedia(exerciseId: string, mediaId: string) {
+    const response = await this.axiosInstance.delete(
+      `/workouts/exercises/${exerciseId}/media/${mediaId}`
+    );
+    return response.data;
+  }
+
+  async uploadExerciseMediaFile(exerciseId: string, fileUri: string, data: {
+    exerciseType: 'system' | 'custom';
+    title?: string;
+    description?: string;
+    sortOrder?: number;
+  }) {
+    const formData = new FormData();
+
+    // Extract filename from URI
+    const filename = fileUri.split('/').pop() || 'media.jpg';
+    const fileType = filename.split('.').pop()?.toLowerCase() || 'jpg';
+
+    // Determine MIME type
+    let mimeType = 'image/jpeg';
+    if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(fileType)) {
+      mimeType = `image/${fileType === 'jpg' ? 'jpeg' : fileType}`;
+    } else if (['mp4', 'mov', 'avi', 'webm'].includes(fileType)) {
+      mimeType = `video/${fileType === 'mov' ? 'quicktime' : fileType}`;
+    }
+
+    // Create file object
+    formData.append('file', {
+      uri: fileUri,
+      name: filename,
+      type: mimeType,
+    } as any);
+
+    // Append other data
+    formData.append('exerciseType', data.exerciseType);
+    if (data.title) formData.append('title', data.title);
+    if (data.description) formData.append('description', data.description);
+    if (data.sortOrder !== undefined) formData.append('sortOrder', data.sortOrder.toString());
+
+    const response = await this.axiosInstance.post(
+      `/workouts/exercises/${exerciseId}/media/upload`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  }
+
   // Workout Programs
   async getWorkoutPrograms() {
     const response = await this.axiosInstance.get('/workouts/programs');
@@ -1948,6 +2032,14 @@ class ApiService {
 
   async saveWorkoutProgramAsTemplate(programId: string) {
     const response = await this.axiosInstance.post(`/workouts/programs/${programId}/save-as-template`);
+    return response.data;
+  }
+
+  async toggleTemplateVisibility(templateId: string, isVisibleToCustomers: boolean) {
+    const response = await this.axiosInstance.patch(
+      `/workouts/programs/templates/${templateId}/visibility`,
+      { isVisibleToCustomers }
+    );
     return response.data;
   }
 

@@ -18,7 +18,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { api } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { ExerciseStatisticsModal } from '../components/workout/ExerciseStatisticsModal';
+import { ExerciseMediaGallery } from '../components/workout/ExerciseMediaGallery';
 import { MuscleGroupAnalytics } from '../components/workout/MuscleGroupAnalytics';
 import { ExerciseLog } from '../utils/exerciseStats';
 
@@ -88,6 +90,7 @@ interface ActiveExercise {
   exerciseId: string;
   name: string;
   type: string;
+  imageUrl?: string;
   sets: ExerciseSet[];
   notes?: string;
 }
@@ -195,6 +198,7 @@ const getExerciseImage = (exerciseName: string) => {
 };
 
 export default function WorkoutScreen() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [loading, setLoading] = useState(false);
 
@@ -217,7 +221,6 @@ export default function WorkoutScreen() {
   const [customExercises, setCustomExercises] = useState<any[]>([]);
   const [selectedMuscle, setSelectedMuscle] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showExerciseDetail, setShowExerciseDetail] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<SystemExercise | null>(null);
 
   // Programs
@@ -256,8 +259,21 @@ export default function WorkoutScreen() {
   const [optimalTimeData, setOptimalTimeData] = useState<OptimalTimeData[]>([]);
   const [volumeIntensityData, setVolumeIntensityData] = useState<VolumeIntensityData | null>(null);
   const [recommendations, setRecommendations] = useState<SmartRecommendation[]>([]);
+
+  // Exercise Detail Modal
+  const [showExerciseDetail, setShowExerciseDetail] = useState(false);
+  const [selectedExerciseDetail, setSelectedExerciseDetail] = useState<any>(null);
   const [predictionsLoading, setPredictionsLoading] = useState(false);
   const [hasEnoughData, setHasEnoughData] = useState(true);
+
+  // Media Gallery
+  const [showMediaGallery, setShowMediaGallery] = useState(false);
+  const [selectedExerciseType, setSelectedExerciseType] = useState<'system' | 'custom'>('system');
+  const [mediaGallerySource, setMediaGallerySource] = useState<'exercise-detail' | 'program-editor'>('exercise-detail');
+
+  // Full Screen Image Viewer
+  const [showFullScreenImage, setShowFullScreenImage] = useState(false);
+  const [fullScreenImageUrl, setFullScreenImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadInitialData();
@@ -553,6 +569,7 @@ export default function WorkoutScreen() {
       exerciseId: ex.customExerciseId || ex.exerciseId,
       name: ex.name || ex.customExercise?.name || 'Øvelse',
       type: ex.type || ex.customExercise?.type || 'STRENGTH',
+      imageUrl: ex.exercise?.imageUrl || ex.customExercise?.imageUrl || ex.imageUrl,
       sets: ex.sets?.map((set: any, i: number) => ({
         setNumber: i + 1,
         reps: set.reps,
@@ -581,6 +598,7 @@ export default function WorkoutScreen() {
       exerciseId: exercise.id,
       name: exercise.name,
       type: exercise.type,
+      imageUrl: exercise.imageUrl,
       sets: Array.from({ length: 3 }, (_, i) => ({
         setNumber: i + 1,
         reps: undefined,
@@ -810,6 +828,36 @@ export default function WorkoutScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openExerciseDetail = (exerciseId: string, exerciseName: string, imageUrl?: string) => {
+    // Try to find full exercise details from the exercises array (system exercises)
+    const systemExercise = exercises.find(ex => ex.id === exerciseId);
+
+    if (systemExercise) {
+      setSelectedExerciseDetail({
+        ...systemExercise,
+        imageUrl: systemExercise.imageUrl || imageUrl,
+      });
+      setSelectedExerciseType('system');
+    } else {
+      // Try to find in custom exercises
+      const customExercise = customExercises.find(ex => ex.id === exerciseId);
+
+      if (customExercise) {
+        setSelectedExerciseDetail(customExercise);
+        setSelectedExerciseType('custom');
+      } else {
+        // Fallback to basic info if not found (assume custom)
+        setSelectedExerciseDetail({
+          id: exerciseId,
+          name: exerciseName,
+          imageUrl: imageUrl,
+        });
+        setSelectedExerciseType('custom');
+      }
+    }
+    setShowExerciseDetail(true);
   };
 
   // Progress Calculation
@@ -1166,7 +1214,21 @@ export default function WorkoutScreen() {
           {activeWorkout.map((exercise, exerciseIdx) => (
             <View key={exercise.id} style={styles.activeExerciseCard}>
               <View style={styles.activeExerciseHeader}>
-                <Text style={styles.activeExerciseName}>{exercise.name}</Text>
+                {exercise.imageUrl && (
+                  <TouchableOpacity
+                    onPress={() => openExerciseDetail(exercise.exerciseId, exercise.name, exercise.imageUrl)}
+                    activeOpacity={0.7}
+                  >
+                    <Image
+                      source={{ uri: exercise.imageUrl }}
+                      style={styles.exerciseImage}
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
+                )}
+                <View style={styles.activeExerciseHeaderText}>
+                  <Text style={styles.activeExerciseName}>{exercise.name}</Text>
+                </View>
                 <TouchableOpacity
                   onPress={() => {
                     const updated = activeWorkout.filter((_, i) => i !== exerciseIdx);
@@ -1350,7 +1412,20 @@ export default function WorkoutScreen() {
                 setEditingProgram(item);
                 setProgramName(item.name);
                 setProgramDescription(item.description || '');
-                setProgramExercises(item.exercises || []);
+
+                // Enrich exercises with imageUrl from exercises/customExercises arrays
+                const enrichedExercises = (item.exercises || []).map((ex: any) => {
+                  const systemExercise = exercises.find(e => e.id === ex.exerciseId);
+                  const customExercise = customExercises.find(e => e.id === ex.exerciseId);
+                  const fullExercise = systemExercise || customExercise;
+
+                  return {
+                    ...ex,
+                    imageUrl: ex.imageUrl || fullExercise?.imageUrl || getExerciseImage(ex.name),
+                  };
+                });
+
+                setProgramExercises(enrichedExercises);
                 setSelectedDays(item.schedules?.map(s => s.dayOfWeek) || []);
                 setShowNewProgram(true);
               }}
@@ -2090,6 +2165,7 @@ export default function WorkoutScreen() {
                         exerciseId: item.id,
                         name: item.name,
                         type: item.type,
+                        imageUrl: item.imageUrl,
                         sets: [
                           { setNumber: 1, reps: 10, weight: undefined },
                           { setNumber: 2, reps: 10, weight: undefined },
@@ -2106,11 +2182,17 @@ export default function WorkoutScreen() {
                   }
                 }}
               >
-                <Image
-                  source={{ uri: getExerciseImage(item.name) }}
-                  style={styles.exerciseImage}
-                  resizeMode="cover"
-                />
+                {item.imageUrl ? (
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={styles.exerciseImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={[styles.exerciseImage, styles.exercisePlaceholder]}>
+                    <Ionicons name="barbell-outline" size={40} color={COLORS.textLight} />
+                  </View>
+                )}
                 <View style={styles.exerciseCardContent}>
                   <Text style={styles.exerciseCardName}>{item.name}</Text>
                   {item.description && (
@@ -2157,34 +2239,25 @@ export default function WorkoutScreen() {
           </View>
 
           <ScrollView style={styles.modalContent}>
-            {selectedExercise && (
+            {selectedExerciseDetail && (
               <>
-                <Image
-                  source={{ uri: getExerciseImage(selectedExercise.name) }}
-                  style={styles.detailImage}
-                  resizeMode="cover"
-                />
-                <Text style={styles.detailName}>{selectedExercise.name}</Text>
+                {selectedExerciseDetail.imageUrl && (
+                  <Image
+                    source={{ uri: selectedExerciseDetail.imageUrl }}
+                    style={styles.detailImage}
+                    resizeMode="cover"
+                  />
+                )}
+                <Text style={styles.detailName}>{selectedExerciseDetail.name}</Text>
                 <Text style={styles.detailDescription}>
-                  {selectedExercise.description || 'Ingen beskrivelse tilgjengelig'}
+                  {selectedExerciseDetail.description || 'Ingen beskrivelse tilgjengelig'}
                 </Text>
 
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Primære muskler</Text>
-                  <View style={styles.detailTags}>
-                    {selectedExercise.primaryMuscles?.map((muscle: string, idx: number) => (
-                      <View key={idx} style={styles.detailTag}>
-                        <Text style={styles.detailTagText}>{muscle}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-
-                {selectedExercise.secondaryMuscles?.length > 0 && (
+                {selectedExerciseDetail.primaryMuscles?.length > 0 && (
                   <View style={styles.detailSection}>
-                    <Text style={styles.detailLabel}>Sekundære muskler</Text>
+                    <Text style={styles.detailLabel}>Primære muskler</Text>
                     <View style={styles.detailTags}>
-                      {selectedExercise.secondaryMuscles.map((muscle: string, idx: number) => (
+                      {selectedExerciseDetail.primaryMuscles.map((muscle: string, idx: number) => (
                         <View key={idx} style={styles.detailTag}>
                           <Text style={styles.detailTagText}>{muscle}</Text>
                         </View>
@@ -2193,12 +2266,45 @@ export default function WorkoutScreen() {
                   </View>
                 )}
 
-                {selectedExercise.instructions && (
+                {selectedExerciseDetail.secondaryMuscles?.length > 0 && (
                   <View style={styles.detailSection}>
-                    <Text style={styles.detailLabel}>Instruksjoner</Text>
-                    <Text style={styles.detailText}>{selectedExercise.instructions}</Text>
+                    <Text style={styles.detailLabel}>Sekundære muskler</Text>
+                    <View style={styles.detailTags}>
+                      {selectedExerciseDetail.secondaryMuscles.map((muscle: string, idx: number) => (
+                        <View key={idx} style={styles.detailTag}>
+                          <Text style={styles.detailTagText}>{muscle}</Text>
+                        </View>
+                      ))}
+                    </View>
                   </View>
                 )}
+
+                {selectedExerciseDetail.instructions && (
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Instruksjoner</Text>
+                    <Text style={styles.detailText}>{selectedExerciseDetail.instructions}</Text>
+                  </View>
+                )}
+
+                {selectedExerciseDetail.equipment && (
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Utstyr</Text>
+                    <Text style={styles.detailText}>{selectedExerciseDetail.equipment}</Text>
+                  </View>
+                )}
+
+                {/* Media Gallery Button */}
+                <TouchableOpacity
+                  style={styles.mediaGalleryButton}
+                  onPress={() => {
+                    setShowExerciseDetail(false);
+                    setMediaGallerySource('exercise-detail');
+                    setShowMediaGallery(true);
+                  }}
+                >
+                  <Ionicons name="images-outline" size={24} color={COLORS.primary} />
+                  <Text style={styles.mediaGalleryButtonText}>Se bilder og videoer</Text>
+                </TouchableOpacity>
               </>
             )}
           </ScrollView>
@@ -2262,6 +2368,36 @@ export default function WorkoutScreen() {
               </>
             )}
           </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Exercise Media Gallery */}
+      <Modal
+        visible={showMediaGallery}
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+          {selectedExerciseDetail && (
+            <ExerciseMediaGallery
+              exerciseId={selectedExerciseDetail.id}
+              exerciseType={selectedExerciseType}
+              exerciseName={selectedExerciseDetail.name}
+              canEdit={
+                user?.role === 'ADMIN' ||
+                user?.role === 'SUPER_ADMIN' ||
+                (selectedExerciseType === 'custom' && selectedExerciseDetail.userId === user?.id)
+              }
+              onClose={() => {
+                setShowMediaGallery(false);
+                if (mediaGallerySource === 'exercise-detail') {
+                  setShowExerciseDetail(true);
+                } else if (mediaGallerySource === 'program-editor') {
+                  setShowNewProgram(true);
+                }
+              }}
+            />
+          )}
         </SafeAreaView>
       </Modal>
 
@@ -2347,6 +2483,7 @@ export default function WorkoutScreen() {
                           exerciseId: item.id,
                           name: item.name,
                           type: item.type,
+                          imageUrl: item.imageUrl,
                           sets: [
                             { setNumber: 1, reps: 10, weight: undefined },
                             { setNumber: 2, reps: 10, weight: undefined },
@@ -2358,11 +2495,17 @@ export default function WorkoutScreen() {
                       setShowExerciseSelector(false);
                     }}
                   >
-                    <Image
-                      source={{ uri: getExerciseImage(item.name) }}
-                      style={styles.exerciseImage}
-                      resizeMode="cover"
-                    />
+                    {item.imageUrl ? (
+                      <Image
+                        source={{ uri: item.imageUrl }}
+                        style={styles.exerciseImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={[styles.exerciseImage, styles.exercisePlaceholder]}>
+                        <Ionicons name="barbell-outline" size={40} color={COLORS.textLight} />
+                      </View>
+                    )}
                     <View style={styles.exerciseCardContent}>
                       <Text style={styles.exerciseCardName}>{item.name}</Text>
                       {item.description && (
@@ -2479,18 +2622,112 @@ export default function WorkoutScreen() {
                 Øvelser ({programExercises.length})
               </Text>
 
-              {programExercises.map((ex, exerciseIdx) => (
-                <View key={exerciseIdx} style={styles.programExerciseCard}>
-                  <View style={styles.programExerciseHeader}>
-                    <Text style={styles.programExerciseName}>{ex.name}</Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setProgramExercises(programExercises.filter((_, i) => i !== exerciseIdx));
-                      }}
-                    >
-                      <Ionicons name="trash-outline" size={22} color={COLORS.danger} />
-                    </TouchableOpacity>
-                  </View>
+              {programExercises.map((ex, exerciseIdx) => {
+                // Find the full exercise object to get imageUrl
+                const systemExercise = exercises.find(e => e.id === ex.exerciseId);
+                const customExercise = customExercises.find(e => e.id === ex.exerciseId);
+                const fullExercise = systemExercise || customExercise;
+                const imageUrl = ex.imageUrl || fullExercise?.imageUrl || getExerciseImage(ex.name);
+
+                return (
+                  <View key={exerciseIdx} style={styles.programExerciseCard}>
+                    {/* Exercise Image Preview - Full Width */}
+                    <View style={styles.programExerciseImageContainer}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          // Determine exercise type and set state
+                          const systemExercise = exercises.find(e => e.id === ex.exerciseId);
+                          const customExercise = customExercises.find(e => e.id === ex.exerciseId);
+
+                          if (systemExercise) {
+                            setSelectedExerciseDetail(systemExercise);
+                            setSelectedExerciseType('system');
+                          } else if (customExercise) {
+                            setSelectedExerciseDetail(customExercise);
+                            setSelectedExerciseType('custom');
+                          } else {
+                            setSelectedExerciseDetail({ id: ex.exerciseId, name: ex.name, imageUrl });
+                            setSelectedExerciseType('custom');
+                          }
+
+                          // Close program editor and open media gallery
+                          setShowNewProgram(false);
+                          setMediaGallerySource('program-editor');
+                          setShowMediaGallery(true);
+                        }}
+                        activeOpacity={0.8}
+                        style={styles.programExerciseImageWrapper}
+                      >
+                        {imageUrl ? (
+                          <Image
+                            source={{ uri: imageUrl }}
+                            style={styles.programExerciseImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={styles.programExercisePlaceholder}>
+                            <Ionicons name="image-outline" size={48} color={COLORS.textLight} />
+                            <Text style={styles.programExercisePlaceholderText}>Ingen bilde</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                      {imageUrl && (
+                        <TouchableOpacity
+                          style={styles.programExerciseImageBadge}
+                          onPress={() => {
+                            setFullScreenImageUrl(imageUrl);
+                            setShowFullScreenImage(true);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="expand-outline" size={16} color="#FFF" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* Exercise Header */}
+                    <View style={styles.programExerciseHeader}>
+                      <View style={styles.programExerciseHeaderText}>
+                        <Text style={styles.programExerciseName}>{ex.name}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            // Determine exercise type and set state
+                            const systemExercise = exercises.find(e => e.id === ex.exerciseId);
+                            const customExercise = customExercises.find(e => e.id === ex.exerciseId);
+
+                            if (systemExercise) {
+                              setSelectedExerciseDetail(systemExercise);
+                              setSelectedExerciseType('system');
+                            } else if (customExercise) {
+                              setSelectedExerciseDetail(customExercise);
+                              setSelectedExerciseType('custom');
+                            } else {
+                              setSelectedExerciseDetail({ id: ex.exerciseId, name: ex.name });
+                              setSelectedExerciseType('custom');
+                            }
+
+                            // Close program editor and open media gallery
+                            setShowNewProgram(false);
+                            setMediaGallerySource('program-editor');
+                            setShowMediaGallery(true);
+                          }}
+                          style={styles.programExerciseActionButton}
+                        >
+                          <Ionicons name="images-outline" size={20} color={COLORS.primary} />
+                          <Text style={styles.programExerciseActionText}>Media</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setProgramExercises(programExercises.filter((_, i) => i !== exerciseIdx));
+                          }}
+                          style={styles.programExerciseActionButton}
+                        >
+                          <Ionicons name="trash-outline" size={20} color={COLORS.danger} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
 
                   {/* Individual Sets */}
                   <View style={styles.programSetsContainer}>
@@ -2570,7 +2807,8 @@ export default function WorkoutScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
-              ))}
+                );
+              })}
 
               {/* Add Exercise Button */}
               <TouchableOpacity
@@ -2861,6 +3099,38 @@ export default function WorkoutScreen() {
             <View style={{ height: 100 }} />
           </ScrollView>
         </SafeAreaView>
+      </Modal>
+
+      {/* Fullscreen Image Modal */}
+      <Modal
+        visible={showFullScreenImage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFullScreenImage(false)}
+      >
+        <View style={styles.fullscreenImageContainer}>
+          <TouchableOpacity
+            style={styles.fullscreenImageBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowFullScreenImage(false)}
+          >
+            <View style={styles.fullscreenImageHeader}>
+              <TouchableOpacity
+                style={styles.fullscreenImageCloseButton}
+                onPress={() => setShowFullScreenImage(false)}
+              >
+                <Ionicons name="close" size={28} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+            {fullScreenImageUrl && (
+              <Image
+                source={{ uri: fullScreenImageUrl }}
+                style={styles.fullscreenImage}
+                resizeMode="contain"
+              />
+            )}
+          </TouchableOpacity>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -3290,6 +3560,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  exerciseImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    marginRight: 12,
+    backgroundColor: COLORS.borderLight,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  activeExerciseHeaderText: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   activeExerciseName: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -3468,9 +3751,15 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   exerciseImage: {
-    width: 100,
-    height: 100,
+    width: 120,
+    height: 120,
     backgroundColor: COLORS.borderLight,
+    borderRadius: 12,
+  },
+  exercisePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
   },
   exerciseCardContent: {
     flex: 1,
@@ -3985,10 +4274,15 @@ const styles = StyleSheet.create({
   // Detail Modal
   detailImage: {
     width: '100%',
-    height: 250,
+    height: 300,
     borderRadius: 16,
     marginBottom: 20,
     backgroundColor: COLORS.borderLight,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
   },
   detailName: {
     fontSize: 26,
@@ -4086,26 +4380,86 @@ const styles = StyleSheet.create({
   programExerciseCard: {
     backgroundColor: COLORS.cardBg,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    padding: 0,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
+    overflow: 'hidden',
+  },
+  programExerciseImageContainer: {
+    width: '100%',
+    height: 180,
+    backgroundColor: COLORS.borderLight,
+  },
+  programExerciseImageWrapper: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  programExerciseImage: {
+    width: '100%',
+    height: '100%',
+  },
+  programExercisePlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  programExercisePlaceholderText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: COLORS.textLight,
+  },
+  programExerciseImageBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   programExerciseHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    padding: 16,
+    paddingBottom: 12,
+  },
+  programExerciseHeaderText: {
+    flex: 1,
+    justifyContent: 'center',
+    marginRight: 12,
   },
   programExerciseName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: COLORS.text,
+  },
+  programExerciseActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: COLORS.background,
+  },
+  programExerciseActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
 
   // Program Sets Container
   programSetsContainer: {
     marginTop: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   programSetsHeader: {
     flexDirection: 'row',
@@ -4664,5 +5018,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     lineHeight: 20,
+  },
+  mediaGalleryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.cardBg,
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 20,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  mediaGalleryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginLeft: 8,
+  },
+
+  // Fullscreen Image Viewer
+  fullscreenImageContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+  },
+  fullscreenImageBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenImageHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    zIndex: 10,
+  },
+  fullscreenImageCloseButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+  },
+  fullscreenImage: {
+    width: width,
+    height: height,
   },
 });

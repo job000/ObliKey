@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { WorkoutController } from '../controllers/workout.controller';
 import { WorkoutPredictionController } from '../controllers/workout-prediction.controller';
+import * as ExerciseMediaController from '../controllers/exerciseMedia.controller';
 import { authenticate } from '../middleware/auth';
+import { upload } from '../config/upload.config';
 
 const router = Router();
 const workoutController = new WorkoutController();
@@ -43,6 +45,31 @@ router.delete(
 );
 
 // ============================================
+// EXERCISE MEDIA (Images & Videos)
+// ============================================
+router.get(
+  '/exercises/:exerciseId/media',
+  ExerciseMediaController.getExerciseMedia
+);
+router.post(
+  '/exercises/:exerciseId/media',
+  ExerciseMediaController.addExerciseMedia
+);
+router.patch(
+  '/exercises/:exerciseId/media/:mediaId',
+  ExerciseMediaController.updateExerciseMedia
+);
+router.delete(
+  '/exercises/:exerciseId/media/:mediaId',
+  ExerciseMediaController.deleteExerciseMedia
+);
+router.post(
+  '/exercises/:exerciseId/media/upload',
+  upload.single('file'),
+  ExerciseMediaController.uploadExerciseMediaFile
+);
+
+// ============================================
 // WORKOUT PROGRAMS
 // ============================================
 router.get(
@@ -72,6 +99,10 @@ router.delete(
 router.post(
   '/programs/:id/save-as-template',
   (req, res) => workoutController.saveWorkoutProgramAsTemplate(req, res)
+);
+router.patch(
+  '/programs/templates/:templateId/visibility',
+  (req, res) => workoutController.toggleTemplateVisibility(req, res)
 );
 
 // ============================================

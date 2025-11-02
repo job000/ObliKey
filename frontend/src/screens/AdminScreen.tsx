@@ -67,6 +67,22 @@ export default function AdminScreen({ navigation }: any) {
       show: modules.pt,
     },
     {
+      title: 'Treningsprogramadministrasjon',
+      icon: 'fitness',
+      color: '#EF4444',
+      screen: 'WorkoutTemplateManagement',
+      description: 'Administrer treningsprogrammaler',
+      show: modules.workout,
+    },
+    {
+      title: 'Øvelsesadministrasjon',
+      icon: 'barbell-outline',
+      color: '#F59E0B',
+      screen: 'ExerciseManagement',
+      description: 'Administrer øvelser med bilder og beskrivelser',
+      show: modules.workout,
+    },
+    {
       title: 'Medlemskapsstyring',
       icon: 'card',
       color: '#14B8A6',

@@ -43,6 +43,8 @@ import ReviewManagementScreen from '../screens/ReviewManagementScreen';
 import UserManagementScreen from '../screens/UserManagementScreen';
 import ClassManagementScreen from '../screens/ClassManagementScreen';
 import PTManagementScreen from '../screens/PTManagementScreen';
+import WorkoutTemplateManagementScreen from '../screens/WorkoutTemplateManagementScreen';
+import ExerciseManagementScreen from '../screens/ExerciseManagementScreen';
 import AnalyticsScreen from '../screens/AnalyticsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ActivityLogsScreen from '../screens/ActivityLogsScreen';
@@ -101,17 +103,19 @@ function MainDrawer() {
           </TouchableOpacity>
         ),
         headerRight: () => (
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Cart')}
-            style={styles.cartButton}
-          >
-            <Ionicons name="cart-outline" size={24} color="#111827" />
-            {itemCount > 0 && (
-              <View style={styles.cartBadge}>
-                <Text style={styles.cartBadgeText}>{itemCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          modules.shop ? (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Cart')}
+              style={styles.cartButton}
+            >
+              <Ionicons name="cart-outline" size={24} color="#111827" />
+              {itemCount > 0 && (
+                <View style={styles.cartBadge}>
+                  <Text style={styles.cartBadgeText}>{itemCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          ) : null
         ),
         drawerType: 'front',
         swipeEnabled: true,
@@ -266,6 +270,8 @@ export default function AppNavigator() {
             <Stack.Screen name="UserManagement" component={UserManagementScreen} />
             <Stack.Screen name="ClassManagement" component={ClassManagementScreen} />
             <Stack.Screen name="PTManagement" component={PTManagementScreen} />
+            <Stack.Screen name="WorkoutTemplateManagement" component={WorkoutTemplateManagementScreen} />
+            <Stack.Screen name="ExerciseManagement" component={ExerciseManagementScreen} />
             <Stack.Screen name="Analytics" component={AnalyticsScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="ActivityLogs" component={ActivityLogsScreen} />

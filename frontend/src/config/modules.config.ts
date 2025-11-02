@@ -74,7 +74,7 @@ export const MODULE_DEFINITIONS: Record<ModuleKey, ModuleDefinition> = {
     requiredRoles: ['TRAINER', 'CUSTOMER'],
     dependencies: [ModuleKey.PT_SESSIONS],
     defaultEnabled: true,
-    apiKey: 'trainingPrograms',
+    apiKey: 'workout', // Maps to workoutEnabled in backend
   },
 
   [ModuleKey.BOOKINGS]: {
