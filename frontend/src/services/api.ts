@@ -10,7 +10,7 @@ const getApiUrl = () => {
   // DEVELOPMENT MODE OVERRIDE
   // Set USE_LOCAL_BACKEND to true when developing locally
   // Set to false when you want to test against Railway production
-  const USE_LOCAL_BACKEND = true; // Toggle this for local development
+  const USE_LOCAL_BACKEND = false; // Toggle this for local development
 
   // For development, you can use localhost or ngrok
   // Note: iOS/Android simulator cannot reach localhost - use IP address instead
