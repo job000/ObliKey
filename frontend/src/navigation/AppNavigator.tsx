@@ -90,6 +90,26 @@ function MainDrawer() {
   // Show tenant-specific screens if user is ADMIN, or if SUPER_ADMIN has selected a tenant
   const showTenantScreens = isAdmin && (!isSuperAdmin || selectedTenant !== null);
 
+  // Helper function to create cart button for shop screens
+  const getCartButton = (navigation: any) => {
+    if (!modules.shop || (isSuperAdmin && selectedTenant === null)) {
+      return null;
+    }
+    return (
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Cart')}
+        style={styles.cartButton}
+      >
+        <Ionicons name="cart-outline" size={24} color="#111827" />
+        {itemCount > 0 && (
+          <View style={styles.cartBadge}>
+            <Text style={styles.cartBadgeText}>{itemCount}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
@@ -101,21 +121,6 @@ function MainDrawer() {
           >
             <Ionicons name="menu" size={28} color="#111827" />
           </TouchableOpacity>
-        ),
-        headerRight: () => (
-          modules.shop && (!isSuperAdmin || selectedTenant !== null) ? (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Cart')}
-              style={styles.cartButton}
-            >
-              <Ionicons name="cart-outline" size={24} color="#111827" />
-              {itemCount > 0 && (
-                <View style={styles.cartBadge}>
-                  <Text style={styles.cartBadgeText}>{itemCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ) : null
         ),
         drawerType: 'front',
         swipeEnabled: true,
@@ -143,7 +148,10 @@ function MainDrawer() {
         <Drawer.Screen
           name="Shop"
           component={EnhancedShopScreen}
-          options={{ headerTitle: 'Butikk' }}
+          options={({ navigation }) => ({
+            headerTitle: 'Butikk',
+            headerRight: () => getCartButton(navigation),
+          })}
         />
       )}
 
