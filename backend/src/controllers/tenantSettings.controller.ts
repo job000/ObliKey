@@ -158,6 +158,16 @@ export class TenantSettingsController {
         throw new AppError('enabled må være true eller false', 400);
       }
 
+      // Core UI modules that don't have database fields
+      const coreModules = ['dashboard', 'admin'];
+      if (coreModules.includes(module)) {
+        // Return success for core modules without updating database
+        return res.json({
+          success: true,
+          message: `${module} er en kjernemodule og kan ikke endres`
+        });
+      }
+
       // Map of valid modules to database fields
       const moduleFieldMap: Record<string, string> = {
         accounting: 'accountingEnabled',
@@ -168,7 +178,9 @@ export class TenantSettingsController {
         ecommerce: 'ecommerceEnabled',
         membership: 'membershipEnabled',
         doorAccess: 'doorAccessEnabled',
-        workout: 'workoutEnabled'
+        workout: 'workoutEnabled',
+        ptSessions: 'ptEnabled',
+        pt: 'ptEnabled'
       };
 
       const dbField = moduleFieldMap[module];
@@ -228,73 +240,38 @@ export class TenantSettingsController {
   /**
    * Get module statuses for the tenant
    * Returns all module enabled/disabled states
-   * Now uses Feature system with fallback to TenantSettings
+   * Uses TenantSettings as the source of truth
    */
   async getModuleStatuses(req: AuthRequest, res: Response): Promise<void> {
     try {
       const tenantId = req.tenantId!;
 
-      // Feature key mapping to module names
-      const featureKeyMap: Record<string, string> = {
-        'shop': 'shop',
-        'ecommerce': 'shop',
-        'classes': 'classes',
-        'accounting': 'accounting',
-        'regnskap': 'accounting',
-        'chat': 'chat',
-        'landingpage': 'landingPage',
-        'membership': 'membership',
-        'medlemskap': 'membership',
-        'dooraccess': 'doorAccess',
-        'door': 'doorAccess',
-        'pt': 'pt',
-        'personaltraining': 'pt',
-        'workout': 'workout',
-        'treningsprogram': 'workout'
-      };
-
-      // Get enabled tenant features
-      const tenantFeatures = await prisma.tenantFeature.findMany({
-        where: {
-          tenantId,
-          enabled: true
-        },
-        include: {
-          feature: {
-            select: {
-              key: true,
-              active: true
-            }
-          }
-        }
+      // Get tenant settings
+      let settings = await prisma.tenantSettings.findUnique({
+        where: { tenantId }
       });
 
-      // Initialize all modules as disabled
+      // Create default settings if they don't exist
+      if (!settings) {
+        settings = await prisma.tenantSettings.create({
+          data: { tenantId }
+        });
+      }
+
+      // Map TenantSettings fields to module status
+      // Using !== false for modules that should be enabled by default
       const moduleStatuses: any = {
-        shop: false,
-        ecommerce: false,
-        classes: false,
-        accounting: false,
-        chat: false,
-        landingPage: false,
-        membership: false,
-        doorAccess: false,
-        pt: false,
-        workout: false
+        shop: settings.ecommerceEnabled || false,
+        ecommerce: settings.ecommerceEnabled || false,
+        classes: settings.classesEnabled !== false, // Default true
+        accounting: settings.accountingEnabled || false,
+        chat: settings.chatEnabled !== false, // Default true (was enabled in schema)
+        landingPage: settings.landingPageEnabled || false,
+        membership: settings.membershipEnabled || false,
+        doorAccess: settings.doorAccessEnabled || false,
+        pt: settings.ptEnabled !== false, // Default true (core business module)
+        workout: settings.workoutEnabled || false
       };
-
-      // Enable only features that exist in tenant_features with enabled=true
-      tenantFeatures.forEach(tf => {
-        if (tf.feature.active) {
-          const moduleName = featureKeyMap[tf.feature.key.toLowerCase()];
-          if (moduleName) {
-            moduleStatuses[moduleName] = true;
-            if (moduleName === 'shop') {
-              moduleStatuses.ecommerce = true;  // Keep both for compatibility
-            }
-          }
-        }
-      });
 
       res.json({
         success: true,
