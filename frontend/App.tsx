@@ -2,6 +2,7 @@ import 'react-native-gesture-handler';
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ThemeProvider } from './src/contexts/ThemeContext';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { TenantProvider } from './src/contexts/TenantContext';
 import { ModuleProvider } from './src/contexts/ModuleContext';
@@ -14,22 +15,24 @@ import AppNavigator from './src/navigation/AppNavigator';
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <TenantProvider>
-          <ModuleProvider>
-            <BluetoothProvider>
-              <CartProvider>
-                <NotificationProvider>
-                  <ChatProvider>
-                    <AppNavigator />
-                    <StatusBar style="auto" />
-                  </ChatProvider>
-                </NotificationProvider>
-              </CartProvider>
-            </BluetoothProvider>
-          </ModuleProvider>
-        </TenantProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <TenantProvider>
+            <ModuleProvider>
+              <BluetoothProvider>
+                <CartProvider>
+                  <NotificationProvider>
+                    <ChatProvider>
+                      <AppNavigator />
+                      <StatusBar style="auto" />
+                    </ChatProvider>
+                  </NotificationProvider>
+                </CartProvider>
+              </BluetoothProvider>
+            </ModuleProvider>
+          </TenantProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

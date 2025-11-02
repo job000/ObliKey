@@ -18,6 +18,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
 
@@ -46,6 +47,7 @@ interface TenantSettings {
 
 export default function SettingsScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { colors, themeMode, setThemeMode } = useTheme();
   const [settings, setSettings] = useState<TenantSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -238,24 +240,24 @@ export default function SettingsScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   if (!settings) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.errorText}>Kunne ikke laste innstillinger</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.textSecondary }]}>Kunne ikke laste innstillinger</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -263,8 +265,8 @@ export default function SettingsScreen({ navigation }: any) {
         <Container>
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>Innstillinger</Text>
-              <Text style={styles.subtitle}>System- og tenant-innstillinger</Text>
+              <Text style={[styles.title, { color: colors.text }]}>Innstillinger</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>System- og tenant-innstillinger</Text>
             </View>
           </View>
 
@@ -273,13 +275,15 @@ export default function SettingsScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.tab,
-              activeTab === 'general' && styles.tabActive,
+              { backgroundColor: colors.cardBg, borderColor: colors.border },
+              activeTab === 'general' && [styles.tabActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
             ]}
             onPress={() => setActiveTab('general')}
           >
             <Text
               style={[
                 styles.tabText,
+                { color: colors.text },
                 activeTab === 'general' && styles.tabTextActive,
               ]}
             >
@@ -290,13 +294,15 @@ export default function SettingsScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.tab,
-              activeTab === 'business' && styles.tabActive,
+              { backgroundColor: colors.cardBg, borderColor: colors.border },
+              activeTab === 'business' && [styles.tabActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
             ]}
             onPress={() => setActiveTab('business')}
           >
             <Text
               style={[
                 styles.tabText,
+                { color: colors.text },
                 activeTab === 'business' && styles.tabTextActive,
               ]}
             >
@@ -307,13 +313,15 @@ export default function SettingsScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.tab,
-              activeTab === 'system' && styles.tabActive,
+              { backgroundColor: colors.cardBg, borderColor: colors.border },
+              activeTab === 'system' && [styles.tabActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
             ]}
             onPress={() => setActiveTab('system')}
           >
             <Text
               style={[
                 styles.tabText,
+                { color: colors.text },
                 activeTab === 'system' && styles.tabTextActive,
               ]}
             >
@@ -325,57 +333,133 @@ export default function SettingsScreen({ navigation }: any) {
         {/* General Tab */}
         {activeTab === 'general' && (
           <View style={styles.content}>
+            {/* Theme Selection Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Booking-innstillinger</Text>
-              <View style={styles.card}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Utseende</Text>
+              <View style={[styles.card, { backgroundColor: colors.cardBg }]}>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, { color: colors.text }]}>Tema</Text>
+                  <View style={styles.themeButtonsRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.themeButton,
+                        themeMode === 'light' && [styles.themeButtonActive, { backgroundColor: colors.primary }],
+                        themeMode !== 'light' && { backgroundColor: colors.borderLight },
+                      ]}
+                      onPress={() => setThemeMode('light')}
+                    >
+                      <Ionicons
+                        name="sunny"
+                        size={20}
+                        color={themeMode === 'light' ? '#FFF' : colors.textSecondary}
+                      />
+                      <Text style={[
+                        styles.themeButtonText,
+                        themeMode === 'light' ? styles.themeButtonTextActive : { color: colors.textSecondary }
+                      ]}>
+                        Lys
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.themeButton,
+                        themeMode === 'dark' && [styles.themeButtonActive, { backgroundColor: colors.primary }],
+                        themeMode !== 'dark' && { backgroundColor: colors.borderLight },
+                      ]}
+                      onPress={() => setThemeMode('dark')}
+                    >
+                      <Ionicons
+                        name="moon"
+                        size={20}
+                        color={themeMode === 'dark' ? '#FFF' : colors.textSecondary}
+                      />
+                      <Text style={[
+                        styles.themeButtonText,
+                        themeMode === 'dark' ? styles.themeButtonTextActive : { color: colors.textSecondary }
+                      ]}>
+                        Mørk
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.themeButton,
+                        themeMode === 'system' && [styles.themeButtonActive, { backgroundColor: colors.primary }],
+                        themeMode !== 'system' && { backgroundColor: colors.borderLight },
+                      ]}
+                      onPress={() => setThemeMode('system')}
+                    >
+                      <Ionicons
+                        name="phone-portrait-outline"
+                        size={20}
+                        color={themeMode === 'system' ? '#FFF' : colors.textSecondary}
+                      />
+                      <Text style={[
+                        styles.themeButtonText,
+                        themeMode === 'system' ? styles.themeButtonTextActive : { color: colors.textSecondary }
+                      ]}>
+                        System
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Booking-innstillinger</Text>
+              <View style={[styles.card, { backgroundColor: colors.cardBg }]}>
                 {/* Start Time Picker */}
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Åpningstid</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Åpningstid</Text>
                   <TouchableOpacity
-                    style={styles.timePickerButton}
+                    style={[styles.timePickerButton, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
                     onPress={() => setShowStartTimePicker(true)}
                   >
-                    <Ionicons name="time-outline" size={20} color="#3B82F6" />
-                    <Text style={styles.timePickerText}>
+                    <Ionicons name="time-outline" size={20} color={colors.primary} />
+                    <Text style={[styles.timePickerText, { color: colors.text }]}>
                       {settings.businessHoursStart}
                     </Text>
-                    <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+                    <Ionicons name="chevron-down" size={20} color={colors.textLight} />
                   </TouchableOpacity>
                 </View>
 
                 {/* End Time Picker */}
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Stengetid</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Stengetid</Text>
                   <TouchableOpacity
-                    style={styles.timePickerButton}
+                    style={[styles.timePickerButton, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
                     onPress={() => setShowEndTimePicker(true)}
                   >
-                    <Ionicons name="time-outline" size={20} color="#3B82F6" />
-                    <Text style={styles.timePickerText}>
+                    <Ionicons name="time-outline" size={20} color={colors.primary} />
+                    <Text style={[styles.timePickerText, { color: colors.text }]}>
                       {settings.businessHoursEnd}
                     </Text>
-                    <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+                    <Ionicons name="chevron-down" size={20} color={colors.textLight} />
                   </TouchableOpacity>
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Avbestillingsfrist (timer)</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Avbestillingsfrist (timer)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                     value={String(settings.bookingCancellation)}
                     onChangeText={(text) => updateSetting('bookingCancellation', parseInt(text) || 0)}
                     placeholder="24"
+                    placeholderTextColor={colors.textLight}
                     keyboardType="number-pad"
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Maks bookinger per bruker</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Maks bookinger per bruker</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                     value={String(settings.maxBookingsPerUser)}
                     onChangeText={(text) => updateSetting('maxBookingsPerUser', parseInt(text) || 0)}
                     placeholder="10"
+                    placeholderTextColor={colors.textLight}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -383,12 +467,12 @@ export default function SettingsScreen({ navigation }: any) {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Betalingsinnstillinger</Text>
-              <View style={styles.card}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Betalingsinnstillinger</Text>
+              <View style={[styles.card, { backgroundColor: colors.cardBg }]}>
                 <View style={styles.switchRow}>
                   <View style={styles.switchInfo}>
-                    <Text style={styles.switchLabel}>Krev betaling</Text>
-                    <Text style={styles.switchDescription}>
+                    <Text style={[styles.switchLabel, { color: colors.text }]}>Krev betaling</Text>
+                    <Text style={[styles.switchDescription, { color: colors.textSecondary }]}>
                       Krev betaling for bookinger
                     </Text>
                   </View>
@@ -397,8 +481,8 @@ export default function SettingsScreen({ navigation }: any) {
                     onValueChange={(value) =>
                       updateSetting('requirePayment', value)
                     }
-                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-                    thumbColor={settings.requirePayment ? '#3B82F6' : '#F3F4F6'}
+                    trackColor={{ false: colors.border, true: colors.primaryLight }}
+                    thumbColor={settings.requirePayment ? colors.primary : colors.borderLight}
                   />
                 </View>
               </View>
@@ -410,48 +494,52 @@ export default function SettingsScreen({ navigation }: any) {
         {activeTab === 'business' && (
           <View style={styles.content}>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Bedriftsdetaljer</Text>
-              <View style={styles.card}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Bedriftsdetaljer</Text>
+              <View style={[styles.card, { backgroundColor: colors.cardBg }]}>
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>MVA-nummer</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>MVA-nummer</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                     value={settings.companyVatNumber || ''}
                     onChangeText={(text) =>
                       updateSetting('companyVatNumber', text)
                     }
                     placeholder="NO123456789MVA"
+                    placeholderTextColor={colors.textLight}
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Organisasjonsnummer</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Organisasjonsnummer</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                     value={settings.companyRegNumber || ''}
                     onChangeText={(text) => updateSetting('companyRegNumber', text)}
                     placeholder="123456789"
+                    placeholderTextColor={colors.textLight}
                     keyboardType="number-pad"
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Valuta</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Valuta</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                     value={settings.currency}
                     onChangeText={(text) => updateSetting('currency', text)}
                     placeholder="NOK"
+                    placeholderTextColor={colors.textLight}
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Tidssone</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Tidssone</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                     value={settings.timezone}
                     onChangeText={(text) => updateSetting('timezone', text)}
                     placeholder="Europe/Oslo"
+                    placeholderTextColor={colors.textLight}
                   />
                 </View>
               </View>
@@ -463,12 +551,12 @@ export default function SettingsScreen({ navigation }: any) {
         {activeTab === 'system' && (
           <View style={styles.content}>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Varslingsinnstillinger</Text>
-              <View style={styles.card}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Varslingsinnstillinger</Text>
+              <View style={[styles.card, { backgroundColor: colors.cardBg }]}>
                 <View style={styles.switchRow}>
                   <View style={styles.switchInfo}>
-                    <Text style={styles.switchLabel}>E-post varsler</Text>
-                    <Text style={styles.switchDescription}>
+                    <Text style={[styles.switchLabel, { color: colors.text }]}>E-post varsler</Text>
+                    <Text style={[styles.switchDescription, { color: colors.textSecondary }]}>
                       Send e-post varslinger til brukere
                     </Text>
                   </View>
@@ -477,15 +565,15 @@ export default function SettingsScreen({ navigation }: any) {
                     onValueChange={(value) =>
                       updateSetting('emailNotifications', value)
                     }
-                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-                    thumbColor={settings.emailNotifications ? '#3B82F6' : '#F3F4F6'}
+                    trackColor={{ false: colors.border, true: colors.primaryLight }}
+                    thumbColor={settings.emailNotifications ? colors.primary : colors.borderLight}
                   />
                 </View>
 
                 <View style={styles.switchRow}>
                   <View style={styles.switchInfo}>
-                    <Text style={styles.switchLabel}>SMS varsler</Text>
-                    <Text style={styles.switchDescription}>
+                    <Text style={[styles.switchLabel, { color: colors.text }]}>SMS varsler</Text>
+                    <Text style={[styles.switchDescription, { color: colors.textSecondary }]}>
                       Send SMS varslinger til brukere
                     </Text>
                   </View>
@@ -494,18 +582,18 @@ export default function SettingsScreen({ navigation }: any) {
                     onValueChange={(value) =>
                       updateSetting('smsNotifications', value)
                     }
-                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-                    thumbColor={settings.smsNotifications ? '#3B82F6' : '#F3F4F6'}
+                    trackColor={{ false: colors.border, true: colors.primaryLight }}
+                    thumbColor={settings.smsNotifications ? colors.primary : colors.borderLight}
                   />
                 </View>
               </View>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Design & Branding</Text>
-              <View style={styles.card}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Design & Branding</Text>
+              <View style={[styles.card, { backgroundColor: colors.cardBg }]}>
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Primærfarge</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Primærfarge</Text>
                   <View style={styles.colorInputRow}>
                     <TouchableOpacity
                       style={[styles.colorPreview, { backgroundColor: settings.primaryColor }]}
@@ -514,17 +602,18 @@ export default function SettingsScreen({ navigation }: any) {
                       <Ionicons name="color-palette-outline" size={20} color="#FFF" />
                     </TouchableOpacity>
                     <TextInput
-                      style={[styles.input, styles.colorTextInput]}
+                      style={[styles.input, styles.colorTextInput, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                       value={settings.primaryColor}
                       onChangeText={(text) => updateSetting('primaryColor', text)}
                       placeholder="#3B82F6"
+                      placeholderTextColor={colors.textLight}
                       autoCapitalize="none"
                     />
                   </View>
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Sekundærfarge</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Sekundærfarge</Text>
                   <View style={styles.colorInputRow}>
                     <TouchableOpacity
                       style={[styles.colorPreview, { backgroundColor: settings.secondaryColor }]}
@@ -533,10 +622,11 @@ export default function SettingsScreen({ navigation }: any) {
                       <Ionicons name="color-palette-outline" size={20} color="#FFF" />
                     </TouchableOpacity>
                     <TextInput
-                      style={[styles.input, styles.colorTextInput]}
+                      style={[styles.input, styles.colorTextInput, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                       value={settings.secondaryColor}
                       onChangeText={(text) => updateSetting('secondaryColor', text)}
                       placeholder="#10B981"
+                      placeholderTextColor={colors.textLight}
                       autoCapitalize="none"
                     />
                   </View>
@@ -545,12 +635,12 @@ export default function SettingsScreen({ navigation }: any) {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>PT-Innstillinger</Text>
-              <View style={styles.card}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>PT-Innstillinger</Text>
+              <View style={[styles.card, { backgroundColor: colors.cardBg }]}>
                 <View style={styles.switchRow}>
                   <View style={styles.switchInfo}>
-                    <Text style={styles.switchLabel}>Aktiver PT-funksjonen</Text>
-                    <Text style={styles.switchDescription}>
+                    <Text style={[styles.switchLabel, { color: colors.text }]}>Aktiver PT-funksjonen</Text>
+                    <Text style={[styles.switchDescription, { color: colors.textSecondary }]}>
                       Slå på/av personlig treningsfunksjonalitet
                     </Text>
                   </View>
@@ -559,15 +649,15 @@ export default function SettingsScreen({ navigation }: any) {
                     onValueChange={(value) =>
                       updateSetting('ptEnabled', value)
                     }
-                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-                    thumbColor={settings.ptEnabled ? '#3B82F6' : '#F3F4F6'}
+                    trackColor={{ false: colors.border, true: colors.primaryLight }}
+                    thumbColor={settings.ptEnabled ? colors.primary : colors.borderLight}
                   />
                 </View>
 
                 <View style={styles.switchRow}>
                   <View style={styles.switchInfo}>
-                    <Text style={styles.switchLabel}>Kreditt-refusjon ved avlysning</Text>
-                    <Text style={styles.switchDescription}>
+                    <Text style={[styles.switchLabel, { color: colors.text }]}>Kreditt-refusjon ved avlysning</Text>
+                    <Text style={[styles.switchDescription, { color: colors.textSecondary }]}>
                       Refunder automatisk PT-timer når økter avlyses
                     </Text>
                   </View>
@@ -576,15 +666,15 @@ export default function SettingsScreen({ navigation }: any) {
                     onValueChange={(value) =>
                       updateSetting('ptCancellationRefundEnabled', value)
                     }
-                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-                    thumbColor={settings.ptCancellationRefundEnabled ? '#3B82F6' : '#F3F4F6'}
+                    trackColor={{ false: colors.border, true: colors.primaryLight }}
+                    thumbColor={settings.ptCancellationRefundEnabled ? colors.primary : colors.borderLight}
                   />
                 </View>
 
                 <View style={styles.switchRow}>
                   <View style={styles.switchInfo}>
-                    <Text style={styles.switchLabel}>Refunder ved "Møter ikke"</Text>
-                    <Text style={styles.switchDescription}>
+                    <Text style={[styles.switchLabel, { color: colors.text }]}>Refunder ved "Møter ikke"</Text>
+                    <Text style={[styles.switchDescription, { color: colors.textSecondary }]}>
                       Gi kreditt tilbake når PT/Admin markerer kunde som møtte ikke
                     </Text>
                   </View>
@@ -593,20 +683,20 @@ export default function SettingsScreen({ navigation }: any) {
                     onValueChange={(value) =>
                       updateSetting('ptNoShowRefundEnabled', value)
                     }
-                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-                    thumbColor={settings.ptNoShowRefundEnabled ? '#3B82F6' : '#F3F4F6'}
+                    trackColor={{ false: colors.border, true: colors.primaryLight }}
+                    thumbColor={settings.ptNoShowRefundEnabled ? colors.primary : colors.borderLight}
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>
+                  <Text style={[styles.label, { color: colors.text }]}>
                     Avlysningsfrist for refusjon (timer)
                   </Text>
-                  <Text style={styles.fieldDescription}>
+                  <Text style={[styles.fieldDescription, { color: colors.textSecondary }]}>
                     Antall timer før økten kunden må avlyse for å få refusjon
                   </Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                     value={settings.ptCancellationHours?.toString()}
                     onChangeText={(text) => {
                       const hours = parseInt(text) || 24;
@@ -614,8 +704,9 @@ export default function SettingsScreen({ navigation }: any) {
                     }}
                     keyboardType="number-pad"
                     placeholder="24"
+                    placeholderTextColor={colors.textLight}
                   />
-                  <Text style={styles.fieldHint}>
+                  <Text style={[styles.fieldHint, { color: colors.textLight }]}>
                     Anbefalt: 24 timer. PT/Admin får alltid refundert kunden uansett.
                   </Text>
                 </View>
@@ -623,12 +714,12 @@ export default function SettingsScreen({ navigation }: any) {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Treningsprogram-Innstillinger</Text>
-              <View style={styles.card}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Treningsprogram-Innstillinger</Text>
+              <View style={[styles.card, { backgroundColor: colors.cardBg }]}>
                 <View style={styles.switchRow}>
                   <View style={styles.switchInfo}>
-                    <Text style={styles.switchLabel}>Aktiver Treningsprogram-funksjonen</Text>
-                    <Text style={styles.switchDescription}>
+                    <Text style={[styles.switchLabel, { color: colors.text }]}>Aktiver Treningsprogram-funksjonen</Text>
+                    <Text style={[styles.switchDescription, { color: colors.textSecondary }]}>
                       Slå på/av treningsprogram med øvelser, tracking og statistikk
                     </Text>
                   </View>
@@ -637,47 +728,47 @@ export default function SettingsScreen({ navigation }: any) {
                     onValueChange={(value) =>
                       updateSetting('workoutEnabled', value)
                     }
-                    trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-                    thumbColor={settings.workoutEnabled ? '#3B82F6' : '#F3F4F6'}
+                    trackColor={{ false: colors.border, true: colors.primaryLight }}
+                    thumbColor={settings.workoutEnabled ? colors.primary : colors.borderLight}
                   />
                 </View>
               </View>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Hurtighandlinger</Text>
-              <View style={styles.actionsCard}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Hurtighandlinger</Text>
+              <View style={[styles.actionsCard, { backgroundColor: colors.cardBg }]}>
                 <TouchableOpacity
-                  style={styles.actionItem}
+                  style={[styles.actionItem, { borderBottomColor: colors.borderLight }]}
                   onPress={() => navigation.navigate('UserManagement')}
                 >
-                  <View style={styles.actionIcon}>
-                    <Ionicons name="people-outline" size={24} color="#3B82F6" />
+                  <View style={[styles.actionIcon, { backgroundColor: colors.borderLight }]}>
+                    <Ionicons name="people-outline" size={24} color={colors.primary} />
                   </View>
-                  <Text style={styles.actionText}>Brukeradministrasjon</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  <Text style={[styles.actionText, { color: colors.text }]}>Brukeradministrasjon</Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.actionItem}
+                  style={[styles.actionItem, { borderBottomColor: colors.borderLight }]}
                   onPress={() => navigation.navigate('ProductsManagement')}
                 >
-                  <View style={styles.actionIcon}>
-                    <Ionicons name="cube-outline" size={24} color="#10B981" />
+                  <View style={[styles.actionIcon, { backgroundColor: colors.borderLight }]}>
+                    <Ionicons name="cube-outline" size={24} color={colors.success} />
                   </View>
-                  <Text style={styles.actionText}>Produktadministrasjon</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  <Text style={[styles.actionText, { color: colors.text }]}>Produktadministrasjon</Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.actionItem}
+                  style={[styles.actionItem, { borderBottomColor: colors.borderLight }]}
                   onPress={() => navigation.navigate('Analytics')}
                 >
-                  <View style={styles.actionIcon}>
-                    <Ionicons name="stats-chart-outline" size={24} color="#8B5CF6" />
+                  <View style={[styles.actionIcon, { backgroundColor: colors.borderLight }]}>
+                    <Ionicons name="stats-chart-outline" size={24} color={colors.accent} />
                   </View>
-                  <Text style={styles.actionText}>Rapporter & Analyse</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  <Text style={[styles.actionText, { color: colors.text }]}>Rapporter & Analyse</Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -686,7 +777,11 @@ export default function SettingsScreen({ navigation }: any) {
 
         {/* Save Button */}
         <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          style={[
+            styles.saveButton,
+            { backgroundColor: colors.primary },
+            saving && [styles.saveButtonDisabled, { backgroundColor: colors.primaryLight }]
+          ]}
           onPress={handleSaveSettings}
           disabled={saving}
         >
@@ -702,8 +797,8 @@ export default function SettingsScreen({ navigation }: any) {
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={styles.appInfoText}>Otico v1.0.0</Text>
-          <Text style={styles.appInfoText}>© 2025 Otico Tech</Text>
+          <Text style={[styles.appInfoText, { color: colors.textLight }]}>Otico v1.0.0</Text>
+          <Text style={[styles.appInfoText, { color: colors.textLight }]}>© 2025 Otico Tech</Text>
         </View>
       </Container>
     </ScrollView>
@@ -717,24 +812,24 @@ export default function SettingsScreen({ navigation }: any) {
         onRequestClose={() => setShowStartTimePicker(false)}
       >
         <View style={styles.timePickerModalOverlay}>
-          <View style={styles.timePickerModalContent}>
-            <View style={styles.timePickerHeader}>
-              <Text style={styles.timePickerTitle}>Velg åpningstid</Text>
+          <View style={[styles.timePickerModalContent, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.timePickerHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.timePickerTitle, { color: colors.text }]}>Velg åpningstid</Text>
               <TouchableOpacity
-                style={styles.timePickerDoneButton}
+                style={[styles.timePickerDoneButton, { backgroundColor: colors.primary }]}
                 onPress={() => setShowStartTimePicker(false)}
               >
                 <Text style={styles.timePickerDoneText}>Ferdig</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.dateTimePickerContainer}>
+            <View style={[styles.dateTimePickerContainer, { backgroundColor: colors.cardBg }]}>
               <DateTimePicker
                 value={timeStringToDate(settings?.businessHoursStart || '06:00')}
                 mode="time"
                 is24Hour={true}
                 display="spinner"
                 onChange={handleStartTimeChange}
-                textColor="#000000"
+                textColor={colors.text}
               />
             </View>
           </View>
@@ -750,24 +845,24 @@ export default function SettingsScreen({ navigation }: any) {
         onRequestClose={() => setShowEndTimePicker(false)}
       >
         <View style={styles.timePickerModalOverlay}>
-          <View style={styles.timePickerModalContent}>
-            <View style={styles.timePickerHeader}>
-              <Text style={styles.timePickerTitle}>Velg stengetid</Text>
+          <View style={[styles.timePickerModalContent, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.timePickerHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.timePickerTitle, { color: colors.text }]}>Velg stengetid</Text>
               <TouchableOpacity
-                style={styles.timePickerDoneButton}
+                style={[styles.timePickerDoneButton, { backgroundColor: colors.primary }]}
                 onPress={() => setShowEndTimePicker(false)}
               >
                 <Text style={styles.timePickerDoneText}>Ferdig</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.dateTimePickerContainer}>
+            <View style={[styles.dateTimePickerContainer, { backgroundColor: colors.cardBg }]}>
               <DateTimePicker
                 value={timeStringToDate(settings?.businessHoursEnd || '22:00')}
                 mode="time"
                 is24Hour={true}
                 display="spinner"
                 onChange={handleEndTimeChange}
-                textColor="#000000"
+                textColor={colors.text}
               />
             </View>
           </View>
@@ -804,11 +899,11 @@ export default function SettingsScreen({ navigation }: any) {
       onRequestClose={() => setShowPrimaryColorPicker(false)}
     >
       <View style={styles.colorModalOverlay}>
-        <View style={styles.colorModalContent}>
+        <View style={[styles.colorModalContent, { backgroundColor: colors.cardBg }]}>
           <View style={styles.colorModalHeader}>
-            <Text style={styles.colorModalTitle}>Velg primærfarge</Text>
+            <Text style={[styles.colorModalTitle, { color: colors.text }]}>Velg primærfarge</Text>
             <TouchableOpacity onPress={() => setShowPrimaryColorPicker(false)}>
-              <Ionicons name="close" size={24} color="#111827" />
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
           <View style={styles.colorPaletteGrid}>
@@ -834,7 +929,8 @@ export default function SettingsScreen({ navigation }: any) {
                 key={`name-${color.value}`}
                 style={[
                   styles.colorName,
-                  settings?.primaryColor === color.value && styles.colorNameSelected,
+                  { color: colors.textSecondary, backgroundColor: colors.borderLight },
+                  settings?.primaryColor === color.value && [styles.colorNameSelected, { backgroundColor: colors.primary }],
                 ]}
               >
                 {color.name}
@@ -853,11 +949,11 @@ export default function SettingsScreen({ navigation }: any) {
       onRequestClose={() => setShowSecondaryColorPicker(false)}
     >
       <View style={styles.colorModalOverlay}>
-        <View style={styles.colorModalContent}>
+        <View style={[styles.colorModalContent, { backgroundColor: colors.cardBg }]}>
           <View style={styles.colorModalHeader}>
-            <Text style={styles.colorModalTitle}>Velg sekundærfarge</Text>
+            <Text style={[styles.colorModalTitle, { color: colors.text }]}>Velg sekundærfarge</Text>
             <TouchableOpacity onPress={() => setShowSecondaryColorPicker(false)}>
-              <Ionicons name="close" size={24} color="#111827" />
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
           <View style={styles.colorPaletteGrid}>
@@ -883,7 +979,8 @@ export default function SettingsScreen({ navigation }: any) {
                 key={`name-${color.value}`}
                 style={[
                   styles.colorName,
-                  settings?.secondaryColor === color.value && styles.colorNameSelected,
+                  { color: colors.textSecondary, backgroundColor: colors.borderLight },
+                  settings?.secondaryColor === color.value && [styles.colorNameSelected, { backgroundColor: colors.primary }],
                 ]}
               >
                 {color.name}
@@ -1235,5 +1332,30 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 6,
     fontStyle: 'italic',
+  },
+  // Theme Button Styles
+  themeButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  themeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  themeButtonActive: {
+    // backgroundColor set dynamically
+  },
+  themeButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  themeButtonTextActive: {
+    color: '#FFF',
   },
 });

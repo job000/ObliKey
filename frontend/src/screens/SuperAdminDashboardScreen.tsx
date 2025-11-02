@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useTenant } from '../contexts/TenantContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import { Tenant } from '../types';
 
@@ -36,6 +37,7 @@ interface TenantWithStats extends Tenant {
 export default function SuperAdminDashboardScreen({ navigation }: any) {
   const { user } = useAuth();
   const { selectedTenant, setSelectedTenant } = useTenant();
+  const { colors, isDark } = useTheme();
   const [allTenants, setAllTenants] = useState<TenantWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -217,9 +219,9 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
 
   if (loading && !refreshing && allTenants.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>Loading tenants...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading tenants...</Text>
       </View>
     );
   }
@@ -229,9 +231,9 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
 
     return (
       <View style={styles.emptyState}>
-        <Ionicons name="business-outline" size={64} color="#D1D5DB" />
-        <Text style={styles.emptyStateText}>No tenants found</Text>
-        <Text style={styles.emptyStateSubtext}>
+        <Ionicons name="business-outline" size={64} color={colors.textLight} />
+        <Text style={[styles.emptyStateText, { color: colors.text }]}>No tenants found</Text>
+        <Text style={[styles.emptyStateSubtext, { color: colors.textLight }]}>
           {searchQuery.trim()
             ? 'Try adjusting your search criteria'
             : 'No tenants available to browse'}
@@ -241,15 +243,19 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header - Fast, re-rendrer ikke */}
       <View style={[styles.header, isWeb && styles.headerWeb]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Tenant Browser</Text>
-          <Text style={styles.subtitle}>Browse and select tenants to manage their environment</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Tenant Browser</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Browse and select tenants to manage their environment</Text>
         </View>
         <TouchableOpacity
-          style={styles.createTenantButton}
+          style={[styles.createTenantButton, {
+            backgroundColor: colors.success,
+            shadowColor: colors.shadow,
+            shadowOpacity: isDark ? 0.2 : 0.1
+          }]}
           onPress={() => navigation.navigate('CreateTenant')}
           activeOpacity={0.8}
         >
@@ -260,10 +266,10 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
 
       {/* Selected Tenant Banner */}
       {selectedTenant && (
-        <View style={styles.selectedTenantBanner}>
+        <View style={[styles.selectedTenantBanner, { backgroundColor: colors.primary }]}>
           <View style={styles.selectedTenantContent}>
             <View style={styles.selectedTenantIcon}>
-              <Ionicons name="business" size={24} color="#3B82F6" />
+              <Ionicons name="business" size={24} color="#FFFFFF" />
             </View>
             <View style={styles.selectedTenantInfo}>
               <Text style={styles.selectedTenantLabel}>Currently Browsing</Text>
@@ -272,7 +278,11 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
             </View>
           </View>
           <TouchableOpacity
-            style={styles.exitTenantButton}
+            style={[styles.exitTenantButton, {
+              backgroundColor: colors.danger,
+              shadowColor: colors.shadow,
+              shadowOpacity: isDark ? 0.2 : 0.1
+            }]}
             onPress={handleExitTenantView}
             activeOpacity={0.7}
           >
@@ -284,13 +294,16 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
 
       {/* Search and Filters - Separat fra FlatList */}
       <View style={[styles.filtersContainer, isWeb && styles.filtersContainerWeb]}>
-        <View style={[styles.searchContainer, isWeb && styles.searchContainerWeb]}>
-          <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+        <View style={[styles.searchContainer, isWeb && styles.searchContainerWeb, {
+          backgroundColor: colors.cardBg,
+          borderColor: colors.border
+        }]}>
+          <Ionicons name="search" size={20} color={colors.textLight} style={styles.searchIcon} />
           <TextInput
             ref={searchInputRef}
-            style={[styles.searchInput, isWeb && styles.searchInputWeb]}
+            style={[styles.searchInput, isWeb && styles.searchInputWeb, { color: colors.text }]}
             placeholder="Search tenants by name, subdomain, or email..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textLight}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCorrect={false}
@@ -303,7 +316,8 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.filterButton,
-              statusFilter === 'all' && styles.filterButtonActive,
+              { backgroundColor: colors.cardBg, borderColor: colors.border },
+              statusFilter === 'all' && { backgroundColor: colors.primary, borderColor: colors.primary },
             ]}
             onPress={() => {
               dismissKeyboard();
@@ -313,6 +327,7 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
             <Text
               style={[
                 styles.filterButtonText,
+                { color: colors.textSecondary },
                 statusFilter === 'all' && styles.filterButtonTextActive,
               ]}
             >
@@ -323,7 +338,8 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.filterButton,
-              statusFilter === 'active' && styles.filterButtonActive,
+              { backgroundColor: colors.cardBg, borderColor: colors.border },
+              statusFilter === 'active' && { backgroundColor: colors.primary, borderColor: colors.primary },
             ]}
             onPress={() => {
               dismissKeyboard();
@@ -333,6 +349,7 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
             <Text
               style={[
                 styles.filterButtonText,
+                { color: colors.textSecondary },
                 statusFilter === 'active' && styles.filterButtonTextActive,
               ]}
             >
@@ -343,7 +360,8 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.filterButton,
-              statusFilter === 'inactive' && styles.filterButtonActive,
+              { backgroundColor: colors.cardBg, borderColor: colors.border },
+              statusFilter === 'inactive' && { backgroundColor: colors.primary, borderColor: colors.primary },
             ]}
             onPress={() => {
               dismissKeyboard();
@@ -353,6 +371,7 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
             <Text
               style={[
                 styles.filterButtonText,
+                { color: colors.textSecondary },
                 statusFilter === 'inactive' && styles.filterButtonTextActive,
               ]}
             >
@@ -365,9 +384,16 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
       {/* Error State */}
       {error && (
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={48} color="#EF4444" />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => loadTenants()}>
+          <Ionicons name="alert-circle" size={48} color={colors.danger} />
+          <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, {
+              backgroundColor: colors.primary,
+              shadowColor: colors.shadow,
+              shadowOpacity: isDark ? 0.2 : 0.1
+            }]}
+            onPress={() => loadTenants()}
+          >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -385,6 +411,8 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
             onToggleStatus={() => handleToggleStatus(item)}
             onDelete={() => handleDeleteTenant(item)}
             navigation={navigation}
+            colors={colors}
+            isDark={isDark}
           />
         )}
         ListEmptyComponent={renderEmpty}
@@ -403,11 +431,17 @@ export default function SuperAdminDashboardScreen({ navigation }: any) {
 }
 
 // Tenant Card Component
-const TenantCard = ({ tenant, isSelected, onPress, onToggleStatus, onDelete, navigation }: any) => (
+const TenantCard = ({ tenant, isSelected, onPress, onToggleStatus, onDelete, navigation, colors, isDark }: any) => (
   <View
     style={[
       styles.tenantCard,
-      isSelected && styles.tenantCardSelected,
+      {
+        backgroundColor: colors.cardBg,
+        borderColor: isSelected ? colors.primary : colors.border,
+        shadowColor: colors.shadow,
+        shadowOpacity: isDark ? 0.3 : 0.05
+      },
+      isSelected && { backgroundColor: colors.primary + '10' },
     ]}
   >
     <TouchableOpacity
@@ -416,48 +450,51 @@ const TenantCard = ({ tenant, isSelected, onPress, onToggleStatus, onDelete, nav
       style={{ flex: 1 }}
     >
       {isSelected && (
-        <View style={styles.selectedBadge}>
+        <View style={[styles.selectedBadge, { backgroundColor: colors.primary }]}>
           <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
           <Text style={styles.selectedBadgeText}>Selected</Text>
         </View>
       )}
 
       <View style={styles.tenantCardHeader}>
-        <View style={[styles.tenantAvatar, { backgroundColor: tenant.active ? '#3B82F620' : '#9CA3AF20' }]}>
-          <Ionicons name="business" size={32} color={tenant.active ? '#3B82F6' : '#9CA3AF'} />
+        <View style={[styles.tenantAvatar, { backgroundColor: tenant.active ? colors.primary + '20' : colors.textLight + '20' }]}>
+          <Ionicons name="business" size={32} color={tenant.active ? colors.primary : colors.textLight} />
         </View>
         <View
           style={[
             styles.statusDot,
-            { backgroundColor: getStatusColor(tenant.active) },
+            {
+              backgroundColor: tenant.active ? colors.success : colors.danger,
+              borderColor: colors.cardBg
+            },
           ]}
         />
       </View>
 
       <View style={styles.tenantCardBody}>
-        <Text style={styles.tenantCardName} numberOfLines={1}>
+        <Text style={[styles.tenantCardName, { color: colors.text }]} numberOfLines={1}>
           {tenant.name}
         </Text>
-        <Text style={styles.tenantCardSubdomain} numberOfLines={1}>
+        <Text style={[styles.tenantCardSubdomain, { color: colors.primary }]} numberOfLines={1}>
           {tenant.subdomain}.oblikey.no
         </Text>
-        <Text style={styles.tenantCardEmail} numberOfLines={1}>
+        <Text style={[styles.tenantCardEmail, { color: colors.textSecondary }]} numberOfLines={1}>
           {tenant.email}
         </Text>
       </View>
 
-      <View style={styles.tenantCardFooter}>
+      <View style={[styles.tenantCardFooter, { borderTopColor: colors.borderLight }]}>
         {tenant.subscription && (
           <View
             style={[
               styles.subscriptionBadge,
-              { backgroundColor: getStatusBadgeColor(tenant.subscription.status) + '20' },
+              { backgroundColor: getStatusBadgeColor(tenant.subscription.status, colors) + '20' },
             ]}
           >
             <Text
               style={[
                 styles.subscriptionBadgeText,
-                { color: getStatusBadgeColor(tenant.subscription.status) },
+                { color: getStatusBadgeColor(tenant.subscription.status, colors) },
               ]}
             >
               {tenant.subscription.status}
@@ -467,27 +504,32 @@ const TenantCard = ({ tenant, isSelected, onPress, onToggleStatus, onDelete, nav
 
         <View style={styles.tenantStats}>
           <View style={styles.tenantStat}>
-            <Ionicons name="people" size={14} color="#6B7280" />
-            <Text style={styles.tenantStatText}>{tenant.userCount || 0} users</Text>
+            <Ionicons name="people" size={14} color={colors.textSecondary} />
+            <Text style={[styles.tenantStatText, { color: colors.textSecondary }]}>{tenant.userCount || 0} users</Text>
           </View>
         </View>
 
         {tenant.createdAt && (
-          <Text style={styles.tenantCardDate}>
+          <Text style={[styles.tenantCardDate, { color: colors.textLight }]}>
             Created {formatDate(tenant.createdAt)}
           </Text>
         )}
       </View>
 
       <View style={styles.browseIconContainer}>
-        <Ionicons name="arrow-forward-circle" size={24} color="#3B82F6" />
+        <Ionicons name="arrow-forward-circle" size={24} color={colors.primary} />
       </View>
     </TouchableOpacity>
 
     {/* Action Buttons */}
-    <View style={styles.tenantCardActions}>
+    <View style={[styles.tenantCardActions, { borderTopColor: colors.border }]}>
       <TouchableOpacity
-        style={styles.manageButton}
+        style={[styles.manageButton, {
+          backgroundColor: colors.primary + '10',
+          borderColor: colors.primary + '30',
+          shadowColor: colors.shadow,
+          shadowOpacity: isDark ? 0.2 : 0.1
+        }]}
         onPress={(e) => {
           e.stopPropagation();
           navigation.navigate('ManageFeatures', {
@@ -497,14 +539,19 @@ const TenantCard = ({ tenant, isSelected, onPress, onToggleStatus, onDelete, nav
         }}
         activeOpacity={0.7}
       >
-        <Ionicons name="cube-outline" size={18} color="#3B82F6" />
-        <Text style={styles.manageButtonText}>Administrer Features</Text>
+        <Ionicons name="cube-outline" size={18} color={colors.primary} />
+        <Text style={[styles.manageButtonText, { color: colors.primary }]}>Administrer Features</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={[
           styles.toggleStatusButton,
-          tenant.active ? styles.deactivateButton : styles.activateButton,
+          {
+            backgroundColor: tenant.active ? colors.warning + '20' : colors.success + '20',
+            borderColor: tenant.active ? colors.warning + '50' : colors.success + '50',
+            shadowColor: colors.shadow,
+            shadowOpacity: isDark ? 0.2 : 0.1
+          },
         ]}
         onPress={(e) => {
           e.stopPropagation();
@@ -515,35 +562,35 @@ const TenantCard = ({ tenant, isSelected, onPress, onToggleStatus, onDelete, nav
         <Ionicons
           name={tenant.active ? "pause-circle-outline" : "play-circle-outline"}
           size={18}
-          color={tenant.active ? "#F59E0B" : "#10B981"}
+          color={tenant.active ? colors.warning : colors.success}
         />
         <Text style={[
           styles.toggleStatusButtonText,
-          tenant.active ? styles.deactivateButtonText : styles.activateButtonText,
+          { color: tenant.active ? colors.warning : colors.success },
         ]}>
           {tenant.active ? 'Deaktiver' : 'Aktiver'}
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.deleteButton}
+        style={[styles.deleteButton, {
+          backgroundColor: colors.danger + '20',
+          borderColor: colors.danger + '50',
+          shadowColor: colors.shadow,
+          shadowOpacity: isDark ? 0.2 : 0.1
+        }]}
         onPress={(e) => {
           e.stopPropagation();
           onDelete();
         }}
         activeOpacity={0.7}
       >
-        <Ionicons name="trash-outline" size={18} color="#EF4444" />
-        <Text style={styles.deleteButtonText}>Slett</Text>
+        <Ionicons name="trash-outline" size={18} color={colors.danger} />
+        <Text style={[styles.deleteButtonText, { color: colors.danger }]}>Slett</Text>
       </TouchableOpacity>
     </View>
   </View>
 );
-
-// Helper function for getting status color (moved outside component to avoid recreation)
-const getStatusColor = (active: boolean) => {
-  return active ? '#10B981' : '#EF4444';
-};
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -553,24 +600,23 @@ const formatDate = (dateString: string) => {
   });
 };
 
-const getStatusBadgeColor = (status: string) => {
+const getStatusBadgeColor = (status: string, colors: any) => {
   switch (status) {
     case 'ACTIVE':
-      return '#10B981';
+      return colors.success;
     case 'TRIAL':
-      return '#3B82F6';
+      return colors.primary;
     case 'CANCELLED':
     case 'EXPIRED':
-      return '#EF4444';
+      return colors.danger;
     default:
-      return '#6B7280';
+      return colors.textSecondary;
   }
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   content: {
     padding: 16,
@@ -588,12 +634,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
   },
   loadingText: {
     marginTop: 16,
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: 15,
   },
   header: {
     marginBottom: 24,
@@ -612,36 +656,30 @@ const styles = StyleSheet.create({
   createTenantButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#10B981',
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
     gap: 8,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   createTenantButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: '600',
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: 15,
   },
   // Selected Tenant Banner
   selectedTenantBanner: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 20,
     marginBottom: 24,
     marginHorizontal: 16,
@@ -676,13 +714,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   selectedTenantName: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#FFFFFF',
     marginTop: 4,
   },
   selectedTenantSubdomain: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#FFFFFF',
     opacity: 0.9,
     marginTop: 2,
@@ -690,15 +728,17 @@ const styles = StyleSheet.create({
   exitTenantButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
     gap: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
   },
   exitTenantButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
   // Search and Filters
@@ -716,10 +756,8 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 12,
   },
   searchContainerWeb: {
@@ -732,8 +770,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     height: 44,
-    fontSize: 14,
-    color: '#111827',
+    fontSize: 15,
   },
   searchInputWeb: {
     height: 48,
@@ -744,20 +781,13 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  filterButtonActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
   },
   filterButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
+    fontSize: 15,
+    fontWeight: '600',
   },
   filterButtonTextActive: {
     color: '#FFFFFF',
@@ -770,21 +800,22 @@ const styles = StyleSheet.create({
   },
   errorText: {
     marginTop: 16,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#EF4444',
     textAlign: 'center',
   },
   retryButton: {
     marginTop: 16,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: '#3B82F6',
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
   },
   retryButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
   // Tenants Grid
@@ -808,36 +839,25 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     marginTop: 16,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
   },
   emptyStateSubtext: {
     marginTop: 8,
-    fontSize: 14,
-    color: '#9CA3AF',
+    fontSize: 15,
     textAlign: 'center',
   },
   // Tenant Card
   tenantCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
     ...(isWeb ? { width: '32%' } : { width: '100%' }),
     minWidth: 280,
     position: 'relative',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
-  },
-  tenantCardSelected: {
-    borderColor: '#3B82F6',
-    borderWidth: 2,
-    backgroundColor: '#F0F7FF',
   },
   selectedBadge: {
     position: 'absolute',
@@ -845,7 +865,6 @@ const styles = StyleSheet.create({
     right: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3B82F6',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -876,42 +895,37 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
   tenantCardBody: {
     marginBottom: 16,
   },
   tenantCardName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
+    fontSize: 16,
+    fontWeight: '600',
     marginBottom: 4,
   },
   tenantCardSubdomain: {
-    fontSize: 14,
-    color: '#3B82F6',
+    fontSize: 13,
     marginBottom: 4,
     fontWeight: '500',
   },
   tenantCardEmail: {
     fontSize: 13,
-    color: '#6B7280',
   },
   tenantCardFooter: {
     gap: 8,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
   },
   subscriptionBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
     alignSelf: 'flex-start',
   },
   subscriptionBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -926,12 +940,10 @@ const styles = StyleSheet.create({
   },
   tenantStatText: {
     fontSize: 13,
-    color: '#6B7280',
     fontWeight: '500',
   },
   tenantCardDate: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    fontSize: 13,
   },
   browseIconContainer: {
     position: 'absolute',
@@ -943,69 +955,57 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
     gap: 8,
   },
   manageButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
     gap: 8,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
   },
   manageButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#3B82F6',
   },
   toggleStatusButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
     gap: 8,
     borderWidth: 1,
-  },
-  deactivateButton: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#FCD34D',
-  },
-  activateButton: {
-    backgroundColor: '#D1FAE5',
-    borderColor: '#6EE7B7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
   },
   toggleStatusButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-  },
-  deactivateButtonText: {
-    color: '#F59E0B',
-  },
-  activateButtonText: {
-    color: '#10B981',
   },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
     gap: 8,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
   },
   deleteButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#EF4444',
   },
 });
