@@ -5,7 +5,7 @@ async function testLogin() {
     console.log('\n=== Testing SUPER_ADMIN Login ===\n');
 
     const loginData = {
-      email: 'superadmin@oblikey.no',
+      email: 'superadmin@otico.no',
       password: 'SuperAdmin123'
     };
 

@@ -1,5 +1,5 @@
 {
-  "name": "oblikey-backend",
+  "name": "otico-backend",
   "version": "1.0.0",
   "description": "Multi-tenant fitness & PT management system - Backend API",
   "main": "dist/index.js",

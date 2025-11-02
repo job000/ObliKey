@@ -8,7 +8,7 @@ async function updateSuperAdminPassword() {
     // Find the superadmin user
     const superAdmin = await prisma.user.findFirst({
       where: {
-        email: 'superadmin@oblikey.no',
+        email: 'superadmin@otico.no',
         role: 'SUPER_ADMIN',
       },
     });

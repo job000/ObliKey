@@ -556,4 +556,150 @@ export class ProductController {
       }
     }
   }
+
+  // Subscribe to product sale alerts
+  async subscribeToSaleAlerts(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id: productId } = req.params;
+      const userId = req.user!.id;
+      const tenantId = req.tenantId!;
+
+      // Check if product exists
+      const product = await prisma.product.findUnique({
+        where: { id: productId }
+      });
+
+      if (!product) {
+        throw new AppError('Produkt ikke funnet', 404);
+      }
+
+      if (product.tenantId !== tenantId) {
+        throw new AppError('Ingen tilgang til dette produktet', 403);
+      }
+
+      // Check if already subscribed
+      const existing = await prisma.productSaleAlert.findUnique({
+        where: {
+          userId_productId: {
+            userId,
+            productId
+          }
+        }
+      });
+
+      if (existing) {
+        res.json({
+          success: true,
+          data: existing,
+          message: 'Allerede abonnert på tilbudsvarsler'
+        });
+        return;
+      }
+
+      // Create subscription
+      const saleAlert = await prisma.productSaleAlert.create({
+        data: {
+          userId,
+          productId,
+          tenantId
+        },
+        include: {
+          product: {
+            include: {
+              images: true
+            }
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        data: saleAlert,
+        message: 'Abonnert på tilbudsvarsler for dette produktet'
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Subscribe to sale alerts error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke abonnere på tilbudsvarsler' });
+      }
+    }
+  }
+
+  // Unsubscribe from product sale alerts
+  async unsubscribeFromSaleAlerts(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id: productId } = req.params;
+      const userId = req.user!.id;
+
+      // Find and delete subscription
+      const saleAlert = await prisma.productSaleAlert.findUnique({
+        where: {
+          userId_productId: {
+            userId,
+            productId
+          }
+        }
+      });
+
+      if (!saleAlert) {
+        throw new AppError('Ikke abonnert på dette produktet', 404);
+      }
+
+      await prisma.productSaleAlert.delete({
+        where: {
+          id: saleAlert.id
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Avsluttet abonnement på tilbudsvarsler'
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ success: false, error: error.message });
+      } else {
+        console.error('Unsubscribe from sale alerts error:', error);
+        res.status(500).json({ success: false, error: 'Kunne ikke avslutte abonnement' });
+      }
+    }
+  }
+
+  // Get user's sale alert subscriptions
+  async getSaleAlertSubscriptions(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user!.id;
+      const tenantId = req.tenantId!;
+
+      const subscriptions = await prisma.productSaleAlert.findMany({
+        where: {
+          userId,
+          tenantId,
+          product: {
+            status: 'PUBLISHED'
+          }
+        },
+        include: {
+          product: {
+            include: {
+              images: {
+                orderBy: { sortOrder: 'asc' }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      res.json({
+        success: true,
+        data: subscriptions
+      });
+    } catch (error) {
+      console.error('Get sale alert subscriptions error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke hente abonnementer' });
+    }
+  }
 }

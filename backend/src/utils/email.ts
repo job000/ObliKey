@@ -64,7 +64,7 @@ class EmailService {
               <p>Vi gleder oss til å se deg!</p>
             </div>
             <div class="footer">
-              <p>Dette er en automatisk e-post fra ObliKey</p>
+              <p>Dette er en automatisk e-post fra Otico</p>
             </div>
           </div>
         </body>
@@ -93,7 +93,7 @@ class EmailService {
         <body>
           <div class="container">
             <div class="header">
-              <h1>Velkommen til ObliKey! 🎉</h1>
+              <h1>Velkommen til Otico! 🎉</h1>
             </div>
             <div class="content">
               <p>Hei ${firstName},</p>
@@ -114,7 +114,7 @@ class EmailService {
 
     await this.sendEmail({
       to: email,
-      subject: 'Velkommen til ObliKey!',
+      subject: 'Velkommen til Otico!',
       html,
     });
   }
@@ -175,10 +175,10 @@ class EmailService {
                 </ul>
               </div>
 
-              <p>Med vennlig hilsen,<br>ObliKey teamet</p>
+              <p>Med vennlig hilsen,<br>Otico teamet</p>
             </div>
             <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
-              <p>Dette er en automatisk e-post fra ObliKey. Ikke svar på denne e-posten.</p>
+              <p>Dette er en automatisk e-post fra Otico. Ikke svar på denne e-posten.</p>
             </div>
           </div>
         </body>
@@ -187,7 +187,7 @@ class EmailService {
 
     await this.sendEmail({
       to: email,
-      subject: 'Tilbakestill passord - ObliKey',
+      subject: 'Tilbakestill passord - Otico',
       html,
     });
   }

@@ -17,7 +17,7 @@ const footerContent = [
     title: 'Kontakt',
     metadata: {
       phone: '+47 123 45 678',
-      email: 'kontakt@oblikey.no',
+      email: 'kontakt@otico.no',
       address: 'Oslo, Norge'
     },
     sortOrder: 1,

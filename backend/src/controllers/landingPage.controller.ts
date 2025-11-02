@@ -229,7 +229,7 @@ export class LandingPageController {
       const defaultContent = [
         {
           section: 'HERO',
-          title: 'Velkommen til ObliKey',
+          title: 'Velkommen til Otico',
           subtitle: 'Din komplette treningsløsning',
           content: 'Book klasser, få personlig trening og nå dine treningsmål',
           buttonText: 'Kom i gang',
@@ -273,7 +273,7 @@ export class LandingPageController {
           title: 'Kontakt',
           metadata: {
             phone: '+47 123 45 678',
-            email: 'kontakt@oblikey.no',
+            email: 'kontakt@otico.no',
             address: 'Oslo, Norge'
           },
           sortOrder: 1
@@ -353,7 +353,7 @@ export class LandingPageController {
             const defaultContent = [
               {
                 section: 'HERO',
-                title: 'Velkommen til ObliKey',
+                title: 'Velkommen til Otico',
                 subtitle: 'Din komplette treningsløsning',
                 content: 'Book klasser, få personlig trening og nå dine treningsmål',
                 buttonText: 'Kom i gang',
@@ -403,7 +403,7 @@ export class LandingPageController {
                 title: 'Kontakt',
                 metadata: {
                   phone: '+47 123 45 678',
-                  email: 'kontakt@oblikey.no',
+                  email: 'kontakt@otico.no',
                   address: 'Oslo, Norge'
                 },
                 sortOrder: 1,

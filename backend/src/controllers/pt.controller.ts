@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest, CreatePTSessionDto, CreateTrainingProgramDto } from '../types';
 import { prisma } from '../utils/prisma';
 import { AppError } from '../middleware/errorHandler';
+import { ptCreditService } from '../services/ptCredit.service';
 
 export class PTController {
   // ============================================
@@ -28,7 +29,7 @@ export class PTController {
         }
 
         // Check if customer has available PT credits
-        const availableCredits = await this.getAvailableCredits(currentUserId);
+        const availableCredits = await ptCreditService.getUserAvailableCredits(currentUserId, tenantId);
         if (availableCredits < 1) {
           throw new AppError('Du har ikke nok PT-timer. Kjøp PT-timer i butikken.', 400);
         }
@@ -78,7 +79,7 @@ export class PTController {
 
       // If customer booked, consume one credit
       if (userRole === 'CUSTOMER') {
-        await this.useCredit(finalCustomerId!);
+        await ptCreditService.useCredits(finalCustomerId!, tenantId, 1);
       }
 
       res.status(201).json({
@@ -437,89 +438,6 @@ export class PTController {
       });
     } catch (error) {
       res.status(500).json({ success: false, error: 'Kunne ikke slette PT-økt' });
-    }
-  }
-
-  // Cancel PT session (customers can cancel their sessions)
-  async cancelSession(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const { cancelReason } = req.body;
-      const userId = req.user!.userId;
-      const userRole = req.user!.role;
-
-      // Check if session exists
-      const session = await prisma.pTSession.findUnique({
-        where: { id }
-      });
-
-      if (!session) {
-        res.status(404).json({ success: false, error: 'PT-økt ikke funnet' });
-        return;
-      }
-
-      // Check if session is already cancelled
-      if (session.status === 'CANCELLED') {
-        res.status(400).json({ success: false, error: 'Økten er allerede kansellert' });
-        return;
-      }
-
-      // Customers can only cancel their own sessions
-      if (userRole === 'CUSTOMER' && session.customerId !== userId) {
-        res.status(403).json({ success: false, error: 'Du kan kun kansellere dine egne økter' });
-        return;
-      }
-
-      // Check cancellation time (e.g., must cancel at least 24 hours before)
-      const hoursUntilSession = (new Date(session.startTime).getTime() - Date.now()) / (1000 * 60 * 60);
-      if (userRole === 'CUSTOMER' && hoursUntilSession < 24) {
-        res.status(400).json({
-          success: false,
-          error: 'Du må kansellere minst 24 timer før økten starter'
-        });
-        return;
-      }
-
-      // Cancel the session
-      const cancelledSession = await prisma.pTSession.update({
-        where: { id },
-        data: {
-          status: 'CANCELLED',
-          notes: cancelReason ? `Kansellert: ${cancelReason}` : 'Kansellert av kunde'
-        }
-      });
-
-      // Refund PT credit if customer cancelled with enough notice
-      if (userRole === 'CUSTOMER' && hoursUntilSession >= 24) {
-        // Find the credit that was used for this session
-        const credit = await prisma.pTCredit.findFirst({
-          where: {
-            userId: session.customerId,
-            used: { gt: 0 }
-          },
-          orderBy: {
-            purchaseDate: 'desc'
-          }
-        });
-
-        if (credit) {
-          await prisma.pTCredit.update({
-            where: { id: credit.id },
-            data: {
-              used: { decrement: 1 }
-            }
-          });
-        }
-      }
-
-      res.json({
-        success: true,
-        data: cancelledSession,
-        message: 'PT-økt kansellert' + (userRole === 'CUSTOMER' && hoursUntilSession >= 24 ? '. PT-time er refundert.' : '')
-      });
-    } catch (error) {
-      console.error('Cancel session error:', error);
-      res.status(500).json({ success: false, error: 'Kunne ikke kansellere PT-økt' });
     }
   }
 
@@ -983,6 +901,7 @@ export class PTController {
     try {
       const userId = req.user!.userId;
       const userRole = req.user!.role;
+      const tenantId = req.user!.tenantId;
 
       // Determine which user's credits to fetch
       let targetUserId = userId;
@@ -997,15 +916,16 @@ export class PTController {
         orderBy: { purchaseDate: 'desc' }
       });
 
-      const availableCredits = await this.getAvailableCredits(targetUserId);
+      const availableCredits = await ptCreditService.getUserAvailableCredits(targetUserId, tenantId);
+      const creditDetails = await ptCreditService.getUserCreditDetails(targetUserId, tenantId);
 
       res.json({
         success: true,
         data: {
-          credits,
+          credits: creditDetails,
           available: availableCredits,
-          total: credits.reduce((sum, c) => sum + c.credits, 0),
-          used: credits.reduce((sum, c) => sum + c.used, 0)
+          total: creditDetails.reduce((sum, c) => sum + c.total, 0),
+          used: creditDetails.reduce((sum, c) => sum + c.used, 0)
         }
       });
     } catch (error) {
@@ -1020,8 +940,25 @@ export class PTController {
       const tenantId = req.tenantId!;
       const { userId, credits, orderId, expiryDate, notes } = req.body;
 
-      if (!userId || !credits || credits < 1) {
-        throw new AppError('userId og credits er påkrevd', 400);
+      if (!userId || credits === undefined || credits === null || credits === 0) {
+        throw new AppError('userId og credits er påkrevd (credits kan ikke være 0)', 400);
+      }
+
+      // Check if user exists
+      const user = await prisma.user.findFirst({
+        where: { id: userId, tenantId }
+      });
+
+      if (!user) {
+        throw new AppError('Bruker ikke funnet', 404);
+      }
+
+      // If subtracting credits, check if user has enough
+      if (credits < 0) {
+        const availableCredits = await ptCreditService.getUserAvailableCredits(userId, tenantId);
+        if (Math.abs(credits) > availableCredits) {
+          throw new AppError(`Brukeren har kun ${availableCredits} tilgjengelige kreditter`, 400);
+        }
       }
 
       const credit = await prisma.pTCredit.create({
@@ -1035,17 +972,20 @@ export class PTController {
         }
       });
 
+      const action = credits > 0 ? 'lagt til' : 'trukket fra';
+      const message = `${Math.abs(credits)} PT-kreditter ${action} ${user.firstName} ${user.lastName}`;
+
       res.status(201).json({
         success: true,
         data: credit,
-        message: 'PT-timer lagt til'
+        message
       });
     } catch (error) {
       if (error instanceof AppError) {
         res.status(error.statusCode).json({ success: false, error: error.message });
       } else {
         console.error('Add credits error:', error);
-        res.status(500).json({ success: false, error: 'Kunne ikke legge til PT-timer' });
+        res.status(500).json({ success: false, error: 'Kunne ikke oppdatere PT-kreditter' });
       }
     }
   }
@@ -1443,6 +1383,40 @@ export class PTController {
         return;
       }
 
+      // Get tenant settings for PT cancellation policy
+      const settings = await prisma.tenantSettings.findUnique({
+        where: { tenantId }
+      });
+
+      let shouldRefund = false;
+      let refundMessage = '';
+
+      // Calculate hours until session
+      const hoursUntilSession = (new Date(session.startTime).getTime() - Date.now()) / (1000 * 60 * 60);
+
+      // Determine if refund should be given based on who cancelled and settings
+      if (settings?.ptCancellationRefundEnabled) {
+        if (isAdmin || isOwnTrainer) {
+          // PT, Admin, or Super Admin cancelling - ALWAYS refund customer
+          shouldRefund = true;
+          refundMessage = ' PT-time er refundert.';
+        } else if (isOwnCustomer) {
+          // Customer cancelling - check cancellation policy
+          const requiredHours = settings.ptCancellationHours || 24;
+          if (hoursUntilSession >= requiredHours) {
+            shouldRefund = true;
+            refundMessage = ' PT-time er refundert.';
+          } else {
+            refundMessage = ` Du må avlyse minst ${requiredHours} timer før økten for å få refusjon.`;
+          }
+        }
+      }
+
+      // Perform refund if applicable
+      if (shouldRefund) {
+        await ptCreditService.refundCredit(session.customerId, tenantId, 1);
+      }
+
       const updatedSession = await prisma.pTSession.update({
         where: { id },
         data: {
@@ -1456,7 +1430,7 @@ export class PTController {
       });
 
       // Determine who cancelled
-      const cancelledBy = session.trainerId === userId ? 'PT' : 'kunde';
+      const cancelledBy = session.trainerId === userId ? 'PT' : (isAdmin ? 'administrator' : 'kunde');
       const cancellerName = session.trainerId === userId
         ? `${session.trainer.firstName} ${session.trainer.lastName}`
         : `${session.customer.firstName} ${session.customer.lastName}`;
@@ -1472,17 +1446,427 @@ export class PTController {
         trainerTitle: 'PT-økt avlyst',
         trainerMessage: `PT-økten "${session.title}" har blitt avlyst av ${cancelledBy}. Grunn: ${cancellationReason || 'Ingen grunn oppgitt'}`,
         customerTitle: 'PT-økt avlyst',
-        customerMessage: `PT-økten "${session.title}" har blitt avlyst av ${cancelledBy}. Grunn: ${cancellationReason || 'Ingen grunn oppgitt'}`
+        customerMessage: `PT-økten "${session.title}" har blitt avlyst av ${cancelledBy}. Grunn: ${cancellationReason || 'Ingen grunn oppgitt'}${refundMessage}`
       });
 
       res.json({
         success: true,
         data: updatedSession,
-        message: 'PT-økt avlyst'
+        message: 'PT-økt avlyst' + refundMessage
       });
     } catch (error) {
       console.error('Cancel session error:', error);
       res.status(500).json({ success: false, error: 'Kunne ikke avlyse PT-økt' });
+    }
+  }
+
+  /**
+   * Mark session as NO_SHOW
+   * Only trainers and admins can mark sessions as no-show
+   * Refund policy configurable via tenant settings
+   */
+  async markNoShow(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const tenantId = req.tenantId!;
+      const userId = req.user!.userId;
+      const userRole = req.user!.role;
+
+      // Check if user is authorized (only trainers and admins can mark no-show)
+      const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+      const isTrainer = userRole === 'TRAINER';
+
+      if (!isAdmin && !isTrainer) {
+        res.status(403).json({
+          success: false,
+          error: 'Kun trenere og administratorer kan markere økter som møtte ikke'
+        });
+        return;
+      }
+
+      // Get session
+      const session = await prisma.pTSession.findFirst({
+        where: { id, tenantId },
+        include: {
+          trainer: true,
+          customer: true
+        }
+      });
+
+      if (!session) {
+        res.status(404).json({ success: false, error: 'PT-økt ikke funnet' });
+        return;
+      }
+
+      // If user is trainer, verify they own this session
+      if (isTrainer && session.trainerId !== userId) {
+        res.status(403).json({
+          success: false,
+          error: 'Du kan kun markere dine egne økter som møtte ikke'
+        });
+        return;
+      }
+
+      // Get tenant settings for NO_SHOW refund policy
+      const settings = await prisma.tenantSettings.findUnique({
+        where: { tenantId }
+      });
+
+      let shouldRefund = false;
+      let refundMessage = ' Kreditt er IKKE refundert.';
+
+      // Check if NO_SHOW refund is enabled in settings
+      if (settings?.ptNoShowRefundEnabled) {
+        shouldRefund = true;
+        refundMessage = ' Kreditt er refundert til kunden.';
+
+        // Perform refund
+        await ptCreditService.refundCredit(session.customerId, tenantId, 1);
+      }
+
+      // Update session status to NO_SHOW
+      const updatedSession = await prisma.pTSession.update({
+        where: { id },
+        data: {
+          status: 'NO_SHOW'
+        },
+        include: {
+          trainer: true,
+          customer: true
+        }
+      });
+
+      // Send notifications
+      const notificationService = (await import('../services/notification.service')).default;
+      await notificationService.notifyPTSessionParticipants({
+        tenantId,
+        trainerId: session.trainerId,
+        customerId: session.customerId,
+        ptSessionId: id,
+        type: 'PT_SESSION_NO_SHOW',
+        trainerTitle: 'Økt markert som møtte ikke',
+        trainerMessage: `PT-økten "${session.title}" har blitt markert som møtte ikke.`,
+        customerTitle: 'Økt markert som møtte ikke',
+        customerMessage: `PT-økten "${session.title}" har blitt markert som møtte ikke.${refundMessage}`
+      });
+
+      res.json({
+        success: true,
+        data: updatedSession,
+        message: 'PT-økt markert som møtte ikke.' + refundMessage
+      });
+    } catch (error) {
+      console.error('Mark no-show error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke markere PT-økt som møtte ikke' });
+    }
+  }
+
+  // ============================================
+  // PT AVAILABILITY
+  // ============================================
+
+  /**
+   * Get trainer's weekly availability schedule
+   */
+  async getTrainerAvailability(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const trainerId = req.params.trainerId || req.user!.userId;
+      const tenantId = req.user!.tenantId;
+
+      const { ptAvailabilityService } = await import('../services/pt-availability.service');
+      const availability = await ptAvailabilityService.getTrainerAvailability(trainerId, tenantId);
+
+      res.json({
+        success: true,
+        data: availability
+      });
+    } catch (error) {
+      console.error('Get trainer availability error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke hente tilgjengelighet' });
+    }
+  }
+
+  /**
+   * Set trainer's availability for a specific day
+   */
+  async setTrainerAvailability(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const trainerId = req.user!.userId;
+      const tenantId = req.user!.tenantId;
+      const { dayOfWeek, startTime, endTime } = req.body;
+
+      if (!dayOfWeek || !startTime || !endTime) {
+        res.status(400).json({
+          success: false,
+          error: 'dayOfWeek, startTime og endTime er påkrevd'
+        });
+        return;
+      }
+
+      const { ptAvailabilityService } = await import('../services/pt-availability.service');
+      const availability = await ptAvailabilityService.setTrainerAvailability(
+        trainerId,
+        tenantId,
+        dayOfWeek,
+        startTime,
+        endTime
+      );
+
+      res.json({
+        success: true,
+        data: availability,
+        message: 'Tilgjengelighet satt'
+      });
+    } catch (error) {
+      console.error('Set trainer availability error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke sette tilgjengelighet' });
+    }
+  }
+
+  /**
+   * Update trainer availability
+   */
+  async updateTrainerAvailability(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { availabilityId } = req.params;
+      const { startTime, endTime, isActive } = req.body;
+
+      const { ptAvailabilityService } = await import('../services/pt-availability.service');
+      const availability = await ptAvailabilityService.updateTrainerAvailability(availabilityId, {
+        startTime,
+        endTime,
+        isActive
+      });
+
+      res.json({
+        success: true,
+        data: availability,
+        message: 'Tilgjengelighet oppdatert'
+      });
+    } catch (error) {
+      console.error('Update trainer availability error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke oppdatere tilgjengelighet' });
+    }
+  }
+
+  /**
+   * Delete trainer availability
+   */
+  async deleteTrainerAvailability(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { availabilityId } = req.params;
+
+      const { ptAvailabilityService } = await import('../services/pt-availability.service');
+      await ptAvailabilityService.deleteTrainerAvailability(availabilityId);
+
+      res.json({
+        success: true,
+        message: 'Tilgjengelighet slettet'
+      });
+    } catch (error) {
+      console.error('Delete trainer availability error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke slette tilgjengelighet' });
+    }
+  }
+
+  /**
+   * Get trainer's time blocks
+   */
+  async getTrainerTimeBlocks(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const trainerId = req.params.trainerId || req.user!.userId;
+      const tenantId = req.user!.tenantId;
+      const { startDate, endDate } = req.query;
+
+      if (!startDate || !endDate) {
+        res.status(400).json({
+          success: false,
+          error: 'startDate og endDate er påkrevd'
+        });
+        return;
+      }
+
+      const { ptAvailabilityService } = await import('../services/pt-availability.service');
+      const timeBlocks = await ptAvailabilityService.getTrainerTimeBlocks(
+        trainerId,
+        tenantId,
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+
+      res.json({
+        success: true,
+        data: timeBlocks
+      });
+    } catch (error) {
+      console.error('Get trainer time blocks error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke hente tidsblokker' });
+    }
+  }
+
+  /**
+   * Block a specific time slot
+   */
+  async blockTimeSlot(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const trainerId = req.user!.userId;
+      const tenantId = req.user!.tenantId;
+      const { startTime, endTime, reason } = req.body;
+
+      if (!startTime || !endTime) {
+        res.status(400).json({
+          success: false,
+          error: 'startTime og endTime er påkrevd'
+        });
+        return;
+      }
+
+      const { ptAvailabilityService } = await import('../services/pt-availability.service');
+      const timeBlock = await ptAvailabilityService.blockTimeSlot(
+        trainerId,
+        tenantId,
+        new Date(startTime),
+        new Date(endTime),
+        reason
+      );
+
+      res.json({
+        success: true,
+        data: timeBlock,
+        message: 'Tid blokkert'
+      });
+    } catch (error) {
+      console.error('Block time slot error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke blokkere tid' });
+    }
+  }
+
+  /**
+   * Add one-time availability
+   */
+  async addOneTimeAvailability(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const trainerId = req.user!.userId;
+      const tenantId = req.user!.tenantId;
+      const { startTime, endTime, reason } = req.body;
+
+      if (!startTime || !endTime) {
+        res.status(400).json({
+          success: false,
+          error: 'startTime og endTime er påkrevd'
+        });
+        return;
+      }
+
+      const { ptAvailabilityService } = await import('../services/pt-availability.service');
+      const timeBlock = await ptAvailabilityService.addOneTimeAvailability(
+        trainerId,
+        tenantId,
+        new Date(startTime),
+        new Date(endTime),
+        reason
+      );
+
+      res.json({
+        success: true,
+        data: timeBlock,
+        message: 'Tilgjengelighet lagt til'
+      });
+    } catch (error) {
+      console.error('Add one-time availability error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke legge til tilgjengelighet' });
+    }
+  }
+
+  /**
+   * Delete time block
+   */
+  async deleteTimeBlock(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { timeBlockId } = req.params;
+
+      const { ptAvailabilityService } = await import('../services/pt-availability.service');
+      await ptAvailabilityService.deleteTimeBlock(timeBlockId);
+
+      res.json({
+        success: true,
+        message: 'Tidsblokk slettet'
+      });
+    } catch (error) {
+      console.error('Delete time block error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke slette tidsblokk' });
+    }
+  }
+
+  /**
+   * Get available slots for a specific trainer on a date
+   */
+  async getAvailableSlots(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const trainerId = req.params.trainerId;
+      const tenantId = req.user!.tenantId;
+      const { date, duration } = req.query;
+
+      if (!date) {
+        res.status(400).json({
+          success: false,
+          error: 'date er påkrevd'
+        });
+        return;
+      }
+
+      const slotDuration = duration ? parseInt(duration as string) : 60;
+
+      const { ptAvailabilityService } = await import('../services/pt-availability.service');
+      const slots = await ptAvailabilityService.getAvailableSlots(
+        trainerId,
+        tenantId,
+        new Date(date as string),
+        slotDuration
+      );
+
+      res.json({
+        success: true,
+        data: slots
+      });
+    } catch (error) {
+      console.error('Get available slots error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke hente ledige tider' });
+    }
+  }
+
+  /**
+   * Get available slots for all trainers on a date
+   */
+  async getAllAvailableSlots(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.user!.tenantId;
+      const { date, duration } = req.query;
+
+      if (!date) {
+        res.status(400).json({
+          success: false,
+          error: 'date er påkrevd'
+        });
+        return;
+      }
+
+      const slotDuration = duration ? parseInt(duration as string) : 60;
+
+      const { ptAvailabilityService } = await import('../services/pt-availability.service');
+      const slots = await ptAvailabilityService.getAllAvailableSlots(
+        tenantId,
+        new Date(date as string),
+        slotDuration
+      );
+
+      res.json({
+        success: true,
+        data: slots
+      });
+    } catch (error) {
+      console.error('Get all available slots error:', error);
+      res.status(500).json({ success: false, error: 'Kunne ikke hente ledige tider' });
     }
   }
 }

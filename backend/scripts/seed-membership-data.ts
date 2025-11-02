@@ -8,7 +8,7 @@ async function seedMembershipData() {
 
     // Get the demo tenant
     const tenant = await prisma.tenant.findFirst({
-      where: { subdomain: 'oblikey-demo' }
+      where: { subdomain: 'otico-demo' }
     });
 
     if (!tenant) {

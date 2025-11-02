@@ -4,13 +4,13 @@ const prisma = new PrismaClient();
 async function testPTPickerData() {
   console.log('\n=== Testing PT Picker Data and Tenant Isolation ===\n');
 
-  // Get ObliKey Demo tenant
+  // Get Otico Demo tenant
   const tenant = await prisma.tenant.findFirst({
-    where: { subdomain: 'oblikey-demo' }
+    where: { subdomain: 'otico-demo' }
   });
 
   if (!tenant) {
-    console.log('❌ ObliKey Demo tenant not found');
+    console.log('❌ Otico Demo tenant not found');
     return;
   }
 
@@ -89,12 +89,12 @@ async function testPTPickerData() {
     console.log(`Tenant: ${t.name}`);
     console.log(`  - ${otherTrainers} trainers`);
     console.log(`  - ${otherCustomers} customers`);
-    console.log(`  ✅ Data is isolated (not accessible from oblikey-demo)\n`);
+    console.log(`  ✅ Data is isolated (not accessible from otico-demo)\n`);
   }
 
   console.log('\n=== Summary ===\n');
-  console.log(`✅ Backend has ${trainers.length} trainers for oblikey-demo tenant`);
-  console.log(`✅ Backend has ${customers.length} customers for oblikey-demo tenant`);
+  console.log(`✅ Backend has ${trainers.length} trainers for otico-demo tenant`);
+  console.log(`✅ Backend has ${customers.length} customers for otico-demo tenant`);
   console.log(`✅ Tenant isolation is working correctly`);
   console.log('\nIf the frontend shows empty lists, the issue is likely:');
   console.log('1. Frontend not sending the correct auth token');

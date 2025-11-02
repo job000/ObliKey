@@ -57,6 +57,7 @@ model Tenant {
   productCollections    ProductCollection[]
   guestCheckouts        GuestCheckout[]
   notifications         Notification[]
+  productSaleAlerts     ProductSaleAlert[]
   // Membership Relations
   membershipPlans       MembershipPlan[]
   memberships           Membership[]
@@ -73,6 +74,9 @@ model Tenant {
   // Super Admin Relations
   subscription          Subscription?
   tenantFeatures        TenantFeature[]
+  // PT Relations
+  ptAvailability        PTAvailability[]
+  ptTimeBlocks          PTTimeBlock[]
 
   @@map("tenants")
 }
@@ -94,15 +98,20 @@ model TenantSettings {
   accountingEnabled   Boolean  @default(false)
   classesEnabled      Boolean  @default(true)
   chatEnabled         Boolean  @default(true)
-  landingPageEnabled  Boolean  @default(false)
-  ecommerceEnabled    Boolean  @default(false)
-  membershipEnabled   Boolean  @default(false)
-  doorAccessEnabled   Boolean  @default(false)
-  autoApproveReviews  Boolean  @default(false)
-  companyVatNumber    String?
-  companyRegNumber    String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  landingPageEnabled          Boolean  @default(false)
+  ecommerceEnabled            Boolean  @default(false)
+  membershipEnabled           Boolean  @default(false)
+  doorAccessEnabled           Boolean  @default(false)
+  autoApproveReviews          Boolean  @default(false)
+  companyVatNumber            String?
+  companyRegNumber            String?
+  // PT Settings
+  ptEnabled                   Boolean  @default(false)
+  ptCancellationHours         Int      @default(24) // Hours before session for customer to get refund
+  ptCancellationRefundEnabled Boolean  @default(true) // Enable/disable refund feature
+  ptNoShowRefundEnabled       Boolean  @default(false) // Allow refund when marked as NO_SHOW
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -178,6 +187,11 @@ model User {
   // Door Access Relations
   doorAccessLogs           DoorAccessLog[]
   doorCredentials          DoorCredential[]
+  // PT Availability Relations
+  trainerAvailability      PTAvailability[]          @relation("TrainerAvailability")
+  trainerTimeBlocks        PTTimeBlock[]             @relation("TrainerTimeBlocks")
+  // Product Sale Alerts
+  productSaleAlerts        ProductSaleAlert[]
 
   @@unique([tenantId, email])
   @@unique([tenantId, username])
@@ -343,6 +357,50 @@ model PTSession {
   @@map("pt_sessions")
 }
 
+// PT Availability - Trainer's working schedule
+model PTAvailability {
+  id        String    @id @default(uuid())
+  tenantId  String
+  trainerId String
+  dayOfWeek DayOfWeek
+  startTime String // Format: "HH:MM" e.g., "09:00"
+  endTime   String // Format: "HH:MM" e.g., "17:00"
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  trainer User   @relation("TrainerAvailability", fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@map("pt_availability")
+}
+
+// PT Time Block - For blocking specific time slots or adding one-time availability
+enum TimeBlockType {
+  BLOCKED // Trainer is not available (vacation, meeting, etc.)
+  AVAILABLE // One-time availability outside regular schedule
+}
+
+model PTTimeBlock {
+  id        String        @id @default(uuid())
+  tenantId  String
+  trainerId String
+  type      TimeBlockType
+  startTime DateTime
+  endTime   DateTime
+  reason    String? // Why blocked or special availability reason
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Relations
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  trainer User   @relation("TrainerTimeBlocks", fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@map("pt_time_blocks")
+}
+
 model TrainingProgram {
   id          String    @id @default(uuid())
   tenantId    String
@@ -491,6 +549,7 @@ enum NotificationType {
   PT_SESSION_FEEDBACK // Feedback received
   CLASS_UPDATED // Class time/trainer changed
   CLASS_CANCELLED // Class was cancelled
+  PRODUCT_SALE_ALERT // Product is on sale
   SYSTEM // System notifications
 }
 
@@ -503,6 +562,7 @@ model Notification {
   message     String
   ptSessionId String? // Link to PT session if relevant
   classId     String? // Link to class if relevant
+  productId   String? // Link to product if relevant
   isRead      Boolean          @default(false)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -512,6 +572,7 @@ model Notification {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   ptSession PTSession? @relation(fields: [ptSessionId], references: [id], onDelete: Cascade)
   class     Class?     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  product   Product?   @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
 }
@@ -527,6 +588,7 @@ model NotificationPreferences {
   feedbackNotifications Boolean  @default(true) // Notify on feedback
   classUpdates          Boolean  @default(true) // Notify on class updates
   classCancellations    Boolean  @default(true) // Notify on class cancellations
+  productSaleAlerts     Boolean  @default(true) // Notify on product sales
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -534,6 +596,23 @@ model NotificationPreferences {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_preferences")
+}
+
+model ProductSaleAlert {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId]) // User can only subscribe once per product
+  @@map("product_sale_alerts")
 }
 
 // ============================================
@@ -764,6 +843,9 @@ model Product {
   relatedProducts RelatedProduct[]           @relation("ProductRelations")
   relatedTo       RelatedProduct[]           @relation("RelatedToProducts")
   collections     ProductCollectionMapping[]
+  // Sale Alerts and Notifications
+  saleAlerts      ProductSaleAlert[]
+  notifications   Notification[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status])
@@ -2274,14 +2356,14 @@ enum SubscriptionStatus {
 
 // Subscription - Per-tenant subscription management
 model Subscription {
-  id             String             @id @default(uuid())
-  tenantId       String             @unique
+  id             String               @id @default(uuid())
+  tenantId       String               @unique
   featurePackId  String?
-  status         SubscriptionStatus @default(TRIAL)
+  status         SubscriptionStatus   @default(TRIAL)
   tier           String? // "BASIC", "PREMIUM", "ENTERPRISE", "CUSTOM"
   interval       SubscriptionInterval
   price          Float
-  currency       String             @default("NOK")
+  currency       String               @default("NOK")
   customFeatures Json? // For custom subscriptions
 
   // Trial management
@@ -2290,7 +2372,7 @@ model Subscription {
   // Billing period
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
-  cancelAtPeriodEnd  Boolean  @default(false)
+  cancelAtPeriodEnd  Boolean   @default(false)
   cancelledAt        DateTime?
   cancellationReason String?
 
@@ -2306,7 +2388,7 @@ model Subscription {
   stripeSubscriptionId String? // Stripe subscription ID
 
   // Usage tracking
-  lastBilledAt DateTime?
+  lastBilledAt  DateTime?
   nextBillingAt DateTime?
 
   // Notes
@@ -2316,8 +2398,8 @@ model Subscription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  featurePack FeaturePack?           @relation(fields: [featurePackId], references: [id])
+  tenant      Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  featurePack FeaturePack?          @relation(fields: [featurePackId], references: [id])
   invoices    SubscriptionInvoice[]
 
   @@index([status])
@@ -2355,7 +2437,7 @@ model SubscriptionInvoice {
   paidAt         DateTime?
   paymentMethod  String? // "CARD", "INVOICE", "VIPPS"
   paymentId      String? // External payment ID
-  reminderCount  Int      @default(0)
+  reminderCount  Int       @default(0)
   lastReminderAt DateTime?
 
   // Invoice details

@@ -5,7 +5,7 @@ async function testTenants() {
     // Step 1: Login as SUPER_ADMIN
     console.log('\n=== Step 1: Logging in as SUPER_ADMIN ===\n');
     const loginResponse = await axios.post('http://localhost:3000/api/auth/login', {
-      email: 'superadmin@oblikey.no',
+      email: 'superadmin@otico.no',
       password: 'SuperAdmin123',
     });
 

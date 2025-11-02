@@ -12,10 +12,10 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Login as admin
-echo "📝 Step 1: Logging in as testadmin@oblikey.no..."
+echo "📝 Step 1: Logging in as testadmin@otico.no..."
 LOGIN_RESPONSE=$(curl -s -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"identifier":"testadmin@oblikey.no","password":"Admin123"}')
+  -d '{"identifier":"testadmin@otico.no","password":"Admin123"}')
 
 TOKEN=$(echo $LOGIN_RESPONSE | python3 -c "import sys, json; print(json.load(sys.stdin)['data']['token'])" 2>/dev/null)
 

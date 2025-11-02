@@ -6,13 +6,13 @@ async function seedDoorAccessData() {
   try {
     console.log('🚪 Starting door access system seed...');
 
-    // Get the oblikey-demo tenant
+    // Get the otico-demo tenant
     const tenant = await prisma.tenant.findFirst({
-      where: { subdomain: 'oblikey-demo' },
+      where: { subdomain: 'otico-demo' },
     });
 
     if (!tenant) {
-      console.error('❌ Could not find oblikey-demo tenant');
+      console.error('❌ Could not find otico-demo tenant');
       return;
     }
 

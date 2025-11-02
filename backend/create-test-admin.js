@@ -8,7 +8,7 @@ async function main() {
   const hashedPassword = await bcrypt.hash(password, 10);
   
   const tenant = await prisma.tenant.findFirst({
-    where: { subdomain: 'oblikey-demo' }
+    where: { subdomain: 'otico-demo' }
   });
   
   if (!tenant) {
@@ -19,7 +19,7 @@ async function main() {
   // Check if test admin exists
   const existing = await prisma.user.findFirst({
     where: { 
-      email: 'testadmin@oblikey.no',
+      email: 'testadmin@otico.no',
       tenantId: tenant.id
     }
   });
@@ -30,12 +30,12 @@ async function main() {
       where: { id: existing.id },
       data: { password: hashedPassword }
     });
-    console.log('Updated testadmin@oblikey.no password to: Admin123');
+    console.log('Updated testadmin@otico.no password to: Admin123');
   } else {
     // Create new admin
     const admin = await prisma.user.create({
       data: {
-        email: 'testadmin@oblikey.no',
+        email: 'testadmin@otico.no',
         password: hashedPassword,
         firstName: 'Test',
         lastName: 'Admin',
@@ -44,7 +44,7 @@ async function main() {
         active: true
       }
     });
-    console.log('Created testadmin@oblikey.no with password: Admin123');
+    console.log('Created testadmin@otico.no with password: Admin123');
   }
 }
 

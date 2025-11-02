@@ -371,6 +371,11 @@ export class FeatureManagementService {
    * Enable a feature for a tenant
    */
   async enableFeatureForTenant(tenantId: string, featureId: string) {
+    // Get feature details to check if it's PT
+    const feature = await prisma.feature.findUnique({
+      where: { id: featureId }
+    });
+
     // Check if already enabled
     const existing = await prisma.tenantFeature.findUnique({
       where: {
@@ -381,43 +386,66 @@ export class FeatureManagementService {
       },
     });
 
+    let result;
     if (existing) {
       if (existing.enabled) {
-        return existing; // Already enabled
-      }
-
-      // Re-enable if it was disabled
-      return await prisma.tenantFeature.update({
-        where: {
-          tenantId_featureId: {
-            tenantId,
-            featureId,
+        result = existing; // Already enabled
+      } else {
+        // Re-enable if it was disabled
+        result = await prisma.tenantFeature.update({
+          where: {
+            tenantId_featureId: {
+              tenantId,
+              featureId,
+            },
           },
-        },
+          data: {
+            enabled: true,
+            enabledAt: new Date(),
+            disabledAt: null,
+          },
+        });
+      }
+    } else {
+      // Create new tenant feature
+      result = await prisma.tenantFeature.create({
         data: {
+          tenantId,
+          featureId,
           enabled: true,
           enabledAt: new Date(),
-          disabledAt: null,
         },
       });
     }
 
-    // Create new tenant feature
-    return await prisma.tenantFeature.create({
-      data: {
-        tenantId,
-        featureId,
-        enabled: true,
-        enabledAt: new Date(),
-      },
-    });
+    // Sync with tenant_settings if it's PT feature
+    if (feature?.key === 'pt') {
+      await prisma.tenantSettings.upsert({
+        where: { tenantId },
+        create: {
+          tenantId,
+          ptEnabled: true
+        },
+        update: {
+          ptEnabled: true
+        }
+      });
+      console.log(`✅ Synced tenant_settings for tenant ${tenantId}: ptEnabled=true`);
+    }
+
+    return result;
   }
 
   /**
    * Disable a feature for a tenant
    */
   async disableFeatureForTenant(tenantId: string, featureId: string) {
-    return await prisma.tenantFeature.update({
+    // Get feature details to check if it's PT
+    const feature = await prisma.feature.findUnique({
+      where: { id: featureId }
+    });
+
+    const result = await prisma.tenantFeature.update({
       where: {
         tenantId_featureId: {
           tenantId,
@@ -429,6 +457,19 @@ export class FeatureManagementService {
         disabledAt: new Date(),
       },
     });
+
+    // Sync with tenant_settings if it's PT feature
+    if (feature?.key === 'pt') {
+      await prisma.tenantSettings.update({
+        where: { tenantId },
+        data: {
+          ptEnabled: false
+        }
+      });
+      console.log(`✅ Synced tenant_settings for tenant ${tenantId}: ptEnabled=false`);
+    }
+
+    return result;
   }
 
   /**

@@ -39,6 +39,10 @@ router.get(
   (req, res) => membershipController.getMyMembershipStatus(req, res)
 );
 router.get(
+  '/active-check-in',
+  (req, res) => membershipController.getActiveCheckIn(req, res)
+);
+router.get(
   '/',
   (req, res) => membershipController.getMemberships(req, res)
 );
@@ -119,10 +123,6 @@ router.post(
 router.post(
   '/check-out/:checkInId',
   (req, res) => membershipController.checkOut(req, res)
-);
-router.get(
-  '/active-check-in',
-  (req, res) => membershipController.getActiveCheckIn(req, res)
 );
 router.get(
   '/:membershipId/check-ins',

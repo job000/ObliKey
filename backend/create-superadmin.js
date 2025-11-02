@@ -18,7 +18,7 @@ async function createSuperAdmin() {
     // Check if superadmin already exists
     const existing = await prisma.user.findFirst({
       where: {
-        email: 'superadmin@oblikey.no',
+        email: 'superadmin@otico.no',
         tenantId: tenant.id,
       },
     });
@@ -40,7 +40,7 @@ async function createSuperAdmin() {
 
       const superAdmin = await prisma.user.create({
         data: {
-          email: 'superadmin@oblikey.no',
+          email: 'superadmin@otico.no',
           password: hashedPassword,
           firstName: 'Super',
           lastName: 'Admin',

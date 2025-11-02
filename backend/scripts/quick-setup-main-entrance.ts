@@ -24,7 +24,7 @@ function question(query: string): Promise<string> {
  */
 async function quickSetup() {
   try {
-    console.log('\n🚪 ObliKey - Main Entrance Quick Setup\n');
+    console.log('\n🚪 Otico - Main Entrance Quick Setup\n');
     console.log('═'.repeat(50));
 
     // Get all tenants

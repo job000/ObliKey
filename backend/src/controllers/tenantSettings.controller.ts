@@ -101,6 +101,36 @@ export class TenantSettingsController {
         });
       }
 
+      // Sync ptEnabled with PT feature in tenant_features
+      if ('ptEnabled' in updateData) {
+        const ptFeature = await prisma.feature.findFirst({
+          where: { key: 'pt', active: true }
+        });
+
+        if (ptFeature) {
+          await prisma.tenantFeature.upsert({
+            where: {
+              tenantId_featureId: {
+                tenantId,
+                featureId: ptFeature.id
+              }
+            },
+            create: {
+              tenantId,
+              featureId: ptFeature.id,
+              enabled: updateData.ptEnabled,
+              enabledAt: updateData.ptEnabled ? new Date() : null
+            },
+            update: {
+              enabled: updateData.ptEnabled,
+              enabledAt: updateData.ptEnabled ? new Date() : null,
+              disabledAt: !updateData.ptEnabled ? new Date() : null
+            }
+          });
+          console.log(`✅ Synced PT feature for tenant ${tenantId}: ptEnabled=${updateData.ptEnabled}`);
+        }
+      }
+
       res.json({
         success: true,
         data: settings,
@@ -215,7 +245,9 @@ export class TenantSettingsController {
         'membership': 'membership',
         'medlemskap': 'membership',
         'dooraccess': 'doorAccess',
-        'door': 'doorAccess'
+        'door': 'doorAccess',
+        'pt': 'pt',
+        'personaltraining': 'pt'
       };
 
       // Get enabled tenant features
@@ -243,7 +275,8 @@ export class TenantSettingsController {
         chat: false,
         landingPage: false,
         membership: false,
-        doorAccess: false
+        doorAccess: false,
+        pt: false
       };
 
       // Enable only features that exist in tenant_features with enabled=true

@@ -7,7 +7,7 @@ const JWT_EXPIRES_IN = '7d';
 // Generate token for the admin user
 const payload = {
   userId: '1cbbbc6a-1ea1-43df-a7dd-1eb1cc1dec4f',
-  tenantId: 'oblikey-demo',
+  tenantId: 'otico-demo',
   email: 'nybruker1@test.no',
   role: 'ADMIN'  // Changed from CUSTOMER to ADMIN
 };

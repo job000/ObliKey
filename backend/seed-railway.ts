@@ -11,9 +11,9 @@ async function seedRailwayDatabase() {
     console.log('Creating demo tenant...');
     const tenant = await prisma.tenant.create({
       data: {
-        name: 'ObliKey Demo',
-        subdomain: 'oblikey-demo',
-        email: 'demo@oblikey.com',
+        name: 'Otico Demo',
+        subdomain: 'otico-demo',
+        email: 'demo@otico.com',
         phone: '+47 123 45 678',
         address: 'Demo Street 123, Oslo',
         active: true,
@@ -54,7 +54,7 @@ async function seedRailwayDatabase() {
     const superAdminUser = await prisma.user.create({
       data: {
         tenantId: tenant.id,
-        email: 'superadmin@oblikey.com',
+        email: 'superadmin@otico.com',
         password: superAdminPassword,
         firstName: 'Super',
         lastName: 'Admin',
@@ -72,7 +72,7 @@ async function seedRailwayDatabase() {
     const adminUser = await prisma.user.create({
       data: {
         tenantId: tenant.id,
-        email: 'admin@oblikey.com',
+        email: 'admin@otico.com',
         password: hashedPassword,
         firstName: 'Admin',
         lastName: 'User',
@@ -90,7 +90,7 @@ async function seedRailwayDatabase() {
     const customerUser = await prisma.user.create({
       data: {
         tenantId: tenant.id,
-        email: 'kunde@oblikey.com',
+        email: 'kunde@otico.com',
         password: customerPassword,
         firstName: 'Test',
         lastName: 'Kunde',
@@ -108,7 +108,7 @@ async function seedRailwayDatabase() {
     const trainerUser = await prisma.user.create({
       data: {
         tenantId: tenant.id,
-        email: 'trainer@oblikey.com',
+        email: 'trainer@otico.com',
         password: trainerPassword,
         firstName: 'Personal',
         lastName: 'Trainer',
@@ -123,18 +123,18 @@ async function seedRailwayDatabase() {
     console.log('\n🎉 Database seeding completed!');
     console.log('\n📝 Login credentials:');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('Tenant: oblikey-demo');
+    console.log('Tenant: otico-demo');
     console.log('\n🔐 SUPER_ADMIN (Global Access):');
-    console.log('  Email: superadmin@oblikey.com');
+    console.log('  Email: superadmin@otico.com');
     console.log('  Password: SuperAdmin123!');
     console.log('\n👨‍💼 Admin:');
-    console.log('  Email: admin@oblikey.com');
+    console.log('  Email: admin@otico.com');
     console.log('  Password: Admin123!');
     console.log('\n👤 Customer:');
-    console.log('  Email: kunde@oblikey.com');
+    console.log('  Email: kunde@otico.com');
     console.log('  Password: Customer123!');
     console.log('\n🏋️ Trainer:');
-    console.log('  Email: trainer@oblikey.com');
+    console.log('  Email: trainer@otico.com');
     console.log('  Password: Trainer123!');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   } catch (error) {

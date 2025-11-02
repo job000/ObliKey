@@ -1,7 +1,7 @@
 /**
  * Module Configuration System
  *
- * This file defines all available modules in the ObliKey system.
+ * This file defines all available modules in the Otico system.
  * Each module can be enabled/disabled per tenant through tenant_settings.
  *
  * To add a new module:

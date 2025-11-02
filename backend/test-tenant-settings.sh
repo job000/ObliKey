@@ -7,7 +7,7 @@ echo ""
 echo "1. Logging in..."
 curl -s -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"identifier":"testadmin@oblikey.no","password":"Admin123"}' > /tmp/settings_login.json
+  -d '{"identifier":"testadmin@otico.no","password":"Admin123"}' > /tmp/settings_login.json
 
 TOKEN=$(cat /tmp/settings_login.json | python3 -c "import sys, json; print(json.load(sys.stdin).get('data', {}).get('token', ''))" 2>/dev/null)
 

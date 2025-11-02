@@ -953,20 +953,143 @@ export class UserController {
 
       const oldTenant = user.tenant;
 
-      // Transfer user to new tenant
-      const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: { tenantId: newTenantId },
-        include: {
-          tenant: {
-            select: {
-              id: true,
-              name: true,
-              subdomain: true
+      // Transfer user AND ALL related data to new tenant in a transaction
+      const result = await prisma.$transaction(async (tx) => {
+        // 1. Update user's tenantId
+        const updatedUser = await tx.user.update({
+          where: { id: userId },
+          data: { tenantId: newTenantId },
+          include: {
+            tenant: {
+              select: {
+                id: true,
+                name: true,
+                subdomain: true
+              }
             }
           }
-        }
+        });
+
+        // 2. Update all bookings
+        const bookingsCount = await tx.booking.updateMany({
+          where: { userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 3. Update all PT sessions (as customer)
+        const ptSessionsAsCustomerCount = await tx.pTSession.updateMany({
+          where: { customerId: userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 4. Update all PT sessions (as trainer)
+        const ptSessionsAsTrainerCount = await tx.pTSession.updateMany({
+          where: { trainerId: userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 5. Update all PT credits
+        const ptCreditsCount = await tx.pTCredit.updateMany({
+          where: { userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 6. Update all payments
+        const paymentsCount = await tx.payment.updateMany({
+          where: { userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 7. Update all orders
+        const ordersCount = await tx.order.updateMany({
+          where: { userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 8. Update all memberships
+        const membershipsCount = await tx.membership.updateMany({
+          where: { userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 9. Update all membership payments (via memberships)
+        const userMemberships = await tx.membership.findMany({
+          where: { userId },
+          select: { id: true }
+        });
+        const membershipIds = userMemberships.map(m => m.id);
+        const membershipPaymentsCount = membershipIds.length > 0
+          ? await tx.membershipPayment.updateMany({
+              where: { membershipId: { in: membershipIds } },
+              data: { tenantId: newTenantId }
+            })
+          : { count: 0 };
+
+        // 10. Update all invoices (as customer)
+        const invoicesCount = await tx.invoice.updateMany({
+          where: { customerId: userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 11. Update all feedback
+        const feedbackCount = await tx.feedback.updateMany({
+          where: { userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 12. Update all notifications
+        const notificationsCount = await tx.notification.updateMany({
+          where: { userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 13. Update all product reviews
+        const productReviewsCount = await tx.productReview.updateMany({
+          where: { userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 14. Update all wishlists
+        const wishlistsCount = await tx.wishlist.updateMany({
+          where: { userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 15. Update all door access logs
+        const doorAccessLogsCount = await tx.doorAccessLog.updateMany({
+          where: { userId },
+          data: { tenantId: newTenantId }
+        });
+
+        // 16. Update all door credentials
+        const doorCredentialsCount = await tx.doorCredential.updateMany({
+          where: { userId },
+          data: { tenantId: newTenantId }
+        });
+
+        return {
+          user: updatedUser,
+          transferred: {
+            bookings: bookingsCount.count,
+            ptSessionsAsCustomer: ptSessionsAsCustomerCount.count,
+            ptSessionsAsTrainer: ptSessionsAsTrainerCount.count,
+            ptCredits: ptCreditsCount.count,
+            payments: paymentsCount.count,
+            orders: ordersCount.count,
+            memberships: membershipsCount.count,
+            membershipPayments: membershipPaymentsCount.count,
+            invoices: invoicesCount.count,
+            feedback: feedbackCount.count,
+            notifications: notificationsCount.count,
+            productReviews: productReviewsCount.count,
+            wishlists: wishlistsCount.count,
+            doorAccessLogs: doorAccessLogsCount.count,
+            doorCredentials: doorCredentialsCount.count
+          }
+        };
       });
+
+      const updatedUser = result.user;
 
       // Log the transfer activity
       try {
@@ -1006,10 +1129,11 @@ export class UserController {
             to: {
               id: newTenant.id,
               name: newTenant.name
-            }
+            },
+            dataTransferred: result.transferred
           }
         },
-        message: `${user.firstName} ${user.lastName} ble flyttet fra ${oldTenant.name} til ${newTenant.name}`
+        message: `${user.firstName} ${user.lastName} ble flyttet fra ${oldTenant.name} til ${newTenant.name} med all relatert data`
       });
     } catch (error) {
       if (error instanceof AppError) {

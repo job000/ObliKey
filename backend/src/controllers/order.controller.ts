@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { prisma } from '../utils/prisma';
 import { AppError } from '../middleware/errorHandler';
+import { ptCreditService } from '../services/ptCredit.service';
 
 export class OrderController {
   // Create order from cart items
@@ -351,6 +352,17 @@ export class OrderController {
           }
         }
       });
+
+      // Grant PT credits if order contains PT packages and is being marked as COMPLETED
+      if (status === 'COMPLETED' && order.status !== 'COMPLETED') {
+        try {
+          await ptCreditService.grantCreditsForOrder(id, order.userId, tenantId);
+          console.log(`[Order] PT credits granted for order ${id}`);
+        } catch (error) {
+          console.error(`[Order] Failed to grant PT credits for order ${id}:`, error);
+          // Don't fail the order update if credit granting fails
+        }
+      }
 
       res.json({
         success: true,

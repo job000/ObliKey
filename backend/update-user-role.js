@@ -3,14 +3,14 @@ const prisma = new PrismaClient();
 
 async function updateUserToAdmin() {
   try {
-    // Find the most recently created user in oblikey-demo tenant
+    // Find the most recently created user in otico-demo tenant
     const user = await prisma.user.findFirst({
-      where: { tenantId: 'oblikey-demo' },
+      where: { tenantId: 'otico-demo' },
       orderBy: { createdAt: 'desc' }
     });
 
     if (!user) {
-      console.log('Ingen bruker funnet i oblikey-demo tenant');
+      console.log('Ingen bruker funnet i otico-demo tenant');
       return;
     }
 

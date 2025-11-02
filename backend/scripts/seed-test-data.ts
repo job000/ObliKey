@@ -34,22 +34,22 @@ const ptBios = [
 
 async function seedTestData() {
   try {
-    console.log('🌱 Starting comprehensive test data seeding for oblikey-demo...\n');
+    console.log('🌱 Starting comprehensive test data seeding for otico-demo...\n');
 
     // ========================================
     // 1. GET OR CREATE TENANT
     // ========================================
     let tenant = await prisma.tenant.findUnique({
-      where: { subdomain: 'oblikey-demo' }
+      where: { subdomain: 'otico-demo' }
     });
 
     if (!tenant) {
-      console.log('Creating oblikey-demo tenant...');
+      console.log('Creating otico-demo tenant...');
       tenant = await prisma.tenant.create({
         data: {
-          name: 'ObliKey Demo Gym',
-          subdomain: 'oblikey-demo',
-          email: 'post@oblikey-demo.no',
+          name: 'Otico Demo Gym',
+          subdomain: 'otico-demo',
+          email: 'post@otico-demo.no',
           phone: '+47 123 45 678',
           address: 'Demogate 1, 0001 Oslo',
           active: true
@@ -88,7 +88,7 @@ async function seedTestData() {
       }
     });
 
-    console.log('✅ All modules enabled for oblikey-demo\n');
+    console.log('✅ All modules enabled for otico-demo\n');
 
     // ========================================
     // 2. CREATE TEST PERSONAL TRAINERS
@@ -103,7 +103,7 @@ async function seedTestData() {
       const firstName = norwegianFirstNames[i];
       const lastName = norwegianLastNames[i];
       const username = `trainer${i + 1}`;
-      const email = `${username}@oblikey-demo.no`;
+      const email = `${username}@otico-demo.no`;
 
       const existingTrainer = await prisma.user.findFirst({
         where: {
@@ -169,7 +169,7 @@ async function seedTestData() {
       const firstName = norwegianFirstNames[i % norwegianFirstNames.length];
       const lastName = norwegianLastNames[Math.floor(Math.random() * norwegianLastNames.length)];
       const username = `kunde${i + 1}`;
-      const email = `${username}@oblikey-demo.no`;
+      const email = `${username}@otico-demo.no`;
 
       const existingCustomer = await prisma.user.findFirst({
         where: {
@@ -660,7 +660,7 @@ async function seedTestData() {
     console.log('\n1. Login as a trainer to create PT sessions');
     console.log('2. Login as a member to book sessions and purchase products');
     console.log('3. All passwords are: password123');
-    console.log('4. Tenant subdomain: oblikey-demo');
+    console.log('4. Tenant subdomain: otico-demo');
     console.log('\n═══════════════════════════════════════════════════════════════\n');
 
   } catch (error) {

@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
-  const tenantId = 'oblikey-demo';
+  const tenantId = 'otico-demo';
 
   // Hash passwords
   const adminPassword = await bcrypt.hash('admin123', 10);
@@ -16,7 +16,7 @@ async function main() {
     where: {
       tenantId_email: {
         tenantId,
-        email: 'admin@oblikey.no'
+        email: 'admin@otico.no'
       }
     },
     update: {
@@ -26,7 +26,7 @@ async function main() {
     },
     create: {
       tenantId,
-      email: 'admin@oblikey.no',
+      email: 'admin@otico.no',
       password: adminPassword,
       firstName: 'Admin',
       lastName: 'Bruker',
@@ -43,7 +43,7 @@ async function main() {
     where: {
       tenantId_email: {
         tenantId,
-        email: 'pt@oblikey.no'
+        email: 'pt@otico.no'
       }
     },
     update: {
@@ -53,7 +53,7 @@ async function main() {
     },
     create: {
       tenantId,
-      email: 'pt@oblikey.no',
+      email: 'pt@otico.no',
       password: trainerPassword,
       firstName: 'PT',
       lastName: 'Instruktør',
@@ -70,7 +70,7 @@ async function main() {
     where: {
       tenantId_email: {
         tenantId,
-        email: 'kunde@oblikey.no'
+        email: 'kunde@otico.no'
       }
     },
     update: {
@@ -80,7 +80,7 @@ async function main() {
     },
     create: {
       tenantId,
-      email: 'kunde@oblikey.no',
+      email: 'kunde@otico.no',
       password: customerPassword,
       firstName: 'Test',
       lastName: 'Kunde',
@@ -94,9 +94,9 @@ async function main() {
 
   console.log('\n📋 Login credentials:');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('ADMIN:    admin@oblikey.no    / admin123');
-  console.log('TRAINER:  pt@oblikey.no       / trainer123');
-  console.log('CUSTOMER: kunde@oblikey.no    / customer123');
+  console.log('ADMIN:    admin@otico.no    / admin123');
+  console.log('TRAINER:  pt@otico.no       / trainer123');
+  console.log('CUSTOMER: kunde@otico.no    / customer123');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 }
 

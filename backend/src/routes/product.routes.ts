@@ -27,4 +27,9 @@ router.post('/:id/images', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => prod
 router.patch('/images/:imageId', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => productController.updateProductImage(req, res));
 router.delete('/images/:imageId', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => productController.deleteProductImage(req, res));
 
+// Sale alerts routes
+router.get('/sale-alerts/subscriptions', (req, res) => productController.getSaleAlertSubscriptions(req, res));
+router.post('/:id/sale-alert', (req, res) => productController.subscribeToSaleAlerts(req, res));
+router.delete('/:id/sale-alert', (req, res) => productController.unsubscribeFromSaleAlerts(req, res));
+
 export default router;
