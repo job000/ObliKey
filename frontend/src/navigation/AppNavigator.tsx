@@ -273,7 +273,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Support" component={SupportScreen} />
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="ProductsManagement" component={ProductsManagementScreen} />
-            <Stack.Screen name="OrdersManagement" component={OrdersManagementScreen} />
+            <Stack.Screen name="OrdersManagement" component={OrdersManagementScreen} options={{ headerShown: true, headerTitle: 'Bestillingsadministrasjon' }} />
             <Stack.Screen name="ReviewManagement" component={ReviewManagementScreen} />
             <Stack.Screen name="UserManagement" component={UserManagementScreen} />
             <Stack.Screen name="ClassManagement" component={ClassManagementScreen} />

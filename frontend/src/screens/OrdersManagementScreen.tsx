@@ -183,13 +183,6 @@ export default function OrdersManagementScreen({ navigation }: any) {
       }
     >
       <Container>
-        <View style={styles.header}>
-          <Text style={styles.title}>Bestillingsadministrasjon</Text>
-          <Text style={styles.subtitle}>
-            Administrer alle bestillinger og leveringer
-          </Text>
-        </View>
-
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
@@ -534,6 +527,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+    marginTop: 16,
     marginBottom: 24,
   },
   statCard: {
