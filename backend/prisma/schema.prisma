@@ -82,6 +82,8 @@ model Tenant {
   workoutPrograms       WorkoutProgram[]
   workoutSchedules      WorkoutSchedule[]
   workoutSessions       WorkoutSession[]
+  // Payment Relations
+  paymentConfigs        TenantPaymentConfig[]
 
   @@map("tenants")
 }
@@ -906,29 +908,92 @@ enum PaymentType {
   PT_SESSION
   CLASS
   PRODUCT
+  ORDER
+}
+
+enum PaymentProvider {
+  VIPPS
+  STRIPE
+  CARD
+  MANUAL
+}
+
+enum PaymentMethod {
+  VIPPS
+  CARD
+  INVOICE
+  CASH
 }
 
 model Payment {
-  id          String        @id @default(uuid())
+  id          String          @id @default(uuid())
   tenantId    String
   userId      String
-  ptSessionId String?       @unique
+  orderId     String?
+  ptSessionId String?         @unique
   amount      Float
-  currency    String        @default("NOK")
+  currency    String          @default("NOK")
   type        PaymentType
-  status      PaymentStatus @default(PENDING)
+  status      PaymentStatus   @default(PENDING)
+  provider    PaymentProvider @default(MANUAL)
+  method      PaymentMethod   @default(CARD)
   description String?
-  stripeId    String?       @unique
-  paidAt      DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+
+  // Provider-specific IDs
+  stripeId        String? @unique // Stripe Payment Intent ID
+  vippsOrderId    String? @unique // Vipps order/reference
+  vippsPaymentId  String? // Vipps payment ID
+
+  // Transaction details
+  providerResponse Json? // Raw response from payment provider
+  errorMessage     String?
+
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   // Relations
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user      User       @relation(fields: [userId], references: [id])
+  order     Order?     @relation(fields: [orderId], references: [id])
   ptSession PTSession? @relation(fields: [ptSessionId], references: [id])
 
+  @@index([tenantId, status])
+  @@index([orderId])
+  @@index([vippsOrderId])
   @@map("payments")
+}
+
+// TenantPaymentConfig - Secure storage of payment provider credentials
+model TenantPaymentConfig {
+  id                String          @id @default(uuid())
+  tenantId          String
+  provider          PaymentProvider
+  enabled           Boolean         @default(false)
+
+  // Encrypted credentials (stored as encrypted JSON)
+  credentialsEncrypted String  @db.Text // Encrypted JSON with provider-specific keys
+
+  // Configuration
+  testMode          Boolean @default(true)
+  webhookSecret     String? // For validating webhooks
+
+  // Vipps-specific
+  vippsMerchantSerialNumber String? // MSN
+
+  // Display settings
+  displayName       String? // e.g., "Betal med Vipps"
+  sortOrder         Int     @default(0)
+
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider])
+  @@index([tenantId, enabled])
+  @@map("tenant_payment_configs")
 }
 
 // ============================================
@@ -1242,6 +1307,7 @@ model Order {
   user               User                @relation(fields: [userId], references: [id])
   items              OrderItem[]
   ptCredits          PTCredit[]
+  payments           Payment[] // Payment transactions for this order
   // E-commerce Relations
   discounts          OrderDiscount[]
   discountCodeUsages DiscountCodeUsage[]
