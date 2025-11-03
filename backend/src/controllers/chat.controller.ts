@@ -83,7 +83,15 @@ export class ChatController {
       const tenantId = req.tenantId!;
       const { participantIds, name, isGroup } = req.body;
 
+      console.log('[Chat] Creating conversation:', { userId, tenantId, participantIds, name, isGroup });
+
+      // Validate input
+      if (!participantIds || !Array.isArray(participantIds) || participantIds.length === 0) {
+        throw new AppError('participantIds må være en ikke-tom array', 400);
+      }
+
       // Validate participants are in same tenant
+      console.log('[Chat] Validating participants...');
       const participants = await prisma.user.findMany({
         where: {
           id: { in: participantIds },
@@ -91,12 +99,15 @@ export class ChatController {
         }
       });
 
+      console.log('[Chat] Found participants:', participants.length);
+
       if (participants.length !== participantIds.length) {
         throw new AppError('Noen deltakere ble ikke funnet', 400);
       }
 
       // For 1-on-1, check if conversation already exists
       if (!isGroup && participantIds.length === 1) {
+        console.log('[Chat] Checking for existing 1-on-1 conversation...');
         const existing = await prisma.$queryRaw<any[]>`
           SELECT c.id
           FROM conversations c
@@ -112,12 +123,14 @@ export class ChatController {
         `;
 
         if (existing.length > 0) {
+          console.log('[Chat] Found existing conversation:', existing[0].id);
           res.json({ success: true, data: { id: existing[0].id } });
           return;
         }
       }
 
       // Create new conversation
+      console.log('[Chat] Creating new conversation...');
       const conversationId = crypto.randomUUID();
 
       await prisma.$executeRaw`
@@ -125,14 +138,20 @@ export class ChatController {
         VALUES (${conversationId}, ${tenantId}, ${name || null}, ${isGroup || false}, NOW(), NOW())
       `;
 
+      console.log('[Chat] Conversation created:', conversationId);
+
       // Add participants
       const allParticipants = [userId, ...participantIds];
+      console.log('[Chat] Adding participants:', allParticipants);
+
       for (const participantId of allParticipants) {
         await prisma.$executeRaw`
           INSERT INTO conversation_participants (id, "conversationId", "userId", "joinedAt")
           VALUES (${crypto.randomUUID()}, ${conversationId}, ${participantId}, NOW())
         `;
       }
+
+      console.log('[Chat] All participants added successfully');
 
       res.status(201).json({
         success: true,
@@ -141,9 +160,15 @@ export class ChatController {
       });
     } catch (error) {
       if (error instanceof AppError) {
+        console.error('[Chat] AppError:', error.message);
         res.status(error.statusCode).json({ success: false, error: error.message });
       } else {
-        console.error('Create conversation error:', error);
+        console.error('[Chat] Create conversation error:', error);
+        console.error('[Chat] Error details:', {
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
         res.status(500).json({ success: false, error: 'Kunne ikke opprette samtale' });
       }
     }
