@@ -275,6 +275,88 @@ export class DoorService {
       throw new Error('Door is not available');
     }
 
+    // Check if user has access to this door
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        membership: true,
+      },
+    });
+
+    if (!user) {
+      await prisma.doorAccessLog.create({
+        data: {
+          tenantId,
+          doorId,
+          userId,
+          result: AccessResult.DENIED,
+          accessMethod: 'MANUAL',
+          denialReason: 'User not found',
+        },
+      });
+      throw new Error('User not found');
+    }
+
+    // ADMIN and SUPER_ADMIN always have access
+    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+
+    if (!isAdmin) {
+      // Check access rules for non-admin users
+      const accessRules = await prisma.doorAccessRule.findMany({
+        where: {
+          doorId,
+          tenantId,
+          active: true,
+        },
+        orderBy: {
+          priority: 'desc',
+        },
+      });
+
+      let hasAccess = false;
+
+      for (const rule of accessRules) {
+        // Check if rule is within validity period
+        const now = new Date();
+        if (rule.validFrom && now < rule.validFrom) continue;
+        if (rule.validUntil && now > rule.validUntil) continue;
+
+        // Check role-based access
+        if (rule.allowedRoles.length > 0 && rule.allowedRoles.includes(user.role)) {
+          hasAccess = true;
+          break;
+        }
+
+        // Check user ID-based access
+        if (rule.allowedUserIds.length > 0 && rule.allowedUserIds.includes(userId)) {
+          hasAccess = true;
+          break;
+        }
+
+        // Check membership status-based access
+        if (rule.allowedMembershipStatuses.length > 0 && user.membership) {
+          if (rule.allowedMembershipStatuses.includes(user.membership.status)) {
+            hasAccess = true;
+            break;
+          }
+        }
+      }
+
+      if (!hasAccess) {
+        await prisma.doorAccessLog.create({
+          data: {
+            tenantId,
+            doorId,
+            userId,
+            result: AccessResult.DENIED,
+            accessMethod: 'MANUAL',
+            denialReason: 'No access rule grants permission',
+          },
+        });
+        throw new Error('Access denied - you do not have permission to unlock this door');
+      }
+    }
+
     // TODO: Send unlock command to actual hardware
     // For now, we'll simulate the unlock
     const success = door.isOnline;
@@ -318,6 +400,88 @@ export class DoorService {
 
     if (door.status === DoorStatus.MAINTENANCE || door.status === DoorStatus.ERROR) {
       throw new Error('Door is not available');
+    }
+
+    // Check if user has access to this door
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        membership: true,
+      },
+    });
+
+    if (!user) {
+      await prisma.doorAccessLog.create({
+        data: {
+          tenantId,
+          doorId,
+          userId,
+          result: AccessResult.DENIED,
+          accessMethod: 'MANUAL',
+          denialReason: 'User not found',
+        },
+      });
+      throw new Error('User not found');
+    }
+
+    // ADMIN and SUPER_ADMIN always have access
+    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+
+    if (!isAdmin) {
+      // Check access rules for non-admin users
+      const accessRules = await prisma.doorAccessRule.findMany({
+        where: {
+          doorId,
+          tenantId,
+          active: true,
+        },
+        orderBy: {
+          priority: 'desc',
+        },
+      });
+
+      let hasAccess = false;
+
+      for (const rule of accessRules) {
+        // Check if rule is within validity period
+        const now = new Date();
+        if (rule.validFrom && now < rule.validFrom) continue;
+        if (rule.validUntil && now > rule.validUntil) continue;
+
+        // Check role-based access
+        if (rule.allowedRoles.length > 0 && rule.allowedRoles.includes(user.role)) {
+          hasAccess = true;
+          break;
+        }
+
+        // Check user ID-based access
+        if (rule.allowedUserIds.length > 0 && rule.allowedUserIds.includes(userId)) {
+          hasAccess = true;
+          break;
+        }
+
+        // Check membership status-based access
+        if (rule.allowedMembershipStatuses.length > 0 && user.membership) {
+          if (rule.allowedMembershipStatuses.includes(user.membership.status)) {
+            hasAccess = true;
+            break;
+          }
+        }
+      }
+
+      if (!hasAccess) {
+        await prisma.doorAccessLog.create({
+          data: {
+            tenantId,
+            doorId,
+            userId,
+            result: AccessResult.DENIED,
+            accessMethod: 'MANUAL',
+            denialReason: 'No access rule grants permission',
+          },
+        });
+        throw new Error('Access denied - you do not have permission to lock this door');
+      }
     }
 
     // TODO: Send lock command to actual hardware

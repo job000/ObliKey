@@ -27,11 +27,11 @@ router.delete('/:doorId', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => doorC
 // POST /api/doors/:doorId/test-connection - Test hardware connection
 router.post('/:doorId/test-connection', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => doorController.testConnection(req, res));
 
-// POST /api/doors/:doorId/unlock - Manual unlock
-router.post('/:doorId/unlock', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => doorController.unlockDoor(req, res));
+// POST /api/doors/:doorId/unlock - Manual unlock (accessible to all authenticated users with door access)
+router.post('/:doorId/unlock', (req, res) => doorController.unlockDoor(req, res));
 
-// POST /api/doors/:doorId/lock - Manual lock
-router.post('/:doorId/lock', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => doorController.lockDoor(req, res));
+// POST /api/doors/:doorId/lock - Manual lock (accessible to all authenticated users with door access)
+router.post('/:doorId/lock', (req, res) => doorController.lockDoor(req, res));
 
 // GET /api/doors/:doorId/status - Get door status
 router.get('/:doorId/status', authorize('ADMIN', 'SUPER_ADMIN'), (req, res) => doorController.getDoorStatus(req, res));
