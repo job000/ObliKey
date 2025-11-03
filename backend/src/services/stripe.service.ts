@@ -1,16 +1,25 @@
 import Stripe from 'stripe';
 import { prisma } from '../utils/prisma';
+import { decryptCredentials, StripeCredentials } from '../utils/encryption';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+// Global Stripe instance for platform subscriptions
+const platformStripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-11-20.acacia',
 });
 
 export class StripeService {
+  private stripe: Stripe;
+  private tenantId?: string;
+
+  constructor(apiKey?: string, tenantId?: string) {
+    this.stripe = apiKey ? new Stripe(apiKey, { apiVersion: '2024-11-20.acacia' }) : platformStripe;
+    this.tenantId = tenantId;
+  }
   /**
    * Create a new customer in Stripe
    */
   async createCustomer(email: string, name: string, metadata?: any): Promise<Stripe.Customer> {
-    return await stripe.customers.create({
+    return await this.stripe.customers.create({
       email,
       name,
       metadata,
@@ -26,7 +35,7 @@ export class StripeService {
     tenantId: string;
     trialDays?: number;
   }): Promise<Stripe.Subscription> {
-    const subscription = await stripe.subscriptions.create({
+    const subscription = await this.stripe.subscriptions.create({
       customer: params.customerId,
       items: [{ price: params.priceId }],
       trial_period_days: params.trialDays || 14,
@@ -56,9 +65,9 @@ export class StripeService {
     subscriptionId: string;
     newPriceId: string;
   }): Promise<Stripe.Subscription> {
-    const subscription = await stripe.subscriptions.retrieve(params.subscriptionId);
+    const subscription = await this.stripe.subscriptions.retrieve(params.subscriptionId);
 
-    return await stripe.subscriptions.update(params.subscriptionId, {
+    return await this.stripe.subscriptions.update(params.subscriptionId, {
       items: [
         {
           id: subscription.items.data[0].id,
@@ -74,10 +83,10 @@ export class StripeService {
    */
   async cancelSubscription(subscriptionId: string, immediately: boolean = false): Promise<Stripe.Subscription> {
     if (immediately) {
-      return await stripe.subscriptions.cancel(subscriptionId);
+      return await this.stripe.subscriptions.cancel(subscriptionId);
     } else {
       // Cancel at period end
-      return await stripe.subscriptions.update(subscriptionId, {
+      return await this.stripe.subscriptions.update(subscriptionId, {
         cancel_at_period_end: true,
       });
     }
@@ -162,7 +171,7 @@ export class StripeService {
   private async handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
     if (!invoice.subscription) return;
 
-    const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+    const subscription = await this.stripe.subscriptions.retrieve(invoice.subscription as string);
     const tenantId = subscription.metadata.tenantId;
 
     if (!tenantId) return;
@@ -191,7 +200,7 @@ export class StripeService {
   private async handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     if (!invoice.subscription) return;
 
-    const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+    const subscription = await this.stripe.subscriptions.retrieve(invoice.subscription as string);
     const tenantId = subscription.metadata.tenantId;
 
     if (!tenantId) return;
@@ -223,24 +232,108 @@ export class StripeService {
   }
 
   /**
-   * Create payment intent for one-time payments
+   * Create payment intent for one-time payments (orders, etc.)
    */
   async createPaymentIntent(params: {
     amount: number;
     currency: string;
     tenantId: string;
     userId: string;
+    orderId?: string;
+    paymentType?: 'ORDER' | 'PT_SESSION' | 'MEMBERSHIP' | 'CLASS';
     description?: string;
-  }): Promise<Stripe.PaymentIntent> {
-    return await stripe.paymentIntents.create({
+  }): Promise<{ clientSecret: string; paymentIntentId: string }> {
+    const paymentIntent = await this.stripe.paymentIntents.create({
       amount: Math.round(params.amount * 100), // Convert to cents
       currency: params.currency.toLowerCase(),
       metadata: {
         tenantId: params.tenantId,
         userId: params.userId,
+        orderId: params.orderId || '',
+        paymentType: params.paymentType || 'ORDER',
       },
       description: params.description,
+      automatic_payment_methods: {
+        enabled: true,
+      },
     });
+
+    // Store payment in database
+    await prisma.payment.create({
+      data: {
+        tenantId: params.tenantId,
+        userId: params.userId,
+        orderId: params.orderId,
+        amount: params.amount,
+        currency: params.currency,
+        type: params.paymentType || 'ORDER',
+        provider: 'STRIPE',
+        method: 'CARD',
+        status: 'PENDING',
+        description: params.description,
+        stripeId: paymentIntent.id,
+        providerResponse: paymentIntent as any,
+      },
+    });
+
+    return {
+      clientSecret: paymentIntent.client_secret!,
+      paymentIntentId: paymentIntent.id,
+    };
+  }
+
+  /**
+   * Confirm payment and update status
+   */
+  async confirmPayment(paymentIntentId: string): Promise<void> {
+    const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
+
+    const status = this.mapPaymentIntentStatus(paymentIntent.status);
+
+    await prisma.payment.updateMany({
+      where: { stripeId: paymentIntentId },
+      data: {
+        status,
+        providerResponse: paymentIntent as any,
+        ...(status === 'COMPLETED' && { paidAt: new Date() }),
+      },
+    });
+  }
+
+  /**
+   * Refund payment
+   */
+  async refundPayment(paymentIntentId: string, amount?: number): Promise<Stripe.Refund> {
+    const refund = await this.stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      amount: amount ? Math.round(amount * 100) : undefined,
+    });
+
+    // Update payment in database
+    await prisma.payment.updateMany({
+      where: { stripeId: paymentIntentId },
+      data: {
+        status: 'REFUNDED',
+        providerResponse: refund as any,
+      },
+    });
+
+    return refund;
+  }
+
+  /**
+   * Map Stripe PaymentIntent status to our payment status
+   */
+  private mapPaymentIntentStatus(status: Stripe.PaymentIntent.Status): 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' {
+    switch (status) {
+      case 'succeeded':
+        return 'COMPLETED';
+      case 'canceled':
+      case 'requires_payment_method':
+        return 'FAILED';
+      default:
+        return 'PENDING';
+    }
   }
 
   /**
@@ -271,4 +364,32 @@ export class StripeService {
   }
 }
 
+// Platform-level Stripe service for subscriptions
 export const stripeService = new StripeService();
+
+/**
+ * Get Stripe service for a tenant (for order/shop payments)
+ */
+export async function getStripeService(tenantId: string): Promise<StripeService | null> {
+  const paymentConfig = await prisma.tenantPaymentConfig.findUnique({
+    where: {
+      tenantId_provider: {
+        tenantId,
+        provider: 'STRIPE',
+      },
+    },
+  });
+
+  if (!paymentConfig || !paymentConfig.enabled) {
+    return null;
+  }
+
+  try {
+    const credentials = decryptCredentials<StripeCredentials>(paymentConfig.credentialsEncrypted);
+
+    return new StripeService(credentials.secretKey, tenantId);
+  } catch (error) {
+    console.error('Failed to decrypt Stripe credentials for tenant:', tenantId, error);
+    return null;
+  }
+}
