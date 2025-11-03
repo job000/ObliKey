@@ -282,7 +282,7 @@ export default function AppNavigator() {
             <Stack.Screen name="ExerciseManagement" component={ExerciseManagementScreen} />
             <Stack.Screen name="Analytics" component={AnalyticsScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
-            <Stack.Screen name="ActivityLogs" component={ActivityLogsScreen} />
+            <Stack.Screen name="ActivityLogs" component={ActivityLogsScreen} options={{ headerShown: true, headerTitle: 'Aktivitetslogger' }} />
             <Stack.Screen name="ProductAnalytics" component={ProductAnalyticsScreen} />
             <Stack.Screen name="Resultatregnskap" component={ResultatregnskapScreen} />
             <Stack.Screen name="CreatePTSession" component={CreatePTSessionScreen} />

@@ -269,39 +269,27 @@ export default function ActivityLogsScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <Container>
-        <View style={styles.header}>
-          <View style={styles.titleRow}>
-            <Ionicons name="analytics" size={32} color="#3B82F6" />
-            <View style={styles.titleContent}>
-              <Text style={styles.title}>Aktivitetslogger</Text>
-              <Text style={styles.subtitle}>
-                {logs.length} hendelser
-              </Text>
-            </View>
-          </View>
+        <View style={styles.topActions}>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <Ionicons name="filter" size={20} color="#6B7280" />
+            <Text style={styles.filterButtonText}>Filtrer</Text>
+            <Ionicons
+              name={showFilters ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color="#6B7280"
+            />
+          </TouchableOpacity>
 
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.filterButton}
-              onPress={() => setShowFilters(!showFilters)}
-            >
-              <Ionicons name="filter" size={20} color="#6B7280" />
-              <Text style={styles.filterButtonText}>Filtrer</Text>
-              <Ionicons
-                name={showFilters ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color="#6B7280"
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={loadActivityLogs}
-              disabled={loading}
-            >
-              <Ionicons name="refresh" size={20} color="#FFF" />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={loadActivityLogs}
+            disabled={loading}
+          >
+            <Ionicons name="refresh" size={20} color="#FFF" />
+          </TouchableOpacity>
         </View>
 
         {/* Filters Panel */}
@@ -408,6 +396,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     marginTop: 2,
+  },
+  topActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+    marginBottom: 16,
   },
   headerActions: {
     flexDirection: 'row',
