@@ -59,6 +59,7 @@ import MembershipManagementScreen from '../screens/MembershipManagementScreen';
 import MembershipProfileScreen from '../screens/MembershipProfileScreen';
 import MembershipDetailScreen from '../screens/MembershipDetailScreen';
 import DoorManagementScreen from '../screens/DoorManagementScreen';
+import PaymentManagementScreen from '../screens/PaymentManagementScreen';
 import DoorAccessRulesScreen from '../screens/DoorAccessRulesScreen';
 import AccessLogsScreen from '../screens/AccessLogsScreen';
 import DoorAccessScreen from '../screens/DoorAccessScreen';
@@ -291,6 +292,7 @@ export default function AppNavigator() {
             <Stack.Screen name="MembershipManagement" component={MembershipManagementScreen} />
             <Stack.Screen name="MembershipDetail" component={MembershipDetailScreen} />
             <Stack.Screen name="DoorManagement" component={DoorManagementScreen} />
+            <Stack.Screen name="PaymentManagement" component={PaymentManagementScreen} options={{ headerShown: false }} />
             <Stack.Screen name="DoorAccessRules" component={DoorAccessRulesScreen} />
             <Stack.Screen name="AccessLogs" component={AccessLogsScreen} />
             <Stack.Screen name="TenantManagement" component={TenantManagementScreen} options={{ headerShown: true, headerTitle: 'Tenant Management' }} />

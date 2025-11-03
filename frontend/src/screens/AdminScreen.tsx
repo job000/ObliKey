@@ -51,6 +51,14 @@ export default function AdminScreen({ navigation }: any) {
       show: modules.shop,
     },
     {
+      title: 'Betalingsadministrasjon',
+      icon: 'card-outline',
+      color: '#8B5CF6',
+      screen: 'PaymentManagement',
+      description: 'Konfigurer Vipps og betalingsmetoder',
+      show: modules.shop,
+    },
+    {
       title: 'Klasseadministrasjon',
       icon: 'calendar',
       color: '#EC4899',
