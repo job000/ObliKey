@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { prisma } from '../utils/prisma';
+import { decryptCredentials, VippsCredentials } from '../utils/encryption';
 
 interface VippsConfig {
   clientId: string;
@@ -62,6 +63,8 @@ export class VippsService {
     tenantId: string;
     userId: string;
     description: string;
+    paymentType?: 'ORDER' | 'PT_SESSION' | 'MEMBERSHIP' | 'CLASS';
+    orderDatabaseId?: string;
     callbackUrl?: string;
   }): Promise<{ url: string; orderId: string }> {
     const token = await this.getAccessToken();
@@ -96,13 +99,16 @@ export class VippsService {
       data: {
         tenantId: params.tenantId,
         userId: params.userId,
+        orderId: params.orderDatabaseId,
         amount: params.amount,
         currency: 'NOK',
-        type: 'CLASS', // or determine from context
+        type: params.paymentType || 'ORDER',
         provider: 'VIPPS',
+        method: 'VIPPS',
         status: 'PENDING',
         description: params.description,
-        vippsId: params.orderId,
+        vippsOrderId: params.orderId,
+        providerResponse: response.data,
       },
     });
 
@@ -155,10 +161,11 @@ export class VippsService {
 
     // Update payment in database
     await prisma.payment.updateMany({
-      where: { vippsId: orderId },
+      where: { vippsOrderId: orderId },
       data: {
         status: 'COMPLETED',
         paidAt: new Date(),
+        providerResponse: response.data,
       },
     });
 
@@ -191,9 +198,10 @@ export class VippsService {
 
     // Update payment in database
     await prisma.payment.updateMany({
-      where: { vippsId: orderId },
+      where: { vippsOrderId: orderId },
       data: {
         status: 'REFUNDED',
+        providerResponse: response.data,
       },
     });
 
@@ -209,9 +217,10 @@ export class VippsService {
     const status = this.mapVippsStatus(details.transactionInfo.status);
 
     await prisma.payment.updateMany({
-      where: { vippsId: orderId },
+      where: { vippsOrderId: orderId },
       data: {
         status,
+        providerResponse: details,
         ...(status === 'COMPLETED' && { paidAt: new Date() }),
       },
     });
@@ -237,18 +246,30 @@ export class VippsService {
  * Get Vipps service for a tenant
  */
 export async function getVippsService(tenantId: string): Promise<VippsService | null> {
-  const integration = await prisma.tenantIntegrations.findUnique({
-    where: { tenantId },
+  const paymentConfig = await prisma.tenantPaymentConfig.findUnique({
+    where: {
+      tenantId_provider: {
+        tenantId,
+        provider: 'VIPPS',
+      },
+    },
   });
 
-  if (!integration || !integration.vippsEnabled || !integration.vippsMerchantId) {
+  if (!paymentConfig || !paymentConfig.enabled) {
     return null;
   }
 
-  return new VippsService({
-    clientId: integration.vippsClientId!,
-    clientSecret: integration.vippsClientSecret!,
-    merchantSerialNumber: integration.vippsMerchantId,
-    subscriptionKey: process.env.VIPPS_SUBSCRIPTION_KEY || '',
-  });
+  try {
+    const credentials = decryptCredentials<VippsCredentials>(paymentConfig.credentialsEncrypted);
+
+    return new VippsService({
+      clientId: credentials.clientId,
+      clientSecret: credentials.clientSecret,
+      merchantSerialNumber: credentials.merchantSerialNumber,
+      subscriptionKey: credentials.subscriptionKey,
+    });
+  } catch (error) {
+    console.error('Failed to decrypt Vipps credentials for tenant:', tenantId, error);
+    return null;
+  }
 }
