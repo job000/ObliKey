@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Container from '../components/Container';
 import { api } from '../services/api';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Availability {
   id: string;
@@ -38,6 +39,7 @@ const TIME_OPTIONS = [
 ];
 
 export default function PTAvailabilityScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -145,43 +147,43 @@ export default function PTAvailabilityScreen({ navigation }: any) {
     const dayAvailability = availability.find(a => a.dayOfWeek === day.key);
 
     return (
-      <View key={day.key} style={styles.dayCard}>
+      <View key={day.key} style={[styles.dayCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
         <View style={styles.dayHeader}>
-          <Text style={styles.dayLabel}>{day.label}</Text>
+          <Text style={[styles.dayLabel, { color: colors.text }]}>{day.label}</Text>
           {dayAvailability ? (
-            <View style={styles.timeChip}>
+            <View style={[styles.timeChip, { backgroundColor: '#D1FAE5' }]}>
               <Ionicons name="time-outline" size={16} color="#059669" />
               <Text style={styles.timeText}>
                 {dayAvailability.startTime} - {dayAvailability.endTime}
               </Text>
             </View>
           ) : (
-            <Text style={styles.notAvailableText}>Ikke tilgjengelig</Text>
+            <Text style={[styles.notAvailableText, { color: colors.textLight }]}>Ikke tilgjengelig</Text>
           )}
         </View>
 
         <View style={styles.dayActions}>
           <TouchableOpacity
-            style={[styles.actionButton, styles.editButton]}
+            style={[styles.actionButton, styles.editButton, { backgroundColor: '#EFF6FF' }]}
             onPress={() => openAddModal(day.key)}
           >
             <Ionicons
               name={dayAvailability ? 'create-outline' : 'add-circle-outline'}
               size={20}
-              color="#3B82F6"
+              color={colors.primary}
             />
-            <Text style={styles.editButtonText}>
+            <Text style={[styles.editButtonText, { color: colors.primary }]}>
               {dayAvailability ? 'Rediger' : 'Legg til'}
             </Text>
           </TouchableOpacity>
 
           {dayAvailability && (
             <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton]}
+              style={[styles.actionButton, styles.deleteButton, { backgroundColor: '#FEE2E2' }]}
               onPress={() => handleDelete(dayAvailability.id)}
             >
-              <Ionicons name="trash-outline" size={20} color="#EF4444" />
-              <Text style={styles.deleteButtonText}>Slett</Text>
+              <Ionicons name="trash-outline" size={20} color={colors.danger} />
+              <Text style={[styles.deleteButtonText, { color: colors.danger }]}>Slett</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -193,8 +195,8 @@ export default function PTAvailabilityScreen({ navigation }: any) {
     return (
       <Container title="Min Tilgjengelighet">
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={styles.loadingText}>Laster...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Laster...</Text>
         </View>
       </Container>
     );
@@ -202,16 +204,16 @@ export default function PTAvailabilityScreen({ navigation }: any) {
 
   return (
     <Container title="Min Tilgjengelighet">
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={24} color="#3B82F6" />
-          <Text style={styles.infoText}>
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.scrollContent}>
+        <View style={[styles.infoCard, { backgroundColor: '#EFF6FF' }]}>
+          <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
+          <Text style={[styles.infoText, { color: '#1E40AF' }]}>
             Sett opp din ukentlige arbeidsplan. Kunder kan kun booke timer i disse tidsrommene.
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ukentlig Timeplan</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Ukentlig Timeplan</Text>
           {DAYS_OF_WEEK.map(renderDayCard)}
         </View>
       </ScrollView>
@@ -224,29 +226,29 @@ export default function PTAvailabilityScreen({ navigation }: any) {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
+          <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
                 {editingId ? 'Rediger Tilgjengelighet' : 'Legg til Tilgjengelighet'}
               </Text>
               <TouchableOpacity
                 onPress={() => setModalVisible(false)}
                 style={styles.closeButton}
               >
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={styles.selectedDayText}>
+              <Text style={[styles.selectedDayText, { color: colors.text }]}>
                 {DAYS_OF_WEEK.find(d => d.key === selectedDay)?.label}
               </Text>
 
               <View style={styles.timeSelectionRow}>
                 <View style={styles.timeSelection}>
-                  <Text style={styles.timeLabel}>Fra</Text>
+                  <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>Fra</Text>
                   <ScrollView
-                    style={styles.timeScroll}
+                    style={[styles.timeScroll, { borderColor: colors.border, backgroundColor: colors.background }]}
                     showsVerticalScrollIndicator={false}
                   >
                     {TIME_OPTIONS.map(time => (
@@ -254,14 +256,15 @@ export default function PTAvailabilityScreen({ navigation }: any) {
                         key={`start-${time}`}
                         style={[
                           styles.timeOption,
-                          startTime === time && styles.timeOptionSelected,
+                          { borderBottomColor: colors.border },
+                          startTime === time && { backgroundColor: colors.primary }
                         ]}
                         onPress={() => setStartTime(time)}
                       >
                         <Text
                           style={[
                             styles.timeOptionText,
-                            startTime === time && styles.timeOptionTextSelected,
+                            { color: startTime === time ? colors.cardBg : colors.text }
                           ]}
                         >
                           {time}
@@ -272,9 +275,9 @@ export default function PTAvailabilityScreen({ navigation }: any) {
                 </View>
 
                 <View style={styles.timeSelection}>
-                  <Text style={styles.timeLabel}>Til</Text>
+                  <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>Til</Text>
                   <ScrollView
-                    style={styles.timeScroll}
+                    style={[styles.timeScroll, { borderColor: colors.border, backgroundColor: colors.background }]}
                     showsVerticalScrollIndicator={false}
                   >
                     {TIME_OPTIONS.map(time => (
@@ -282,14 +285,15 @@ export default function PTAvailabilityScreen({ navigation }: any) {
                         key={`end-${time}`}
                         style={[
                           styles.timeOption,
-                          endTime === time && styles.timeOptionSelected,
+                          { borderBottomColor: colors.border },
+                          endTime === time && { backgroundColor: colors.primary }
                         ]}
                         onPress={() => setEndTime(time)}
                       >
                         <Text
                           style={[
                             styles.timeOptionText,
-                            endTime === time && styles.timeOptionTextSelected,
+                            { color: endTime === time ? colors.cardBg : colors.text }
                           ]}
                         >
                           {time}
@@ -300,8 +304,11 @@ export default function PTAvailabilityScreen({ navigation }: any) {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Lagre</Text>
+              <TouchableOpacity
+                style={[styles.saveButton, { backgroundColor: colors.success }]}
+                onPress={handleSave}
+              >
+                <Text style={[styles.saveButtonText, { color: colors.cardBg }]}>Lagre</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -314,7 +321,6 @@ export default function PTAvailabilityScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   scrollContent: {
     padding: 16,
@@ -327,11 +333,9 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6B7280',
   },
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: '#EFF6FF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
@@ -340,7 +344,6 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#1E40AF',
     lineHeight: 20,
   },
   section: {
@@ -349,16 +352,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
     marginBottom: 16,
   },
   dayCard: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   dayHeader: {
     flexDirection: 'row',
@@ -369,12 +369,10 @@ const styles = StyleSheet.create({
   dayLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
   },
   timeChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#D1FAE5',
     borderRadius: 8,
     paddingVertical: 4,
     paddingHorizontal: 8,
@@ -387,7 +385,6 @@ const styles = StyleSheet.create({
   },
   notAvailableText: {
     fontSize: 14,
-    color: '#9CA3AF',
     fontStyle: 'italic',
   },
   dayActions: {
@@ -403,21 +400,15 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 6,
   },
-  editButton: {
-    backgroundColor: '#EFF6FF',
-  },
+  editButton: {},
   editButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3B82F6',
   },
-  deleteButton: {
-    backgroundColor: '#FEE2E2',
-  },
+  deleteButton: {},
   deleteButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#EF4444',
   },
   modalOverlay: {
     flex: 1,
@@ -425,7 +416,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
@@ -436,12 +426,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
   },
   closeButton: {
     padding: 4,
@@ -452,7 +440,6 @@ const styles = StyleSheet.create({
   selectedDayText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
     marginBottom: 24,
     textAlign: 'center',
   },
@@ -467,41 +454,27 @@ const styles = StyleSheet.create({
   timeLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   timeScroll: {
     maxHeight: 200,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 8,
-    backgroundColor: '#F9FAFB',
   },
   timeOption: {
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  timeOptionSelected: {
-    backgroundColor: '#3B82F6',
   },
   timeOptionText: {
     fontSize: 16,
-    color: '#111827',
     textAlign: 'center',
   },
-  timeOptionTextSelected: {
-    color: '#FFF',
-    fontWeight: '600',
-  },
   saveButton: {
-    backgroundColor: '#10B981',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
   },
   saveButtonText: {
-    color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
   },

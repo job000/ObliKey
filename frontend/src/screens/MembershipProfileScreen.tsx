@@ -13,10 +13,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { Membership, MemberActivityOverview, MembershipCheckIn } from '../types/membership';
 
 const MembershipProfileScreen = ({ navigation }: any) => {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const [membership, setMembership] = useState<Membership | null>(null);
   const [activity, setActivity] = useState<MemberActivityOverview | null>(null);
   const [activeCheckIn, setActiveCheckIn] = useState<MembershipCheckIn | null>(null);
@@ -244,19 +246,19 @@ const MembershipProfileScreen = ({ navigation }: any) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+      <SafeAreaView style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </SafeAreaView>
     );
   }
 
   if (!membership) {
     return (
-      <SafeAreaView style={styles.emptyContainer}>
-        <Ionicons name="card-outline" size={64} color="#9CA3AF" />
-        <Text style={styles.emptyTitle}>Ingen aktivt medlemskap</Text>
-        <Text style={styles.emptyText}>Du har ikke et aktivt medlemskap for øyeblikket</Text>
-        <TouchableOpacity style={styles.primaryButton}>
+      <SafeAreaView style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+        <Ionicons name="card-outline" size={64} color={colors.textLight} />
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>Ingen aktivt medlemskap</Text>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Du har ikke et aktivt medlemskap for øyeblikket</Text>
+        <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.primary }]}>
           <Text style={styles.primaryButtonText}>Bli medlem</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -264,24 +266,24 @@ const MembershipProfileScreen = ({ navigation }: any) => {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
         <View style={styles.headerContent}>
-          <Text style={styles.greeting}>Hei, {user?.firstName}!</Text>
-          <Text style={styles.subheading}>Ditt medlemskap</Text>
+          <Text style={[styles.greeting, { color: colors.text }]}>Hei, {user?.firstName}!</Text>
+          <Text style={[styles.subheading, { color: colors.textSecondary }]}>Ditt medlemskap</Text>
         </View>
         <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-          <Ionicons name="person-circle" size={40} color="#3B82F6" />
+          <Ionicons name="person-circle" size={40} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.cardBg }]}>
         <View style={styles.cardHeader}>
-          <Text style={styles.planName}>{membership.plan?.name}</Text>
+          <Text style={[styles.planName, { color: colors.text }]}>{membership.plan?.name}</Text>
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(membership.status) }]}>
             <Text style={styles.statusBadgeText}>{getStatusLabel(membership.status)}</Text>
           </View>
@@ -289,23 +291,23 @@ const MembershipProfileScreen = ({ navigation }: any) => {
 
         <View style={styles.cardDetails}>
           <View style={styles.detailRow}>
-            <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-            <Text style={styles.detailLabel}>Medlem siden</Text>
-            <Text style={styles.detailValue}>{formatDate(membership.startDate)}</Text>
+            <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Medlem siden</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>{formatDate(membership.startDate)}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="time-outline" size={20} color="#6B7280" />
-            <Text style={styles.detailLabel}>Varighet</Text>
-            <Text style={styles.detailValue}>{calculateMembershipDuration()}</Text>
+            <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Varighet</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>{calculateMembershipDuration()}</Text>
           </View>
           {membership.status === 'FROZEN' && (() => {
             const freezeInfo = getActiveFreezeInfo();
             if (freezeInfo) {
               return (
                 <View style={styles.detailRow}>
-                  <Ionicons name="snow" size={20} color="#3B82F6" />
-                  <Text style={styles.detailLabel}>Fryseperiode</Text>
-                  <Text style={[styles.detailValue, styles.freezeValue]}>
+                  <Ionicons name="snow" size={20} color={colors.primary} />
+                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Fryseperiode</Text>
+                  <Text style={[styles.detailValue, styles.freezeValue, { color: colors.primary }]}>
                     {formatFreezeDate(freezeInfo.startDate)} - {formatFreezeDate(freezeInfo.endDate)}
                   </Text>
                 </View>
@@ -315,46 +317,46 @@ const MembershipProfileScreen = ({ navigation }: any) => {
           })()}
           {membership.nextBillingDate && (
             <View style={styles.detailRow}>
-              <Ionicons name="card-outline" size={20} color="#6B7280" />
-              <Text style={styles.detailLabel}>Neste betaling</Text>
-              <Text style={styles.detailValue}>{formatDate(membership.nextBillingDate)}</Text>
+              <Ionicons name="card-outline" size={20} color={colors.textSecondary} />
+              <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Neste betaling</Text>
+              <Text style={[styles.detailValue, { color: colors.text }]}>{formatDate(membership.nextBillingDate)}</Text>
             </View>
           )}
           {membership.lastCheckInAt && (
             <View style={styles.detailRow}>
-              <Ionicons name="location-outline" size={20} color="#6B7280" />
-              <Text style={styles.detailLabel}>Sist inne</Text>
-              <Text style={styles.detailValue}>{formatDate(membership.lastCheckInAt)}</Text>
+              <Ionicons name="location-outline" size={20} color={colors.textSecondary} />
+              <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Sist inne</Text>
+              <Text style={[styles.detailValue, { color: colors.text }]}>{formatDate(membership.lastCheckInAt)}</Text>
             </View>
           )}
         </View>
       </View>
 
-      <View style={styles.checkInCard}>
+      <View style={[styles.checkInCard, { backgroundColor: colors.cardBg }]}>
         <View style={styles.checkInHeader}>
-          <Ionicons name="enter-outline" size={24} color="#3B82F6" />
-          <Text style={styles.checkInTitle}>Check-In</Text>
+          <Ionicons name="enter-outline" size={24} color={colors.primary} />
+          <Text style={[styles.checkInTitle, { color: colors.text }]}>Check-In</Text>
         </View>
 
         {activeCheckIn ? (
           <View>
-            <Text style={styles.checkInStatus}>Du er innsjekket</Text>
-            <Text style={styles.checkInTime}>
+            <Text style={[styles.checkInStatus, { color: colors.success }]}>Du er innsjekket</Text>
+            <Text style={[styles.checkInTime, { color: colors.textSecondary }]}>
               Siden {new Date(activeCheckIn.checkInTime).toLocaleTimeString('no-NO', {
                 hour: '2-digit',
                 minute: '2-digit'
               })}
             </Text>
-            <TouchableOpacity style={styles.checkOutButton} onPress={handleCheckOut}>
+            <TouchableOpacity style={[styles.checkOutButton, { backgroundColor: colors.danger }]} onPress={handleCheckOut}>
               <Text style={styles.checkOutButtonText}>Sjekk ut</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View>
-            <Text style={styles.checkInDescription}>
+            <Text style={[styles.checkInDescription, { color: colors.textSecondary }]}>
               Sjekk inn når du ankommer treningssenteret
             </Text>
-            <TouchableOpacity style={styles.checkInButton} onPress={handleCheckIn}>
+            <TouchableOpacity style={[styles.checkInButton, { backgroundColor: colors.primary }]} onPress={handleCheckIn}>
               <Text style={styles.checkInButtonText}>Sjekk inn nå</Text>
             </TouchableOpacity>
           </View>
@@ -363,39 +365,39 @@ const MembershipProfileScreen = ({ navigation }: any) => {
 
       {activity && (
         <>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsTitle}>Statistikk</Text>
+          <View style={[styles.statsCard, { backgroundColor: colors.cardBg }]}>
+            <Text style={[styles.statsTitle, { color: colors.text }]}>Statistikk</Text>
             <View style={styles.statsGrid}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{activity.checkInsCount || 0}</Text>
-                <Text style={styles.statLabel}>Besøk totalt</Text>
+              <View style={[styles.statItem, { backgroundColor: colors.background }]}>
+                <Text style={[styles.statValue, { color: colors.text }]}>{activity.checkInsCount || 0}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Besøk totalt</Text>
               </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{activity.recentCheckIns?.length || 0}</Text>
-                <Text style={styles.statLabel}>Siste 30 dager</Text>
+              <View style={[styles.statItem, { backgroundColor: colors.background }]}>
+                <Text style={[styles.statValue, { color: colors.text }]}>{activity.recentCheckIns?.length || 0}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Siste 30 dager</Text>
               </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{activity.totalPaid || 0} kr</Text>
-                <Text style={styles.statLabel}>Totalt betalt</Text>
+              <View style={[styles.statItem, { backgroundColor: colors.background }]}>
+                <Text style={[styles.statValue, { color: colors.text }]}>{activity.totalPaid || 0} kr</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Totalt betalt</Text>
               </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{activity.overduePayments?.length || 0}</Text>
-                <Text style={styles.statLabel}>Forfalte</Text>
+              <View style={[styles.statItem, { backgroundColor: colors.background }]}>
+                <Text style={[styles.statValue, { color: colors.text }]}>{activity.overduePayments?.length || 0}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Forfalte</Text>
               </View>
             </View>
           </View>
 
           {activity.recentCheckIns && activity.recentCheckIns.length > 0 && (
-            <View style={styles.historyCard}>
-              <Text style={styles.historyTitle}>Siste besøk</Text>
+            <View style={[styles.historyCard, { backgroundColor: colors.cardBg }]}>
+              <Text style={[styles.historyTitle, { color: colors.text }]}>Siste besøk</Text>
               {activity.recentCheckIns.slice(0, 5).map((checkIn, index) => (
-                <View key={checkIn.id} style={styles.historyItem}>
-                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                <View key={checkIn.id} style={[styles.historyItem, { borderBottomColor: colors.border }]}>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.success} />
                   <View style={styles.historyInfo}>
-                    <Text style={styles.historyDate}>
+                    <Text style={[styles.historyDate, { color: colors.text }]}>
                       {formatDate(checkIn.checkInTime)}
                     </Text>
-                    <Text style={styles.historyTime}>
+                    <Text style={[styles.historyTime, { color: colors.textSecondary }]}>
                       {new Date(checkIn.checkInTime).toLocaleTimeString('no-NO', {
                         hour: '2-digit',
                         minute: '2-digit'
@@ -413,21 +415,21 @@ const MembershipProfileScreen = ({ navigation }: any) => {
         </>
       )}
 
-      <View style={styles.actionsCard}>
-        <TouchableOpacity style={styles.actionItem} onPress={handleFreezeMembership}>
-          <Ionicons name="pause-circle-outline" size={24} color="#3B82F6" />
-          <Text style={styles.actionText}>Frys medlemskap</Text>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+      <View style={[styles.actionsCard, { backgroundColor: colors.cardBg }]}>
+        <TouchableOpacity style={[styles.actionItem, { borderBottomColor: colors.border }]} onPress={handleFreezeMembership}>
+          <Ionicons name="pause-circle-outline" size={24} color={colors.primary} />
+          <Text style={[styles.actionText, { color: colors.text }]}>Frys medlemskap</Text>
+          <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionItem} onPress={handlePaymentHistory}>
-          <Ionicons name="document-text-outline" size={24} color="#3B82F6" />
-          <Text style={styles.actionText}>Betalingshistorikk</Text>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        <TouchableOpacity style={[styles.actionItem, { borderBottomColor: colors.border }]} onPress={handlePaymentHistory}>
+          <Ionicons name="document-text-outline" size={24} color={colors.primary} />
+          <Text style={[styles.actionText, { color: colors.text }]}>Betalingshistorikk</Text>
+          <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionItem} onPress={handleSupport}>
-          <Ionicons name="help-circle-outline" size={24} color="#3B82F6" />
-          <Text style={styles.actionText}>Hjelp og support</Text>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          <Ionicons name="help-circle-outline" size={24} color={colors.primary} />
+          <Text style={[styles.actionText, { color: colors.text }]}>Hjelp og support</Text>
+          <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
         </TouchableOpacity>
       </View>
       </ScrollView>
@@ -438,30 +440,25 @@ const MembershipProfileScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: '#F9FAFB',
   },
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#111827',
     marginTop: 16,
   },
   emptyText: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
     marginTop: 8,
   },
@@ -470,9 +467,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   headerContent: {
     flex: 1,
@@ -480,15 +475,12 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
   },
   subheading: {
     fontSize: 14,
-    color: '#6B7280',
     marginTop: 4,
   },
   card: {
-    backgroundColor: '#fff',
     margin: 16,
     padding: 20,
     borderRadius: 12,
@@ -507,7 +499,6 @@ const styles = StyleSheet.create({
   planName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -529,19 +520,15 @@ const styles = StyleSheet.create({
   detailLabel: {
     flex: 1,
     fontSize: 14,
-    color: '#6B7280',
     marginLeft: 12,
   },
   detailValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
   },
   freezeValue: {
-    color: '#3B82F6',
   },
   checkInCard: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginBottom: 16,
     padding: 20,
@@ -560,27 +547,22 @@ const styles = StyleSheet.create({
   checkInTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
     marginLeft: 8,
   },
   checkInStatus: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#10B981',
     marginBottom: 4,
   },
   checkInTime: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 16,
   },
   checkInDescription: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 16,
   },
   checkInButton: {
-    backgroundColor: '#3B82F6',
     padding: 14,
     borderRadius: 8,
     alignItems: 'center',
@@ -591,7 +573,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   checkOutButton: {
-    backgroundColor: '#EF4444',
     padding: 14,
     borderRadius: 8,
     alignItems: 'center',
@@ -602,7 +583,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   statsCard: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginBottom: 16,
     padding: 20,
@@ -616,7 +596,6 @@ const styles = StyleSheet.create({
   statsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 16,
   },
   statsGrid: {
@@ -627,7 +606,6 @@ const styles = StyleSheet.create({
   statItem: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: '#F9FAFB',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -635,15 +613,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
   },
   statLabel: {
     fontSize: 12,
-    color: '#6B7280',
     marginTop: 4,
   },
   historyCard: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginBottom: 16,
     padding: 20,
@@ -657,7 +632,6 @@ const styles = StyleSheet.create({
   historyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 16,
   },
   historyItem: {
@@ -665,7 +639,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   historyInfo: {
     flex: 1,
@@ -674,15 +647,12 @@ const styles = StyleSheet.create({
   historyDate: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#111827',
   },
   historyTime: {
     fontSize: 12,
-    color: '#6B7280',
     marginTop: 2,
   },
   actionsCard: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginBottom: 32,
     borderRadius: 12,
@@ -697,16 +667,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   actionText: {
     flex: 1,
     fontSize: 16,
-    color: '#111827',
     marginLeft: 12,
   },
   primaryButton: {
-    backgroundColor: '#3B82F6',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

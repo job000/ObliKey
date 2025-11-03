@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useModules } from '../contexts/ModuleContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
@@ -91,6 +92,7 @@ const SUPPORT_CATEGORIES = [
 
 export default function SupportScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const { modules } = useModules();
   const [activeTab, setActiveTab] = useState<'faq' | 'contact'>('faq');
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
@@ -196,21 +198,21 @@ export default function SupportScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Container>
-          <View style={styles.header}>
+          <View style={[styles.header, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
             <Container>
               <View style={styles.headerContent}>
                 <TouchableOpacity
                   onPress={() => navigation.goBack()}
                   style={styles.backButton}
                 >
-                  <Ionicons name="arrow-back" size={24} color="#111827" />
+                  <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <View>
-                  <Text style={styles.title}>Hjelp & Support</Text>
-                  <Text style={styles.subtitle}>Vi er her for å hjelpe deg</Text>
+                  <Text style={[styles.title, { color: colors.text }]}>Hjelp & Support</Text>
+                  <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Vi er her for å hjelpe deg</Text>
                 </View>
               </View>
             </Container>
@@ -219,30 +221,30 @@ export default function SupportScreen({ navigation }: any) {
 
 
           {/* Tab Selector */}
-          <View style={styles.tabContainer}>
+          <View style={[styles.tabContainer, { backgroundColor: colors.cardBg }]}>
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'faq' && styles.activeTab]}
+              style={[styles.tab, activeTab === 'faq' && [styles.activeTab, { backgroundColor: colors.background }]]}
               onPress={() => setActiveTab('faq')}
             >
               <Ionicons
                 name="help-circle"
                 size={20}
-                color={activeTab === 'faq' ? '#3B82F6' : '#6B7280'}
+                color={activeTab === 'faq' ? colors.primary : colors.textSecondary}
               />
-              <Text style={[styles.tabText, activeTab === 'faq' && styles.activeTabText]}>
+              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'faq' && [styles.activeTabText, { color: colors.primary }]]}>
                 Vanlige spørsmål
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'contact' && styles.activeTab]}
+              style={[styles.tab, activeTab === 'contact' && [styles.activeTab, { backgroundColor: colors.background }]]}
               onPress={() => setActiveTab('contact')}
             >
               <Ionicons
                 name="chatbubbles"
                 size={20}
-                color={activeTab === 'contact' ? '#3B82F6' : '#6B7280'}
+                color={activeTab === 'contact' ? colors.primary : colors.textSecondary}
               />
-              <Text style={[styles.tabText, activeTab === 'contact' && styles.activeTabText]}>
+              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'contact' && [styles.activeTabText, { color: colors.primary }]]}>
                 Kontakt oss
               </Text>
             </TouchableOpacity>
@@ -252,11 +254,12 @@ export default function SupportScreen({ navigation }: any) {
           {activeTab === 'faq' && (
             <View style={styles.content}>
               {/* Search */}
-              <View style={styles.searchContainer}>
-                <Ionicons name="search" size={20} color="#9CA3AF" />
+              <View style={[styles.searchContainer, { backgroundColor: colors.cardBg }]}>
+                <Ionicons name="search" size={20} color={colors.textLight} />
                 <TextInput
-                  style={styles.searchInput}
+                  style={[styles.searchInput, { color: colors.text }]}
                   placeholder="Søk i vanlige spørsmål..."
+                  placeholderTextColor={colors.textLight}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                 />
@@ -266,43 +269,43 @@ export default function SupportScreen({ navigation }: any) {
               {filteredFAQs.map((faq) => (
                 <TouchableOpacity
                   key={faq.id}
-                  style={styles.faqItem}
+                  style={[styles.faqItem, { backgroundColor: colors.cardBg }]}
                   onPress={() => toggleFAQ(faq.id)}
                 >
                   <View style={styles.faqHeader}>
-                    <View style={styles.faqCategoryBadge}>
-                      <Text style={styles.faqCategoryText}>{faq.category}</Text>
+                    <View style={[styles.faqCategoryBadge, { backgroundColor: colors.background }]}>
+                      <Text style={[styles.faqCategoryText, { color: colors.primary }]}>{faq.category}</Text>
                     </View>
                     <Ionicons
                       name={expandedFAQ === faq.id ? 'chevron-up' : 'chevron-down'}
                       size={20}
-                      color="#6B7280"
+                      color={colors.textSecondary}
                     />
                   </View>
-                  <Text style={styles.faqQuestion}>{faq.question}</Text>
+                  <Text style={[styles.faqQuestion, { color: colors.text }]}>{faq.question}</Text>
                   {expandedFAQ === faq.id && (
-                    <Text style={styles.faqAnswer}>{faq.answer}</Text>
+                    <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>{faq.answer}</Text>
                   )}
                 </TouchableOpacity>
               ))}
 
               {filteredFAQs.length === 0 && (
                 <View style={styles.emptyContainer}>
-                  <Ionicons name="search-outline" size={64} color="#D1D5DB" />
-                  <Text style={styles.emptyText}>Ingen resultater funnet</Text>
+                  <Ionicons name="search-outline" size={64} color={colors.border} />
+                  <Text style={[styles.emptyText, { color: colors.textLight }]}>Ingen resultater funnet</Text>
                 </View>
               )}
 
               {/* Quick Actions */}
               <View style={styles.quickActions}>
-                <Text style={styles.sectionTitle}>Fant du ikke svar?</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Fant du ikke svar?</Text>
                 <TouchableOpacity
-                  style={styles.actionButton}
+                  style={[styles.actionButton, { backgroundColor: colors.cardBg }]}
                   onPress={() => setActiveTab('contact')}
                 >
-                  <Ionicons name="chatbubbles" size={24} color="#3B82F6" />
-                  <Text style={styles.actionButtonText}>Kontakt support</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#3B82F6" />
+                  <Ionicons name="chatbubbles" size={24} color={colors.primary} />
+                  <Text style={[styles.actionButtonText, { color: colors.primary }]}>Kontakt support</Text>
+                  <Ionicons name="arrow-forward" size={20} color={colors.primary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -313,74 +316,76 @@ export default function SupportScreen({ navigation }: any) {
             <View style={styles.content}>
               {/* Contact Methods */}
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Hvordan vil du kontakte oss?</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Hvordan vil du kontakte oss?</Text>
 
                 {modules.chat && (
-                  <TouchableOpacity style={styles.contactMethod} onPress={handleContactSupport}>
-                    <View style={styles.contactMethodIcon}>
-                      <Ionicons name="chatbubbles" size={24} color="#3B82F6" />
+                  <TouchableOpacity style={[styles.contactMethod, { backgroundColor: colors.cardBg }]} onPress={handleContactSupport}>
+                    <View style={[styles.contactMethodIcon, { backgroundColor: colors.background }]}>
+                      <Ionicons name="chatbubbles" size={24} color={colors.primary} />
                     </View>
                     <View style={styles.contactMethodContent}>
-                      <Text style={styles.contactMethodTitle}>Chat med support</Text>
-                      <Text style={styles.contactMethodDescription}>
+                      <Text style={[styles.contactMethodTitle, { color: colors.text }]}>Chat med support</Text>
+                      <Text style={[styles.contactMethodDescription, { color: colors.textSecondary }]}>
                         Få rask hjelp via chat
                       </Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                    <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
                   </TouchableOpacity>
                 )}
 
-                <TouchableOpacity style={styles.contactMethod} onPress={handleEmailSupport}>
-                  <View style={styles.contactMethodIcon}>
-                    <Ionicons name="mail" size={24} color="#10B981" />
+                <TouchableOpacity style={[styles.contactMethod, { backgroundColor: colors.cardBg }]} onPress={handleEmailSupport}>
+                  <View style={[styles.contactMethodIcon, { backgroundColor: colors.background }]}>
+                    <Ionicons name="mail" size={24} color={colors.success} />
                   </View>
                   <View style={styles.contactMethodContent}>
-                    <Text style={styles.contactMethodTitle}>Send e-post</Text>
-                    <Text style={styles.contactMethodDescription}>
+                    <Text style={[styles.contactMethodTitle, { color: colors.text }]}>Send e-post</Text>
+                    <Text style={[styles.contactMethodDescription, { color: colors.textSecondary }]}>
                       support@otico.no
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.contactMethod} onPress={handlePhoneSupport}>
-                  <View style={styles.contactMethodIcon}>
-                    <Ionicons name="call" size={24} color="#F59E0B" />
+                <TouchableOpacity style={[styles.contactMethod, { backgroundColor: colors.cardBg }]} onPress={handlePhoneSupport}>
+                  <View style={[styles.contactMethodIcon, { backgroundColor: colors.background }]}>
+                    <Ionicons name="call" size={24} color={colors.warning} />
                   </View>
                   <View style={styles.contactMethodContent}>
-                    <Text style={styles.contactMethodTitle}>Ring oss</Text>
-                    <Text style={styles.contactMethodDescription}>
+                    <Text style={[styles.contactMethodTitle, { color: colors.text }]}>Ring oss</Text>
+                    <Text style={[styles.contactMethodDescription, { color: colors.textSecondary }]}>
                       +47 123 45 678
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
                 </TouchableOpacity>
               </View>
 
               {/* Submit Ticket Form */}
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Send en henvendelse</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Send en henvendelse</Text>
 
-                <Text style={styles.inputLabel}>Kategori</Text>
+                <Text style={[styles.inputLabel, { color: colors.text }]}>Kategori</Text>
                 <View style={styles.categoryGrid}>
                   {SUPPORT_CATEGORIES.map((category) => (
                     <TouchableOpacity
                       key={category.id}
                       style={[
                         styles.categoryChip,
-                        selectedCategory === category.id && styles.categoryChipActive,
+                        { backgroundColor: colors.cardBg, borderColor: colors.border },
+                        selectedCategory === category.id && [styles.categoryChipActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
                       ]}
                       onPress={() => setSelectedCategory(category.id)}
                     >
                       <Ionicons
                         name={category.icon as any}
                         size={18}
-                        color={selectedCategory === category.id ? '#FFF' : '#6B7280'}
+                        color={selectedCategory === category.id ? colors.cardBg : colors.textSecondary}
                       />
                       <Text
                         style={[
                           styles.categoryChipText,
-                          selectedCategory === category.id && styles.categoryChipTextActive,
+                          { color: colors.textSecondary },
+                          selectedCategory === category.id && [styles.categoryChipTextActive, { color: colors.cardBg }],
                         ]}
                       >
                         {category.label}
@@ -389,19 +394,21 @@ export default function SupportScreen({ navigation }: any) {
                   ))}
                 </View>
 
-                <Text style={styles.inputLabel}>Emne</Text>
+                <Text style={[styles.inputLabel, { color: colors.text }]}>Emne</Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={[styles.textInput, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                   placeholder="Hva gjelder henvendelsen?"
+                  placeholderTextColor={colors.textLight}
                   value={ticketSubject}
                   onChangeText={setTicketSubject}
                   maxLength={100}
                 />
 
-                <Text style={styles.inputLabel}>Beskrivelse</Text>
+                <Text style={[styles.inputLabel, { color: colors.text }]}>Beskrivelse</Text>
                 <TextInput
-                  style={[styles.textInput, styles.textArea]}
+                  style={[styles.textInput, styles.textArea, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                   placeholder="Beskriv ditt problem eller spørsmål..."
+                  placeholderTextColor={colors.textLight}
                   value={ticketMessage}
                   onChangeText={setTicketMessage}
                   multiline
@@ -411,25 +418,25 @@ export default function SupportScreen({ navigation }: any) {
                 />
 
                 <TouchableOpacity
-                  style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+                  style={[styles.submitButton, { backgroundColor: colors.primary }, submitting && [styles.submitButtonDisabled, { backgroundColor: colors.textLight }]]}
                   onPress={handleSubmitTicket}
                   disabled={submitting}
                 >
                   {submitting ? (
-                    <ActivityIndicator color="#FFF" />
+                    <ActivityIndicator color={colors.cardBg} />
                   ) : (
                     <>
-                      <Ionicons name="send" size={20} color="#FFF" />
-                      <Text style={styles.submitButtonText}>Send henvendelse</Text>
+                      <Ionicons name="send" size={20} color={colors.cardBg} />
+                      <Text style={[styles.submitButtonText, { color: colors.cardBg }]}>Send henvendelse</Text>
                     </>
                   )}
                 </TouchableOpacity>
               </View>
 
               {/* Support Hours */}
-              <View style={styles.infoBox}>
-                <Ionicons name="time-outline" size={20} color="#3B82F6" />
-                <Text style={styles.infoText}>
+              <View style={[styles.infoBox, { backgroundColor: colors.background }]}>
+                <Ionicons name="time-outline" size={20} color={colors.primary} />
+                <Text style={[styles.infoText, { color: colors.primary }]}>
                   Vår support er tilgjengelig man-fre 08:00-16:00
                 </Text>
               </View>
@@ -445,16 +452,12 @@ export default function SupportScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   header: {
-    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
     paddingVertical: 16,
   },
   headerContent: {
@@ -468,16 +471,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 4,
     marginBottom: 16,
@@ -492,15 +492,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   activeTab: {
-    backgroundColor: '#EFF6FF',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
   },
   activeTabText: {
-    color: '#3B82F6',
     fontWeight: '600',
   },
   content: {
@@ -509,7 +506,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -519,10 +515,8 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#111827',
   },
   faqItem: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -534,7 +528,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   faqCategoryBadge: {
-    backgroundColor: '#EFF6FF',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -542,17 +535,14 @@ const styles = StyleSheet.create({
   faqCategoryText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#3B82F6',
   },
   faqQuestion: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 8,
   },
   faqAnswer: {
     fontSize: 14,
-    color: '#6B7280',
     lineHeight: 20,
     marginTop: 8,
   },
@@ -562,7 +552,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#9CA3AF',
     marginTop: 16,
   },
   section: {
@@ -571,7 +560,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 16,
   },
   quickActions: {
@@ -580,7 +568,6 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     gap: 12,
@@ -594,12 +581,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#3B82F6',
   },
   contactMethod: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -609,7 +594,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#F9FAFB',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -619,12 +603,10 @@ const styles = StyleSheet.create({
   contactMethodTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 4,
   },
   contactMethodDescription: {
     fontSize: 14,
-    color: '#6B7280',
   },
   categoryGrid: {
     flexDirection: 'row',
@@ -635,41 +617,31 @@ const styles = StyleSheet.create({
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 6,
   },
   categoryChipActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
   },
   categoryChipText: {
     fontSize: 14,
-    color: '#6B7280',
   },
   categoryChipTextActive: {
-    color: '#FFF',
     fontWeight: '500',
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   textInput: {
-    backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#111827',
     marginBottom: 16,
   },
   textArea: {
@@ -679,23 +651,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3B82F6',
     borderRadius: 8,
     paddingVertical: 14,
     gap: 8,
   },
   submitButtonDisabled: {
-    backgroundColor: '#93C5FD',
   },
   submitButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFF',
   },
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
     borderRadius: 8,
     padding: 12,
     gap: 12,
@@ -704,6 +672,5 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#1E40AF',
   },
 });

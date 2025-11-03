@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import Container from '../components/Container';
 import { api } from '../services/api';
 
@@ -26,6 +27,7 @@ interface Tenant {
 }
 
 export default function RegisterScreen({ navigation, route }: any) {
+  const { colors } = useTheme();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loadingTenants, setLoadingTenants] = useState(true);
   const [formData, setFormData] = useState({
@@ -108,7 +110,7 @@ export default function RegisterScreen({ navigation, route }: any) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
@@ -116,14 +118,15 @@ export default function RegisterScreen({ navigation, route }: any) {
       >
         <Container maxWidth={500}>
           <View style={styles.content}>
-            <Text style={styles.title}>Opprett konto</Text>
-            <Text style={styles.subtitle}>Bli medlem i Otico</Text>
+            <Text style={[styles.title, { color: colors.primary }]}>Opprett konto</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Bli medlem i Otico</Text>
 
-            <View style={styles.form}>
-              <Text style={styles.label}>Fornavn *</Text>
+            <View style={[styles.form, { backgroundColor: colors.cardBg }]}>
+              <Text style={[styles.label, { color: colors.text }]}>Fornavn *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderColor: colors.border, backgroundColor: colors.cardBg, color: colors.text }]}
                 placeholder="Ola"
+                placeholderTextColor={colors.textLight}
                 value={formData.firstName}
                 onChangeText={(text) => setFormData({ ...formData, firstName: text })}
                 autoCapitalize="words"
@@ -131,10 +134,11 @@ export default function RegisterScreen({ navigation, route }: any) {
                 autoComplete="name-given"
               />
 
-              <Text style={styles.label}>Etternavn *</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Etternavn *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderColor: colors.border, backgroundColor: colors.cardBg, color: colors.text }]}
                 placeholder="Nordmann"
+                placeholderTextColor={colors.textLight}
                 value={formData.lastName}
                 onChangeText={(text) => setFormData({ ...formData, lastName: text })}
                 autoCapitalize="words"
@@ -142,10 +146,11 @@ export default function RegisterScreen({ navigation, route }: any) {
                 autoComplete="name-family"
               />
 
-              <Text style={styles.label}>Brukernavn *</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Brukernavn *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderColor: colors.border, backgroundColor: colors.cardBg, color: colors.text }]}
                 placeholder="olanordmann"
+                placeholderTextColor={colors.textLight}
                 value={formData.username}
                 onChangeText={(text) => setFormData({ ...formData, username: text })}
                 autoCapitalize="none"
@@ -154,34 +159,35 @@ export default function RegisterScreen({ navigation, route }: any) {
                 autoComplete="username-new"
               />
 
-              <Text style={styles.label}>Velg ditt gym *</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Velg ditt gym *</Text>
               {loadingTenants ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color="#3B82F6" />
-                  <Text style={styles.loadingText}>Laster gyms...</Text>
+                <View style={[styles.loadingContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Laster gyms...</Text>
                 </View>
               ) : (
                 <TouchableOpacity
-                  style={styles.tenantSelector}
+                  style={[styles.tenantSelector, { borderColor: colors.border, backgroundColor: colors.cardBg }]}
                   onPress={() => setTenantModalVisible(true)}
                 >
-                  <Ionicons name="business-outline" size={20} color="#6B7280" />
+                  <Ionicons name="business-outline" size={20} color={colors.textSecondary} />
                   <Text style={[
                     styles.tenantSelectorText,
-                    !formData.tenantId && styles.tenantSelectorPlaceholder
+                    { color: formData.tenantId ? colors.text : colors.textLight }
                   ]}>
                     {formData.tenantId
                       ? tenants.find(t => t.id === formData.tenantId)?.name
                       : 'Velg et gym'}
                   </Text>
-                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               )}
 
-              <Text style={styles.label}>E-post *</Text>
+              <Text style={[styles.label, { color: colors.text }]}>E-post *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderColor: colors.border, backgroundColor: colors.cardBg, color: colors.text }]}
                 placeholder="ola@example.com"
+                placeholderTextColor={colors.textLight}
                 value={formData.email}
                 onChangeText={(text) => setFormData({ ...formData, email: text })}
                 keyboardType="email-address"
@@ -191,10 +197,11 @@ export default function RegisterScreen({ navigation, route }: any) {
                 autoComplete="email"
               />
 
-              <Text style={styles.label}>Telefon</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Telefon</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderColor: colors.border, backgroundColor: colors.cardBg, color: colors.text }]}
                 placeholder="12345678"
+                placeholderTextColor={colors.textLight}
                 value={formData.phone}
                 onChangeText={(text) => setFormData({ ...formData, phone: text })}
                 keyboardType="phone-pad"
@@ -202,11 +209,12 @@ export default function RegisterScreen({ navigation, route }: any) {
                 autoComplete="tel"
               />
 
-              <Text style={styles.label}>Passord *</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Passord *</Text>
               <View style={styles.passwordContainer}>
                 <TextInput
-                  style={styles.passwordInput}
+                  style={[styles.passwordInput, { borderColor: colors.border, backgroundColor: colors.cardBg, color: colors.text }]}
                   placeholder="Minimum 8 tegn, én stor bokstav"
+                  placeholderTextColor={colors.textLight}
                   value={formData.password}
                   onChangeText={(text) => setFormData({ ...formData, password: text })}
                   secureTextEntry={!showPassword}
@@ -221,14 +229,14 @@ export default function RegisterScreen({ navigation, route }: any) {
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={24}
-                    color="#6B7280"
+                    color={colors.textSecondary}
                   />
                 </TouchableOpacity>
               </View>
-              <Text style={styles.helpText}>Minimum 8 tegn med minst én stor bokstav</Text>
+              <Text style={[styles.helpText, { color: colors.textSecondary }]}>Minimum 8 tegn med minst én stor bokstav</Text>
 
               <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
+                style={[styles.button, { backgroundColor: colors.primary }, loading && { opacity: 0.6 }]}
                 onPress={handleRegister}
                 disabled={loading}
               >
@@ -240,9 +248,9 @@ export default function RegisterScreen({ navigation, route }: any) {
               </TouchableOpacity>
 
               <View style={styles.loginContainer}>
-                <Text style={styles.loginText}>Har du allerede en konto? </Text>
+                <Text style={[styles.loginText, { color: colors.textSecondary }]}>Har du allerede en konto? </Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                  <Text style={styles.loginLink}>Logg inn</Text>
+                  <Text style={[styles.loginLink, { color: colors.primary }]}>Logg inn</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -258,14 +266,14 @@ export default function RegisterScreen({ navigation, route }: any) {
         onRequestClose={() => setTenantModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Velg ditt gym</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Velg ditt gym</Text>
               <TouchableOpacity
                 onPress={() => setTenantModalVisible(false)}
                 style={styles.closeButton}
               >
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -276,7 +284,8 @@ export default function RegisterScreen({ navigation, route }: any) {
                 <TouchableOpacity
                   style={[
                     styles.tenantItem,
-                    formData.tenantId === item.id && styles.tenantItemSelected
+                    { borderBottomColor: colors.border },
+                    formData.tenantId === item.id && { backgroundColor: colors.primary + '10' }
                   ]}
                   onPress={() => {
                     setFormData({ ...formData, tenantId: item.id });
@@ -286,26 +295,26 @@ export default function RegisterScreen({ navigation, route }: any) {
                   <View style={styles.tenantInfo}>
                     <Text style={[
                       styles.tenantName,
-                      formData.tenantId === item.id && styles.tenantNameSelected
+                      { color: formData.tenantId === item.id ? colors.primary : colors.text }
                     ]}>
                       {item.name}
                     </Text>
                     <Text style={[
                       styles.tenantSubdomain,
-                      formData.tenantId === item.id && styles.tenantSubdomainSelected
+                      { color: formData.tenantId === item.id ? colors.primary : colors.textSecondary }
                     ]}>
                       {item.subdomain}.oblikey.no
                     </Text>
                   </View>
                   {formData.tenantId === item.id && (
-                    <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                    <Ionicons name="checkmark-circle" size={24} color={colors.success} />
                   )}
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
-                  <Ionicons name="business-outline" size={48} color="#D1D5DB" />
-                  <Text style={styles.emptyText}>Ingen gyms tilgjengelig</Text>
+                  <Ionicons name="business-outline" size={48} color={colors.border} />
+                  <Text style={[styles.emptyText, { color: colors.textLight }]}>Ingen gyms tilgjengelig</Text>
                 </View>
               }
             />
@@ -319,7 +328,6 @@ export default function RegisterScreen({ navigation, route }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -331,18 +339,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#3B82F6',
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
     textAlign: 'center',
     marginBottom: 32,
   },
   form: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 24,
     shadowColor: '#000',
@@ -354,17 +359,14 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     marginBottom: 16,
-    backgroundColor: '#FFF',
   },
   passwordContainer: {
     position: 'relative',
@@ -372,12 +374,10 @@ const styles = StyleSheet.create({
   },
   passwordInput: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     paddingRight: 48,
     fontSize: 16,
-    backgroundColor: '#FFF',
   },
   eyeIcon: {
     position: 'absolute',
@@ -386,15 +386,11 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   button: {
-    backgroundColor: '#3B82F6',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginBottom: 16,
     marginTop: 8,
-  },
-  buttonDisabled: {
-    backgroundColor: '#93C5FD',
   },
   buttonText: {
     color: '#FFF',
@@ -407,17 +403,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loginText: {
-    color: '#6B7280',
     fontSize: 14,
   },
   loginLink: {
-    color: '#3B82F6',
     fontSize: 14,
     fontWeight: '600',
   },
   helpText: {
     fontSize: 12,
-    color: '#6B7280',
     marginTop: -12,
     marginBottom: 12,
   },
@@ -427,33 +420,24 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 8,
-    backgroundColor: '#F9FAFB',
   },
   loadingText: {
     marginLeft: 12,
     fontSize: 14,
-    color: '#6B7280',
   },
   tenantSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
-    backgroundColor: '#FFF',
     gap: 12,
   },
   tenantSelectorText: {
     flex: 1,
     fontSize: 16,
-    color: '#111827',
-  },
-  tenantSelectorPlaceholder: {
-    color: '#9CA3AF',
   },
   modalOverlay: {
     flex: 1,
@@ -461,7 +445,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
@@ -473,12 +456,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
   },
   closeButton: {
     padding: 4,
@@ -490,10 +471,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  tenantItemSelected: {
-    backgroundColor: '#EFF6FF',
   },
   tenantInfo: {
     flex: 1,
@@ -501,18 +478,10 @@ const styles = StyleSheet.create({
   tenantName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 4,
-  },
-  tenantNameSelected: {
-    color: '#1E40AF',
   },
   tenantSubdomain: {
     fontSize: 14,
-    color: '#6B7280',
-  },
-  tenantSubdomainSelected: {
-    color: '#3B82F6',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -520,7 +489,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#9CA3AF',
     marginTop: 12,
   },
 });

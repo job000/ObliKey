@@ -544,6 +544,26 @@ const TenantCard = ({ tenant, isSelected, onPress, onToggleStatus, onDelete, nav
       </TouchableOpacity>
 
       <TouchableOpacity
+        style={[styles.manageButton, {
+          backgroundColor: colors.success + '10',
+          borderColor: colors.success + '30',
+          shadowColor: colors.shadow,
+          shadowOpacity: isDark ? 0.2 : 0.1
+        }]}
+        onPress={(e) => {
+          e.stopPropagation();
+          navigation.navigate('TenantModules', {
+            tenantId: tenant.id,
+            tenantName: tenant.name,
+          });
+        }}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="grid-outline" size={18} color={colors.success} />
+        <Text style={[styles.manageButtonText, { color: colors.success }]}>Administrer Moduler</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={[
           styles.toggleStatusButton,
           {

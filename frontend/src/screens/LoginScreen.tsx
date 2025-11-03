@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import Container from '../components/Container';
 import { api } from '../services/api';
 
@@ -24,6 +25,7 @@ interface TenantOption {
 }
 
 export default function LoginScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -92,7 +94,7 @@ export default function LoginScreen({ navigation }: any) {
     return (
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
@@ -101,32 +103,32 @@ export default function LoginScreen({ navigation }: any) {
           <Container maxWidth={500}>
             <View style={styles.content}>
               <View style={styles.tenantSelectionHeader}>
-                <Ionicons name="business-outline" size={48} color="#3B82F6" />
-                <Text style={styles.title}>Velg organisasjon</Text>
-                <Text style={styles.subtitle}>
+                <Ionicons name="business-outline" size={48} color={colors.primary} />
+                <Text style={[styles.title, { color: colors.primary }]}>Velg organisasjon</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                   Du har tilgang til flere organisasjoner. Velg hvilken du vil logge inn på:
                 </Text>
               </View>
 
-              <View style={styles.form}>
+              <View style={[styles.form, { backgroundColor: colors.cardBg }]}>
                 {tenants.map((tenant) => (
                   <TouchableOpacity
                     key={tenant.id}
-                    style={styles.tenantCard}
+                    style={[styles.tenantCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
                     onPress={() => handleSelectTenant(tenant.id)}
                     disabled={loading}
                   >
-                    <View style={styles.tenantIcon}>
-                      <Ionicons name="business" size={24} color="#3B82F6" />
+                    <View style={[styles.tenantIcon, { backgroundColor: colors.primary + '20' }]}>
+                      <Ionicons name="business" size={24} color={colors.primary} />
                     </View>
                     <View style={styles.tenantInfo}>
-                      <Text style={styles.tenantName}>{tenant.name}</Text>
-                      <Text style={styles.tenantSubdomain}>@{tenant.subdomain}</Text>
+                      <Text style={[styles.tenantName, { color: colors.text }]}>{tenant.name}</Text>
+                      <Text style={[styles.tenantSubdomain, { color: colors.textSecondary }]}>@{tenant.subdomain}</Text>
                     </View>
                     {loading ? (
-                      <ActivityIndicator color="#3B82F6" />
+                      <ActivityIndicator color={colors.primary} />
                     ) : (
-                      <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+                      <Ionicons name="chevron-forward" size={24} color={colors.textLight} />
                     )}
                   </TouchableOpacity>
                 ))}
@@ -139,7 +141,7 @@ export default function LoginScreen({ navigation }: any) {
                   }}
                   disabled={loading}
                 >
-                  <Text style={styles.backButtonText}>Tilbake til innlogging</Text>
+                  <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Tilbake til innlogging</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -152,7 +154,7 @@ export default function LoginScreen({ navigation }: any) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
@@ -160,14 +162,15 @@ export default function LoginScreen({ navigation }: any) {
       >
         <Container maxWidth={500}>
           <View style={styles.content}>
-            <Text style={styles.title}>Otico</Text>
-            <Text style={styles.subtitle}>Logg inn på din konto</Text>
+            <Text style={[styles.title, { color: colors.primary }]}>Otico</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Logg inn på din konto</Text>
 
-            <View style={styles.form}>
-              <Text style={styles.label}>E-post eller brukernavn</Text>
+            <View style={[styles.form, { backgroundColor: colors.cardBg }]}>
+              <Text style={[styles.label, { color: colors.text }]}>E-post eller brukernavn</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderColor: colors.border, backgroundColor: colors.cardBg, color: colors.text }]}
                 placeholder="din@epost.no eller brukernavn"
+                placeholderTextColor={colors.textLight}
                 value={identifier}
                 onChangeText={setIdentifier}
                 autoCapitalize="none"
@@ -176,11 +179,12 @@ export default function LoginScreen({ navigation }: any) {
                 autoComplete="username"
               />
 
-              <Text style={styles.label}>Passord</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Passord</Text>
               <View style={styles.passwordContainer}>
                 <TextInput
-                  style={styles.passwordInput}
+                  style={[styles.passwordInput, { borderColor: colors.border, backgroundColor: colors.cardBg, color: colors.text }]}
                   placeholder="••••••••"
+                  placeholderTextColor={colors.textLight}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
@@ -195,7 +199,7 @@ export default function LoginScreen({ navigation }: any) {
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={24}
-                    color="#6B7280"
+                    color={colors.textSecondary}
                   />
                 </TouchableOpacity>
               </View>
@@ -204,11 +208,11 @@ export default function LoginScreen({ navigation }: any) {
                 style={styles.forgotPassword}
                 onPress={() => navigation.navigate('ForgotPassword')}
               >
-                <Text style={styles.forgotPasswordText}>Glemt passord?</Text>
+                <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Glemt passord?</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
+                style={[styles.button, { backgroundColor: colors.primary }, loading && { opacity: 0.6 }]}
                 onPress={handleLogin}
                 disabled={loading}
               >
@@ -220,9 +224,9 @@ export default function LoginScreen({ navigation }: any) {
               </TouchableOpacity>
 
               <View style={styles.registerContainer}>
-                <Text style={styles.registerText}>Har du ikke en konto? </Text>
+                <Text style={[styles.registerText, { color: colors.textSecondary }]}>Har du ikke en konto? </Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                  <Text style={styles.registerLink}>Registrer deg</Text>
+                  <Text style={[styles.registerLink, { color: colors.primary }]}>Registrer deg</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -236,7 +240,6 @@ export default function LoginScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -249,18 +252,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#3B82F6',
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
     textAlign: 'center',
     marginBottom: 32,
   },
   form: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 24,
     shadowColor: '#000',
@@ -272,17 +272,14 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     marginBottom: 16,
-    backgroundColor: '#FFF',
   },
   passwordContainer: {
     position: 'relative',
@@ -290,12 +287,10 @@ const styles = StyleSheet.create({
   },
   passwordInput: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     paddingRight: 48,
     fontSize: 16,
-    backgroundColor: '#FFF',
   },
   eyeIcon: {
     position: 'absolute',
@@ -308,18 +303,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   forgotPasswordText: {
-    color: '#3B82F6',
     fontSize: 14,
   },
   button: {
-    backgroundColor: '#3B82F6',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginBottom: 16,
-  },
-  buttonDisabled: {
-    backgroundColor: '#93C5FD',
   },
   buttonText: {
     color: '#FFF',
@@ -332,11 +322,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   registerText: {
-    color: '#6B7280',
     fontSize: 14,
   },
   registerLink: {
-    color: '#3B82F6',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -347,9 +335,7 @@ const styles = StyleSheet.create({
   tenantCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -363,7 +349,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -374,12 +359,10 @@ const styles = StyleSheet.create({
   tenantName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 4,
   },
   tenantSubdomain: {
     fontSize: 14,
-    color: '#6B7280',
   },
   backButton: {
     marginTop: 8,
@@ -387,7 +370,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButtonText: {
-    color: '#6B7280',
     fontSize: 14,
     fontWeight: '500',
   },

@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
 import Container from '../components/Container';
+import { useTheme } from '../contexts/ThemeContext';
 import type { CartItem } from '../types';
 
 interface DiscountInfo {
@@ -24,6 +25,7 @@ interface DiscountInfo {
 }
 
 export default function CartScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -60,7 +62,6 @@ export default function CartScreen({ navigation }: any) {
 
     try {
       setUpdating(true);
-      // Find the cart item to get its ID
       const item = cart.find(item => item.productId === productId);
       if (!item) {
         Alert.alert('Feil', 'Vare ikke funnet i handlekurv');
@@ -78,7 +79,6 @@ export default function CartScreen({ navigation }: any) {
   const removeItem = async (productId: string) => {
     try {
       setUpdating(true);
-      // Find the cart item to get its ID
       const item = cart.find(item => item.productId === productId);
       if (!item) {
         Alert.alert('Feil', 'Vare ikke funnet i handlekurv');
@@ -173,9 +173,9 @@ export default function CartScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -183,29 +183,29 @@ export default function CartScreen({ navigation }: any) {
 
   if (cart.length === 0) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
-          <View style={styles.screenHeader}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={[styles.screenHeader, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
             <Container>
               <View style={styles.headerContent}>
                 <TouchableOpacity
                   onPress={() => navigation.goBack()}
                   style={styles.backButton}
                 >
-                  <Ionicons name="arrow-back" size={24} color="#111827" />
+                  <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Handlekurv</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Handlekurv</Text>
               </View>
             </Container>
           </View>
           <View style={styles.emptyContainer}>
-            <Ionicons name="cart-outline" size={100} color="#D1D5DB" />
-            <Text style={styles.emptyTitle}>Ingen varer i handlekurven</Text>
-            <Text style={styles.emptySubtitle}>
+            <Ionicons name="cart-outline" size={100} color={colors.border} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>Ingen varer i handlekurven</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
               Legg til produkter fra butikken for å komme i gang
             </Text>
             <TouchableOpacity
-              style={styles.shopButton}
+              style={[styles.shopButton, { backgroundColor: colors.primary }]}
               onPress={() => navigation.navigate('MainTabs', { screen: 'Shop' })}
             >
               <Ionicons name="storefront-outline" size={20} color="#FFF" style={styles.buttonIcon} />
@@ -218,18 +218,18 @@ export default function CartScreen({ navigation }: any) {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-      <View style={styles.screenHeader}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.screenHeader, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
         <Container>
           <View style={styles.headerContent}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
               style={styles.backButton}
             >
-              <Ionicons name="arrow-back" size={24} color="#111827" />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Handlekurv</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Handlekurv</Text>
           </View>
         </Container>
       </View>
@@ -238,14 +238,14 @@ export default function CartScreen({ navigation }: any) {
           <View style={styles.header}>
             {cart.length > 0 && (
               <TouchableOpacity onPress={clearCart} disabled={updating}>
-                <Text style={styles.clearButton}>Tøm kurv</Text>
+                <Text style={[styles.clearButton, { color: colors.danger }]}>Tøm kurv</Text>
               </TouchableOpacity>
             )}
           </View>
 
           <View style={styles.itemsContainer}>
             {cart.map((item) => (
-              <View key={item.id} style={styles.cartItem}>
+              <View key={item.id} style={[styles.cartItem, { backgroundColor: colors.cardBg }]}>
                 {item.product.images && item.product.images.length > 0 && (
                   <Image
                     source={{ uri: item.product.images[0] }}
@@ -254,34 +254,34 @@ export default function CartScreen({ navigation }: any) {
                   />
                 )}
                 <View style={styles.itemDetails}>
-                  <Text style={styles.itemName}>{item.product.name}</Text>
-                  <Text style={styles.itemPrice}>
+                  <Text style={[styles.itemName, { color: colors.text }]}>{item.product.name}</Text>
+                  <Text style={[styles.itemPrice, { color: colors.textSecondary }]}>
                     {`${(item.product.price || item.price || 0).toLocaleString('nb-NO')} kr`}
                   </Text>
                   <View style={styles.quantityContainer}>
                     <TouchableOpacity
-                      style={styles.quantityButton}
+                      style={[styles.quantityButton, { borderColor: colors.border, backgroundColor: colors.cardBg }]}
                       onPress={() =>
                         updateQuantity(item.productId, item.quantity - 1)
                       }
                       disabled={updating}
                     >
-                      <Ionicons name="remove" size={20} color="#374151" />
+                      <Ionicons name="remove" size={20} color={colors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.quantityText}>{item.quantity}</Text>
+                    <Text style={[styles.quantityText, { color: colors.text }]}>{item.quantity}</Text>
                     <TouchableOpacity
-                      style={styles.quantityButton}
+                      style={[styles.quantityButton, { borderColor: colors.border, backgroundColor: colors.cardBg }]}
                       onPress={() =>
                         updateQuantity(item.productId, item.quantity + 1)
                       }
                       disabled={updating}
                     >
-                      <Ionicons name="add" size={20} color="#374151" />
+                      <Ionicons name="add" size={20} color={colors.text} />
                     </TouchableOpacity>
                   </View>
                 </View>
                 <View style={styles.itemRight}>
-                  <Text style={styles.itemTotal}>
+                  <Text style={[styles.itemTotal, { color: colors.text }]}>
                     {`${((item.product.price || item.price || 0) * item.quantity).toLocaleString('nb-NO')} kr`}
                   </Text>
                   <TouchableOpacity
@@ -289,7 +289,7 @@ export default function CartScreen({ navigation }: any) {
                     onPress={() => removeItem(item.productId)}
                     disabled={updating}
                   >
-                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    <Ionicons name="trash-outline" size={20} color={colors.danger} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -297,32 +297,33 @@ export default function CartScreen({ navigation }: any) {
           </View>
 
           {/* Discount Code Section */}
-          <View style={styles.discountCard}>
-            <Text style={styles.discountTitle}>Har du en rabattkode?</Text>
+          <View style={[styles.discountCard, { backgroundColor: colors.cardBg }]}>
+            <Text style={[styles.discountTitle, { color: colors.text }]}>Har du en rabattkode?</Text>
             {appliedDiscount ? (
-              <View style={styles.appliedDiscountContainer}>
+              <View style={[styles.appliedDiscountContainer, { backgroundColor: colors.success + '20', borderColor: colors.success }]}>
                 <View style={styles.appliedDiscountHeader}>
-                  <Ionicons name="pricetag" size={20} color="#10B981" />
-                  <Text style={styles.appliedDiscountCode}>{discountCode}</Text>
+                  <Ionicons name="pricetag" size={20} color={colors.success} />
+                  <Text style={[styles.appliedDiscountCode, { color: colors.text }]}>{discountCode}</Text>
                   <TouchableOpacity onPress={removeDiscountCode}>
-                    <Ionicons name="close-circle" size={20} color="#6B7280" />
+                    <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.appliedDiscountText}>
+                <Text style={[styles.appliedDiscountText, { color: colors.success }]}>
                   {`Rabatt: -${(appliedDiscount.discountAmount || 0).toLocaleString('nb-NO')} kr`}
                 </Text>
               </View>
             ) : (
               <View style={styles.discountInputContainer}>
                 <TextInput
-                  style={styles.discountInput}
+                  style={[styles.discountInput, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
                   placeholder="Skriv inn rabattkode"
+                  placeholderTextColor={colors.textLight}
                   value={discountCode}
                   onChangeText={setDiscountCode}
                   autoCapitalize="characters"
                 />
                 <TouchableOpacity
-                  style={[styles.applyDiscountButton, validatingCode && styles.buttonDisabled]}
+                  style={[styles.applyDiscountButton, { backgroundColor: validatingCode ? colors.primary + '80' : colors.primary }]}
                   onPress={applyDiscountCode}
                   disabled={validatingCode}
                 >
@@ -336,30 +337,30 @@ export default function CartScreen({ navigation }: any) {
             )}
           </View>
 
-          <View style={styles.summaryCard}>
+          <View style={[styles.summaryCard, { backgroundColor: colors.cardBg }]}>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Delsum</Text>
-              <Text style={styles.summaryValue}>
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Delsum</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>
                 {`${calculateTotal().toLocaleString('nb-NO')} kr`}
               </Text>
             </View>
             {appliedDiscount && (
               <View style={styles.summaryRow}>
-                <Text style={[styles.summaryLabel, styles.discountLabel]}>
+                <Text style={[styles.summaryLabel, { color: colors.success }]}>
                   Rabatt ({discountCode})
                 </Text>
-                <Text style={[styles.summaryValue, styles.discountValue]}>
+                <Text style={[styles.summaryValue, { color: colors.success, fontWeight: '600' }]}>
                   {`-${(appliedDiscount.discountAmount || 0).toLocaleString('nb-NO')} kr`}
                 </Text>
               </View>
             )}
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Frakt</Text>
-              <Text style={styles.summaryValue}>Beregnes ved betaling</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Frakt</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>Beregnes ved betaling</Text>
             </View>
-            <View style={[styles.summaryRow, styles.totalRow]}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>
+            <View style={[styles.summaryRow, styles.totalRow, { borderTopColor: colors.border }]}>
+              <Text style={[styles.totalLabel, { color: colors.text }]}>Total</Text>
+              <Text style={[styles.totalValue, { color: colors.text }]}>
                 {`${getFinalTotal().toLocaleString('nb-NO')} kr`}
               </Text>
             </View>
@@ -367,22 +368,22 @@ export default function CartScreen({ navigation }: any) {
         </Container>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: colors.cardBg, borderTopColor: colors.border }]}>
         <Container>
           <View style={styles.footerContent}>
             <View>
-              <Text style={styles.footerLabel}>Total</Text>
-              <Text style={styles.footerTotal}>
+              <Text style={[styles.footerLabel, { color: colors.textSecondary }]}>Total</Text>
+              <Text style={[styles.footerTotal, { color: colors.text }]}>
                 {`${getFinalTotal().toLocaleString('nb-NO')} kr`}
               </Text>
               {appliedDiscount && (
-                <Text style={styles.footerSavings}>
+                <Text style={[styles.footerSavings, { color: colors.success }]}>
                   {`Du sparer ${(appliedDiscount.discountAmount || 0).toLocaleString('nb-NO')} kr`}
                 </Text>
               )}
             </View>
             <TouchableOpacity
-              style={[styles.checkoutButton, updating && styles.buttonDisabled]}
+              style={[styles.checkoutButton, { backgroundColor: updating ? colors.primary + '80' : colors.primary }]}
               onPress={handleCheckout}
               disabled={updating}
             >
@@ -403,16 +404,12 @@ export default function CartScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   screenHeader: {
-    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
     paddingVertical: 16,
   },
   headerContent: {
@@ -426,7 +423,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
   },
   scrollContent: {
     paddingBottom: 120,
@@ -435,7 +431,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
   },
   emptyContainer: {
     flex: 1,
@@ -447,14 +442,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#111827',
     marginTop: 24,
     marginBottom: 12,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#6B7280',
     marginBottom: 32,
     textAlign: 'center',
     lineHeight: 24,
@@ -464,7 +457,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3B82F6',
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 12,
@@ -491,7 +483,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   clearButton: {
-    color: '#EF4444',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -500,7 +491,6 @@ const styles = StyleSheet.create({
   },
   cartItem: {
     flexDirection: 'row',
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -521,12 +511,10 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 4,
   },
   itemPrice: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 8,
   },
   quantityContainer: {
@@ -539,15 +527,12 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFF',
   },
   quantityText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     minWidth: 24,
     textAlign: 'center',
   },
@@ -558,13 +543,11 @@ const styles = StyleSheet.create({
   itemTotal: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#111827',
   },
   removeButton: {
     padding: 8,
   },
   summaryCard: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 20,
     marginTop: 16,
@@ -582,36 +565,29 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 16,
-    color: '#6B7280',
   },
   summaryValue: {
     fontSize: 16,
-    color: '#374151',
   },
   totalRow: {
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
     marginTop: 8,
     paddingTop: 16,
   },
   totalLabel: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
   },
   totalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
   },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFF',
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
     paddingVertical: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
@@ -626,16 +602,13 @@ const styles = StyleSheet.create({
   },
   footerLabel: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 4,
   },
   footerTotal: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
   },
   checkoutButton: {
-    backgroundColor: '#3B82F6',
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 8,
@@ -645,11 +618,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  buttonDisabled: {
-    backgroundColor: '#93C5FD',
-  },
   discountCard: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
@@ -662,7 +631,6 @@ const styles = StyleSheet.create({
   discountTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 12,
   },
   discountInputContainer: {
@@ -672,15 +640,12 @@ const styles = StyleSheet.create({
   discountInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    backgroundColor: '#F9FAFB',
   },
   applyDiscountButton: {
-    backgroundColor: '#3B82F6',
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 8,
@@ -694,11 +659,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   appliedDiscountContainer: {
-    backgroundColor: '#ECFDF5',
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#10B981',
   },
   appliedDiscountHeader: {
     flexDirection: 'row',
@@ -710,23 +673,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
   },
   appliedDiscountText: {
     fontSize: 14,
-    color: '#10B981',
-    fontWeight: '600',
-  },
-  discountLabel: {
-    color: '#10B981',
-  },
-  discountValue: {
-    color: '#10B981',
     fontWeight: '600',
   },
   footerSavings: {
     fontSize: 12,
-    color: '#10B981',
     marginTop: 4,
     fontWeight: '600',
   },

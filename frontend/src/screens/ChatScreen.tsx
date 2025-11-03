@@ -19,6 +19,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
 import * as ImagePicker from 'expo-image-picker';
@@ -110,6 +111,7 @@ const TypingIndicator = () => {
 
 export default function ChatScreen({ navigation, route }: any) {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const { typingUsers, sendTypingIndicator, fetchTypingUsers } = useChat();
   const flatListRef = useRef<FlatList>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -278,9 +280,17 @@ export default function ChatScreen({ navigation, route }: any) {
           setSelectedConversation(response.data.id);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start chat:', error);
-      Alert.alert('Feil', 'Kunne ikke starte samtale');
+      // Check if it's a 404 error (endpoint doesn't exist)
+      if (error?.response?.status === 404) {
+        Alert.alert(
+          'Chat ikke tilgjengelig',
+          'Chat-funksjonen er ikke tilgjengelig i produksjonsmiljøet ennå.'
+        );
+      } else {
+        Alert.alert('Feil', 'Kunne ikke starte samtale');
+      }
     }
   };
 
@@ -770,9 +780,9 @@ export default function ChatScreen({ navigation, route }: any) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.cardBg }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0084FF" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -1123,7 +1133,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#F0F2F5',
+    backgroundColor: '#F9FAFB',
   },
   loadingContainer: {
     flex: 1,

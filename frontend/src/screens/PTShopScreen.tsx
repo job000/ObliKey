@@ -10,6 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 import Container from '../components/Container';
 import { api } from '../services/api';
 
@@ -41,6 +42,7 @@ interface PTCredits {
 }
 
 export default function PTShopScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [packages, setPackages] = useState<PTPackage[]>([]);
   const [credits, setCredits] = useState<PTCredits | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,48 +136,52 @@ export default function PTShopScreen({ navigation }: any) {
 
     return (
       <TouchableOpacity
-        style={[styles.packageCard, item.featured && styles.featuredCard]}
+        style={[
+          styles.packageCard,
+          { backgroundColor: item.featured ? colors.cardBg : colors.cardBg, borderColor: item.featured ? colors.primary : colors.border },
+          item.featured && styles.featuredCard
+        ]}
         onPress={() => handlePurchase(item)}
         disabled={purchasing === item.id}
       >
         {item.featured && (
-          <View style={styles.featuredBadge}>
-            <Ionicons name="star" size={12} color="#FFF" />
-            <Text style={styles.featuredText}>POPULÆR</Text>
+          <View style={[styles.featuredBadge, { backgroundColor: colors.primary }]}>
+            <Ionicons name="star" size={12} color={colors.cardBg} />
+            <Text style={[styles.featuredText, { color: colors.cardBg }]}>POPULÆR</Text>
           </View>
         )}
 
         <View style={styles.packageHeader}>
-          <Text style={styles.packageName}>{item.name}</Text>
+          <Text style={[styles.packageName, { color: colors.text }]}>{item.name}</Text>
           {discount > 0 && (
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>Spar {discount}%</Text>
+            <View style={[styles.discountBadge, { backgroundColor: colors.success }]}>
+              <Text style={[styles.discountText, { color: colors.cardBg }]}>Spar {discount}%</Text>
             </View>
           )}
         </View>
 
-        <Text style={styles.packageDescription}>{item.description}</Text>
+        <Text style={[styles.packageDescription, { color: colors.textSecondary }]}>{item.description}</Text>
 
         <View style={styles.packageDetails}>
           <View style={styles.detailRow}>
-            <Ionicons name="fitness-outline" size={20} color="#3B82F6" />
-            <Text style={styles.detailText}>{item.sessionCount} PT-timer</Text>
+            <Ionicons name="fitness-outline" size={20} color={colors.primary} />
+            <Text style={[styles.detailText, { color: colors.text }]}>{item.sessionCount} PT-timer</Text>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="time-outline" size={20} color="#3B82F6" />
-            <Text style={styles.detailText}>
+            <Ionicons name="time-outline" size={20} color={colors.primary} />
+            <Text style={[styles.detailText, { color: colors.text }]}>
               Gyldig i {item.validityDays} dager
             </Text>
           </View>
         </View>
 
-        <View style={styles.packageFooter}>
+        <View style={[styles.packageFooter, { borderTopColor: colors.border }]}>
           <View>
             {item.compareAtPrice && (
-              <Text style={styles.originalPrice}>{item.compareAtPrice} kr</Text>
+              <Text style={[styles.originalPrice, { color: colors.textLight }]}>{item.compareAtPrice} kr</Text>
             )}
-            <Text style={styles.packagePrice}>{item.price} kr</Text>
-            <Text style={styles.pricePerSession}>
+            <Text style={[styles.packagePrice, { color: colors.text }]}>{item.price} kr</Text>
+            <Text style={[styles.pricePerSession, { color: colors.textSecondary }]}>
               {Math.round(item.price / item.sessionCount)} kr per time
             </Text>
           </View>
@@ -183,17 +189,17 @@ export default function PTShopScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.buyButton,
-              purchasing === item.id && styles.buyButtonDisabled,
+              { backgroundColor: purchasing === item.id ? colors.primary + '80' : colors.primary },
             ]}
             onPress={() => handlePurchase(item)}
             disabled={purchasing === item.id}
           >
             {purchasing === item.id ? (
-              <ActivityIndicator color="#FFF" size="small" />
+              <ActivityIndicator color={colors.cardBg} size="small" />
             ) : (
               <>
-                <Ionicons name="cart-outline" size={20} color="#FFF" />
-                <Text style={styles.buyButtonText}>Kjøp</Text>
+                <Ionicons name="cart-outline" size={20} color={colors.cardBg} />
+                <Text style={[styles.buyButtonText, { color: colors.cardBg }]}>Kjøp</Text>
               </>
             )}
           </TouchableOpacity>
@@ -204,15 +210,15 @@ export default function PTShopScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>Laster PT-pakker...</Text>
+      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Laster PT-pakker...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={packages}
         keyExtractor={(item) => item.id}
@@ -225,51 +231,51 @@ export default function PTShopScreen({ navigation }: any) {
           <>
             {/* Credits Summary */}
             {credits && (
-              <View style={styles.creditsCard}>
+              <View style={[styles.creditsCard, { backgroundColor: colors.cardBg }]}>
                 <View style={styles.creditsHeader}>
-                  <Ionicons name="trophy-outline" size={24} color="#3B82F6" />
-                  <Text style={styles.creditsTitle}>Dine PT-timer</Text>
+                  <Ionicons name="trophy-outline" size={24} color={colors.primary} />
+                  <Text style={[styles.creditsTitle, { color: colors.text }]}>Dine PT-timer</Text>
                 </View>
 
                 <View style={styles.creditsStats}>
                   <View style={styles.creditsStat}>
-                    <Text style={styles.creditsNumber}>{credits.available}</Text>
-                    <Text style={styles.creditsLabel}>Tilgjengelig</Text>
+                    <Text style={[styles.creditsNumber, { color: colors.primary }]}>{credits.available}</Text>
+                    <Text style={[styles.creditsLabel, { color: colors.textSecondary }]}>Tilgjengelig</Text>
                   </View>
-                  <View style={styles.creditsDivider} />
+                  <View style={[styles.creditsDivider, { backgroundColor: colors.border }]} />
                   <View style={styles.creditsStat}>
-                    <Text style={styles.creditsNumber}>{credits.used}</Text>
-                    <Text style={styles.creditsLabel}>Brukt</Text>
+                    <Text style={[styles.creditsNumber, { color: colors.primary }]}>{credits.used}</Text>
+                    <Text style={[styles.creditsLabel, { color: colors.textSecondary }]}>Brukt</Text>
                   </View>
-                  <View style={styles.creditsDivider} />
+                  <View style={[styles.creditsDivider, { backgroundColor: colors.border }]} />
                   <View style={styles.creditsStat}>
-                    <Text style={styles.creditsNumber}>{credits.total}</Text>
-                    <Text style={styles.creditsLabel}>Totalt</Text>
+                    <Text style={[styles.creditsNumber, { color: colors.primary }]}>{credits.total}</Text>
+                    <Text style={[styles.creditsLabel, { color: colors.textSecondary }]}>Totalt</Text>
                   </View>
                 </View>
 
                 {credits.available > 0 && (
                   <TouchableOpacity
-                    style={styles.bookSessionButton}
+                    style={[styles.bookSessionButton, { backgroundColor: colors.primary }]}
                     onPress={() => navigation.navigate('PTBooking')}
                   >
-                    <Ionicons name="calendar-outline" size={20} color="#FFF" />
-                    <Text style={styles.bookSessionText}>Book PT-time</Text>
+                    <Ionicons name="calendar-outline" size={20} color={colors.cardBg} />
+                    <Text style={[styles.bookSessionText, { color: colors.cardBg }]}>Book PT-time</Text>
                   </TouchableOpacity>
                 )}
               </View>
             )}
 
-            <Text style={styles.sectionTitle}>Kjøp PT-timer</Text>
-            <Text style={styles.sectionSubtitle}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Kjøp PT-timer</Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
               Velg en pakke som passer deg best
             </Text>
           </>
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="cart-outline" size={64} color="#D1D5DB" />
-            <Text style={styles.emptyText}>Ingen PT-pakker tilgjengelig</Text>
+            <Ionicons name="cart-outline" size={64} color={colors.border} />
+            <Text style={[styles.emptyText, { color: colors.textLight }]}>Ingen PT-pakker tilgjengelig</Text>
           </View>
         }
       />
@@ -280,24 +286,20 @@ export default function PTShopScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6B7280',
   },
   listContent: {
     padding: 16,
   },
   creditsCard: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 20,
     marginBottom: 24,
@@ -315,7 +317,6 @@ const styles = StyleSheet.create({
   creditsTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
     marginLeft: 12,
   },
   creditsStats: {
@@ -331,50 +332,41 @@ const styles = StyleSheet.create({
   creditsNumber: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#3B82F6',
   },
   creditsLabel: {
     fontSize: 14,
-    color: '#6B7280',
     marginTop: 4,
   },
   creditsDivider: {
     width: 1,
     height: 40,
-    backgroundColor: '#E5E7EB',
   },
   bookSessionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3B82F6',
     borderRadius: 8,
     padding: 14,
     gap: 8,
   },
   bookSessionText: {
-    color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
     marginBottom: 8,
   },
   sectionSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
     marginBottom: 16,
   },
   packageCard: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -382,14 +374,11 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   featuredCard: {
-    borderColor: '#3B82F6',
-    backgroundColor: '#EFF6FF',
   },
   featuredBadge: {
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: '#3B82F6',
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -398,7 +387,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   featuredText: {
-    color: '#FFF',
     fontSize: 11,
     fontWeight: '700',
   },
@@ -411,23 +399,19 @@ const styles = StyleSheet.create({
   packageName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
     flex: 1,
   },
   discountBadge: {
-    backgroundColor: '#10B981',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   discountText: {
-    color: '#FFF',
     fontSize: 12,
     fontWeight: '600',
   },
   packageDescription: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 16,
     lineHeight: 20,
   },
@@ -442,7 +426,6 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: '#374151',
   },
   packageFooter: {
     flexDirection: 'row',
@@ -451,24 +434,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
   },
   originalPrice: {
     fontSize: 14,
-    color: '#9CA3AF',
     textDecorationLine: 'line-through',
   },
   packagePrice: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#111827',
   },
   pricePerSession: {
     fontSize: 12,
-    color: '#6B7280',
   },
   buyButton: {
-    backgroundColor: '#3B82F6',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -476,11 +454,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  buyButtonDisabled: {
-    backgroundColor: '#93C5FD',
-  },
   buyButtonText: {
-    color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -490,7 +464,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#9CA3AF',
     marginTop: 12,
   },
 });

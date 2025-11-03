@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Door {
   id: string;
@@ -34,6 +35,7 @@ interface Door {
 }
 
 export default function DoorManagementScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [doors, setDoors] = useState<Door[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -219,7 +221,7 @@ export default function DoorManagementScreen({ navigation }: any) {
   );
 
   const getStatusColor = (isOnline: boolean) => {
-    return isOnline ? '#10B981' : '#EF4444';
+    return isOnline ? colors.success : colors.danger;
   };
 
   const getStatusLabel = (isOnline: boolean) => {
@@ -228,40 +230,41 @@ export default function DoorManagementScreen({ navigation }: any) {
 
   if (loading && !refreshing) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#111827" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.cardBg, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.title}>Dørstyring</Text>
-          <View style={styles.headerActions}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>Dørstyring</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <TouchableOpacity
               onPress={() => navigation.navigate('AccessLogs')}
-              style={styles.logsButton}
+              style={{ padding: 8 }}
             >
-              <Ionicons name="list" size={24} color="#6B7280" />
+              <Ionicons name="list" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleOpenModal()} style={styles.addButton}>
+            <TouchableOpacity onPress={() => handleOpenModal()} style={{ backgroundColor: colors.primary, width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="add" size={24} color="#FFF" />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Search */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBg, marginHorizontal: 16, marginVertical: 12, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+          <Ionicons name="search" size={20} color={colors.textLight} style={{ marginRight: 8 }} />
           <TextInput
-            style={styles.searchInput}
+            style={{ flex: 1, paddingVertical: 12, fontSize: 16, color: colors.text }}
             placeholder="Søk etter dør eller lokasjon..."
+            placeholderTextColor={colors.textLight}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -269,79 +272,79 @@ export default function DoorManagementScreen({ navigation }: any) {
 
         {/* Door List */}
         <ScrollView
-          style={styles.listContainer}
+          style={{ flex: 1 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           {filteredDoors.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="lock-closed-outline" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyStateText}>
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
+              <Ionicons name="lock-closed-outline" size={64} color={colors.border} />
+              <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textSecondary, marginTop: 16 }}>
                 {searchQuery ? 'Ingen dører funnet' : 'Ingen dører registrert'}
               </Text>
-              <Text style={styles.emptyStateSubtext}>
+              <Text style={{ fontSize: 14, color: colors.textLight, marginTop: 4 }}>
                 {searchQuery ? 'Prøv et annet søk' : 'Legg til din første dør'}
               </Text>
             </View>
           ) : (
-            <View style={styles.doorGrid}>
+            <View style={{ padding: 16, gap: 16 }}>
               {filteredDoors.map((door) => (
-                <View key={door.id} style={styles.doorCard}>
+                <View key={door.id} style={{ backgroundColor: colors.cardBg, borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }}>
                   {/* Status Badge */}
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(door.isOnline) }]}>
-                    <View style={styles.statusDot} />
-                    <Text style={styles.statusText}>{getStatusLabel(door.isOnline)}</Text>
+                  <View style={{ position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, gap: 4, backgroundColor: getStatusColor(door.isOnline) }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFF' }} />
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFF' }}>{getStatusLabel(door.isOnline)}</Text>
                   </View>
 
                   {/* Door Info */}
-                  <View style={styles.doorHeader}>
-                    <Ionicons name="lock-closed" size={32} color="#3B82F6" />
-                    <View style={styles.doorInfo}>
-                      <Text style={styles.doorName}>{door.name}</Text>
-                      <Text style={styles.doorLocation}>
-                        <Ionicons name="location-outline" size={14} color="#6B7280" /> {door.location}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                    <Ionicons name="lock-closed" size={32} color={colors.primary} />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>{door.name}</Text>
+                      <Text style={{ fontSize: 14, color: colors.textSecondary }}>
+                        <Ionicons name="location-outline" size={14} color={colors.textSecondary} /> {door.location}
                       </Text>
                     </View>
                   </View>
 
                   {/* Door Details */}
-                  <View style={styles.doorDetails}>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>IP-adresse:</Text>
-                      <Text style={styles.detailValue}>{door.ipAddress}:{door.port}</Text>
+                  <View style={{ gap: 8, marginBottom: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 14, color: colors.textSecondary }}>IP-adresse:</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{door.ipAddress}:{door.port}</Text>
                     </View>
                     {door.macAddress && (
-                      <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>MAC-adresse:</Text>
-                        <Text style={styles.detailValue}>{door.macAddress}</Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 14, color: colors.textSecondary }}>MAC-adresse:</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{door.macAddress}</Text>
                       </View>
                     )}
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Status:</Text>
-                      <Text style={[styles.detailValue, { color: door.isLocked ? '#EF4444' : '#10B981' }]}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 14, color: colors.textSecondary }}>Status:</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: door.isLocked ? colors.danger : colors.success }}>
                         {door.isLocked ? 'Låst' : 'Ulåst'}
                       </Text>
                     </View>
                   </View>
 
                   {/* Action Buttons */}
-                  <View style={styles.actionButtons}>
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
                     <TouchableOpacity
-                      style={[styles.actionButton, styles.testButton]}
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 8, gap: 6, backgroundColor: '#DBEAFE' }}
                       onPress={() => handleTestConnection(door)}
                       disabled={actionLoading === `test-${door.id}`}
                     >
                       {actionLoading === `test-${door.id}` ? (
-                        <ActivityIndicator size="small" color="#3B82F6" />
+                        <ActivityIndicator size="small" color={colors.primary} />
                       ) : (
                         <>
-                          <Ionicons name="flash-outline" size={16} color="#3B82F6" />
-                          <Text style={styles.testButtonText}>Test</Text>
+                          <Ionicons name="flash-outline" size={16} color={colors.primary} />
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>Test</Text>
                         </>
                       )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.actionButton, door.isLocked ? styles.unlockButton : styles.lockButton]}
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 8, gap: 6, backgroundColor: door.isLocked ? colors.success : colors.danger }}
                       onPress={() => handleLockUnlock(door)}
                       disabled={actionLoading === `lock-${door.id}`}
                     >
@@ -354,7 +357,7 @@ export default function DoorManagementScreen({ navigation }: any) {
                             size={16}
                             color="#FFF"
                           />
-                          <Text style={styles.lockButtonText}>
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFF' }}>
                             {door.isLocked ? 'Lås opp' : 'Lås'}
                           </Text>
                         </>
@@ -363,29 +366,29 @@ export default function DoorManagementScreen({ navigation }: any) {
                   </View>
 
                   {/* Menu Buttons */}
-                  <View style={styles.menuButtons}>
+                  <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12, gap: 8 }}>
                     <TouchableOpacity
-                      style={styles.menuButton}
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 4 }}
                       onPress={() => navigation.navigate('DoorAccessRules', { doorId: door.id, doorName: door.name })}
                     >
-                      <Ionicons name="shield-checkmark-outline" size={18} color="#6B7280" />
-                      <Text style={styles.menuButtonText}>Tilgangsregler</Text>
+                      <Ionicons name="shield-checkmark-outline" size={18} color={colors.textSecondary} />
+                      <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textSecondary }}>Tilgangsregler</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.menuButton}
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 4 }}
                       onPress={() => handleOpenModal(door)}
                     >
-                      <Ionicons name="create-outline" size={18} color="#6B7280" />
-                      <Text style={styles.menuButtonText}>Rediger</Text>
+                      <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
+                      <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textSecondary }}>Rediger</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.menuButton}
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 4 }}
                       onPress={() => handleDeleteDoor(door)}
                     >
-                      <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                      <Text style={[styles.menuButtonText, { color: '#EF4444' }]}>Slett</Text>
+                      <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                      <Text style={{ fontSize: 13, fontWeight: '500', color: colors.danger }}>Slett</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -403,99 +406,105 @@ export default function DoorManagementScreen({ navigation }: any) {
         >
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalOverlay}
+            style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}
           >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{editMode ? 'Rediger dør' : 'Legg til dør'}</Text>
+            <View style={{ backgroundColor: colors.cardBg, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>{editMode ? 'Rediger dør' : 'Legg til dør'}</Text>
                 <TouchableOpacity onPress={handleCloseModal}>
-                  <Ionicons name="close" size={24} color="#6B7280" />
+                  <Ionicons name="close" size={24} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={styles.modalBody}>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Navn *</Text>
+              <ScrollView style={{ padding: 20 }}>
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 }}>Navn *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: colors.cardBg, color: colors.text }}
                     value={formData.name}
                     onChangeText={(text) => setFormData({ ...formData, name: text })}
                     placeholder="f.eks. Hovedinngang"
+                    placeholderTextColor={colors.textLight}
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Lokasjon *</Text>
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 }}>Lokasjon *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: colors.cardBg, color: colors.text }}
                     value={formData.location}
                     onChangeText={(text) => setFormData({ ...formData, location: text })}
                     placeholder="f.eks. 1. etasje"
+                    placeholderTextColor={colors.textLight}
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>IP-adresse *</Text>
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 }}>IP-adresse *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: colors.cardBg, color: colors.text }}
                     value={formData.ipAddress}
                     onChangeText={(text) => setFormData({ ...formData, ipAddress: text })}
                     placeholder="f.eks. 192.168.1.100"
+                    placeholderTextColor={colors.textLight}
                     keyboardType="default"
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Port *</Text>
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 }}>Port *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: colors.cardBg, color: colors.text }}
                     value={formData.port}
                     onChangeText={(text) => setFormData({ ...formData, port: text })}
                     placeholder="502"
+                    placeholderTextColor={colors.textLight}
                     keyboardType="numeric"
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>MAC-adresse</Text>
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 }}>MAC-adresse</Text>
                   <TextInput
-                    style={styles.input}
+                    style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: colors.cardBg, color: colors.text }}
                     value={formData.macAddress}
                     onChangeText={(text) => setFormData({ ...formData, macAddress: formatMacAddress(text) })}
                     placeholder="f.eks. 00:1A:2B:3C:4D:5E"
+                    placeholderTextColor={colors.textLight}
                     autoCapitalize="characters"
                     maxLength={17}
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Beskrivelse</Text>
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 }}>Beskrivelse</Text>
                   <TextInput
-                    style={[styles.input, styles.textArea]}
+                    style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: colors.cardBg, color: colors.text, height: 100, textAlignVertical: 'top' }}
                     value={formData.description}
                     onChangeText={(text) => setFormData({ ...formData, description: text })}
                     placeholder="Tilleggsinformasjon om døren..."
+                    placeholderTextColor={colors.textLight}
                     multiline
                     numberOfLines={4}
                   />
                 </View>
               </ScrollView>
 
-              <View style={styles.modalFooter}>
-                <TouchableOpacity style={styles.cancelButton} onPress={handleCloseModal}>
-                  <Text style={styles.cancelButtonText}>Avbryt</Text>
+              <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border }}>
+                <TouchableOpacity style={{ flex: 1, paddingVertical: 14, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }} onPress={handleCloseModal}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textSecondary }}>Avbryt</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.saveButton, actionLoading === 'save' && styles.saveButtonDisabled]}
+                  style={{ flex: 1, paddingVertical: 14, borderRadius: 8, backgroundColor: actionLoading === 'save' ? colors.textLight : colors.primary, alignItems: 'center' }}
                   onPress={handleSaveDoor}
                   disabled={actionLoading === 'save'}
                 >
                   {actionLoading === 'save' ? (
                     <ActivityIndicator size="small" color="#FFF" />
                   ) : (
-                    <Text style={styles.saveButtonText}>{editMode ? 'Oppdater' : 'Opprett'}</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFF' }}>{editMode ? 'Oppdater' : 'Opprett'}</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -507,307 +516,4 @@ export default function DoorManagementScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  backButton: {
-    padding: 8,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  logsButton: {
-    padding: 8,
-  },
-  addButton: {
-    backgroundColor: '#3B82F6',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#111827',
-  },
-  listContainer: {
-    flex: 1,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
-  },
-  emptyStateText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 16,
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 4,
-  },
-  doorGrid: {
-    padding: 16,
-    gap: 16,
-  },
-  doorCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statusBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFF',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  doorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  doorInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  doorName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  doorLocation: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  doorDetails: {
-    gap: 8,
-    marginBottom: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 6,
-  },
-  testButton: {
-    backgroundColor: '#DBEAFE',
-  },
-  testButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3B82F6',
-  },
-  lockButton: {
-    backgroundColor: '#EF4444',
-  },
-  unlockButton: {
-    backgroundColor: '#10B981',
-  },
-  lockButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  menuButtons: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    paddingTop: 12,
-    gap: 8,
-  },
-  menuButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    gap: 4,
-  },
-  menuButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  formGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#FFF',
-    color: '#111827',
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  saveButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: '#3B82F6',
-    alignItems: 'center',
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#93C5FD',
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-});
+const styles = StyleSheet.create({});

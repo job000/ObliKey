@@ -17,12 +17,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
 import type { PTSession } from '../types';
 
 export default function PTSessionsScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const [sessions, setSessions] = useState<PTSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -174,21 +176,21 @@ export default function PTSessionsScreen({ navigation }: any) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'PENDING_APPROVAL':
-        return '#8B5CF6';
+        return colors.accent;
       case 'SCHEDULED':
-        return '#F59E0B';
+        return colors.warning;
       case 'CONFIRMED':
-        return '#10B981';
+        return colors.success;
       case 'COMPLETED':
-        return '#6B7280';
+        return colors.textSecondary;
       case 'CANCELLED':
-        return '#EF4444';
+        return colors.danger;
       case 'NO_SHOW':
-        return '#DC2626';
+        return '#DC2626'; // darker shade of danger
       case 'REJECTED':
-        return '#F87171';
+        return '#F87171'; // lighter shade of danger
       default:
-        return '#3B82F6';
+        return colors.primary;
     }
   };
 
@@ -260,9 +262,9 @@ export default function PTSessionsScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -271,35 +273,35 @@ export default function PTSessionsScreen({ navigation }: any) {
   const filteredSessions = getFilteredSessions();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.screenHeader}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <View style={[styles.screenHeader, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
         <Container>
           <View style={styles.headerContent}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
               style={styles.backButton}
             >
-              <Ionicons name="arrow-back" size={24} color="#111827" />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
             <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle}>PT-Økter</Text>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>PT-Økter</Text>
               {user?.role === 'CUSTOMER' && (
-                <Text style={styles.headerSubtitle}>{`${credits} kreditter tilgjengelig`}</Text>
+                <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{`${credits} kreditter tilgjengelig`}</Text>
               )}
             </View>
             {(user?.role === 'ADMIN' || user?.role === 'TRAINER') && (
               <TouchableOpacity
-                style={styles.addButton}
+                style={[styles.addButton, { backgroundColor: colors.primary }]}
                 onPress={() => navigation.navigate('CreatePTSession')}
               >
-                <Ionicons name="add" size={24} color="#FFF" />
+                <Ionicons name="add" size={24} color={colors.cardBg} />
               </TouchableOpacity>
             )}
           </View>
         </Container>
       </View>
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -307,29 +309,29 @@ export default function PTSessionsScreen({ navigation }: any) {
         <Container>
 
         {user?.role === 'CUSTOMER' && (
-          <View style={styles.creditsCard}>
-            <View style={styles.creditsIcon}>
-              <Ionicons name="card" size={32} color="#3B82F6" />
+          <View style={[styles.creditsCard, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.creditsIcon, { backgroundColor: colors.background }]}>
+              <Ionicons name="card" size={32} color={colors.primary} />
             </View>
             <View style={styles.creditsInfo}>
-              <Text style={styles.creditsLabel}>PT-Kreditter</Text>
-              <Text style={styles.creditsValue}>{`${credits} økter`}</Text>
+              <Text style={[styles.creditsLabel, { color: colors.textSecondary }]}>PT-Kreditter</Text>
+              <Text style={[styles.creditsValue, { color: colors.text }]}>{`${credits} økter`}</Text>
             </View>
             {credits > 0 ? (
               <TouchableOpacity
-                style={styles.bookButton}
+                style={[styles.bookButton, { backgroundColor: colors.success }]}
                 onPress={() => navigation.navigate('PTBooking')}
               >
-                <Ionicons name="calendar-outline" size={16} color="#FFF" />
-                <Text style={styles.bookButtonText}>Book time</Text>
+                <Ionicons name="calendar-outline" size={16} color={colors.cardBg} />
+                <Text style={[styles.bookButtonText, { color: colors.cardBg }]}>Book time</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={styles.buyButton}
+                style={[styles.buyButton, { backgroundColor: colors.primary }]}
                 onPress={() => navigation.navigate('PTShop')}
               >
-                <Ionicons name="cart-outline" size={16} color="#FFF" />
-                <Text style={styles.buyButtonText}>Kjøp timer</Text>
+                <Ionicons name="cart-outline" size={16} color={colors.cardBg} />
+                <Text style={[styles.buyButtonText, { color: colors.cardBg }]}>Kjøp timer</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -337,41 +339,41 @@ export default function PTSessionsScreen({ navigation }: any) {
 
         {user?.role === 'TRAINER' && (
           <>
-            <View style={styles.trainerCard}>
+            <View style={[styles.trainerCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
               <View style={styles.trainerCardHeader}>
-                <View style={styles.trainerIcon}>
-                  <Ionicons name="settings" size={32} color="#8B5CF6" />
+                <View style={[styles.trainerIcon, { backgroundColor: colors.background }]}>
+                  <Ionicons name="settings" size={32} color={colors.accent} />
                 </View>
                 <View style={styles.trainerInfo}>
-                  <Text style={styles.trainerLabel}>PT-Administrasjon</Text>
-                  <Text style={styles.trainerSubtext}>Administrer økter og gi kreditter</Text>
+                  <Text style={[styles.trainerLabel, { color: colors.text }]}>PT-Administrasjon</Text>
+                  <Text style={[styles.trainerSubtext, { color: colors.textSecondary }]}>Administrer økter og gi kreditter</Text>
                 </View>
               </View>
               <TouchableOpacity
-                style={styles.availabilityButton}
+                style={[styles.availabilityButton, { backgroundColor: colors.accent }]}
                 onPress={() => navigation.navigate('PTManagement')}
               >
-                <Ionicons name="cog-outline" size={16} color="#FFF" />
-                <Text style={styles.availabilityButtonText}>Åpne</Text>
+                <Ionicons name="cog-outline" size={16} color={colors.cardBg} />
+                <Text style={[styles.availabilityButtonText, { color: colors.cardBg }]}>Åpne</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.trainerCard}>
+            <View style={[styles.trainerCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
               <View style={styles.trainerCardHeader}>
-                <View style={styles.trainerIcon}>
-                  <Ionicons name="calendar" size={32} color="#8B5CF6" />
+                <View style={[styles.trainerIcon, { backgroundColor: colors.background }]}>
+                  <Ionicons name="calendar" size={32} color={colors.accent} />
                 </View>
                 <View style={styles.trainerInfo}>
-                  <Text style={styles.trainerLabel}>Tilgjengelighet</Text>
-                  <Text style={styles.trainerSubtext}>Administrer din arbeidsplan</Text>
+                  <Text style={[styles.trainerLabel, { color: colors.text }]}>Tilgjengelighet</Text>
+                  <Text style={[styles.trainerSubtext, { color: colors.textSecondary }]}>Administrer din arbeidsplan</Text>
                 </View>
               </View>
               <TouchableOpacity
-                style={styles.availabilityButton}
+                style={[styles.availabilityButton, { backgroundColor: colors.accent }]}
                 onPress={() => navigation.navigate('PTAvailability')}
               >
-                <Ionicons name="settings-outline" size={16} color="#FFF" />
-                <Text style={styles.availabilityButtonText}>Administrer</Text>
+                <Ionicons name="settings-outline" size={16} color={colors.cardBg} />
+                <Text style={[styles.availabilityButtonText, { color: colors.cardBg }]}>Administrer</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -387,19 +389,21 @@ export default function PTSessionsScreen({ navigation }: any) {
             <TouchableOpacity
               style={[
                 styles.filterButton,
-                filter === 'pending' && styles.filterButtonActive,
+                { borderColor: colors.border, backgroundColor: colors.cardBg },
+                filter === 'pending' && [styles.filterButtonActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
               ]}
               onPress={() => setFilter('pending')}
             >
               <Ionicons
                 name="time-outline"
                 size={16}
-                color={filter === 'pending' ? '#FFF' : '#8B5CF6'}
+                color={filter === 'pending' ? colors.cardBg : colors.accent}
               />
               <Text
                 style={[
                   styles.filterButtonText,
-                  filter === 'pending' && styles.filterButtonTextActive,
+                  { color: colors.text },
+                  filter === 'pending' && [styles.filterButtonTextActive, { color: colors.cardBg }],
                 ]}
               >
                 Venter
@@ -409,19 +413,21 @@ export default function PTSessionsScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.filterButton,
-              filter === 'upcoming' && styles.filterButtonActive,
+              { borderColor: colors.border, backgroundColor: colors.cardBg },
+              filter === 'upcoming' && [styles.filterButtonActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
             ]}
             onPress={() => setFilter('upcoming')}
           >
             <Ionicons
               name="calendar-outline"
               size={16}
-              color={filter === 'upcoming' ? '#FFF' : '#3B82F6'}
+              color={filter === 'upcoming' ? colors.cardBg : colors.primary}
             />
             <Text
               style={[
                 styles.filterButtonText,
-                filter === 'upcoming' && styles.filterButtonTextActive,
+                { color: colors.text },
+                filter === 'upcoming' && [styles.filterButtonTextActive, { color: colors.cardBg }],
               ]}
             >
               Kommende
@@ -430,19 +436,21 @@ export default function PTSessionsScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.filterButton,
-              filter === 'completed' && styles.filterButtonActive,
+              { borderColor: colors.border, backgroundColor: colors.cardBg },
+              filter === 'completed' && [styles.filterButtonActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
             ]}
             onPress={() => setFilter('completed')}
           >
             <Ionicons
               name="checkmark-done-outline"
               size={16}
-              color={filter === 'completed' ? '#FFF' : '#10B981'}
+              color={filter === 'completed' ? colors.cardBg : colors.success}
             />
             <Text
               style={[
                 styles.filterButtonText,
-                filter === 'completed' && styles.filterButtonTextActive,
+                { color: colors.text },
+                filter === 'completed' && [styles.filterButtonTextActive, { color: colors.cardBg }],
               ]}
             >
               Fullført
@@ -451,19 +459,21 @@ export default function PTSessionsScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.filterButton,
-              filter === 'all' && styles.filterButtonActive,
+              { borderColor: colors.border, backgroundColor: colors.cardBg },
+              filter === 'all' && [styles.filterButtonActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
             ]}
             onPress={() => setFilter('all')}
           >
             <Ionicons
               name="list-outline"
               size={16}
-              color={filter === 'all' ? '#FFF' : '#6B7280'}
+              color={filter === 'all' ? colors.cardBg : colors.textSecondary}
             />
             <Text
               style={[
                 styles.filterButtonText,
-                filter === 'all' && styles.filterButtonTextActive,
+                { color: colors.text },
+                filter === 'all' && [styles.filterButtonTextActive, { color: colors.cardBg }],
               ]}
             >
               Alle
@@ -474,14 +484,14 @@ export default function PTSessionsScreen({ navigation }: any) {
         <View style={styles.sessionsList}>
           {filteredSessions.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="barbell-outline" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyText}>Ingen økter funnet</Text>
+              <Ionicons name="barbell-outline" size={64} color={colors.border} />
+              <Text style={[styles.emptyText, { color: colors.textLight }]}>Ingen økter funnet</Text>
               {user?.role === 'CUSTOMER' && (
                 <TouchableOpacity
-                  style={styles.emptyButton}
+                  style={[styles.emptyButton, { backgroundColor: colors.primary }]}
                   onPress={() => navigation.navigate('Shop', { filter: 'PT_SESSION' })}
                 >
-                  <Text style={styles.emptyButtonText}>Kjøp PT-pakke</Text>
+                  <Text style={[styles.emptyButtonText, { color: colors.cardBg }]}>Kjøp PT-pakke</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -489,16 +499,16 @@ export default function PTSessionsScreen({ navigation }: any) {
             filteredSessions.map((session) => (
               <TouchableOpacity
                 key={session.id}
-                style={styles.sessionCard}
+                style={[styles.sessionCard, { backgroundColor: colors.cardBg }]}
                 onPress={() => navigation.navigate('SessionDetail', { sessionId: session.id })}
                 activeOpacity={0.7}
               >
                 <View style={styles.sessionHeader}>
                   <View style={styles.sessionDateContainer}>
-                    <Text style={styles.sessionDate}>
+                    <Text style={[styles.sessionDate, { color: colors.primary }]}>
                       {formatDate(session.startTime)}
                     </Text>
-                    <Text style={styles.sessionTime}>
+                    <Text style={[styles.sessionTime, { color: colors.text }]}>
                       {`${formatTime(session.startTime)} - ${formatTime(session.endTime)}`}
                     </Text>
                   </View>
@@ -524,17 +534,17 @@ export default function PTSessionsScreen({ navigation }: any) {
                   </View>
                 </View>
 
-                <Text style={styles.sessionTitle}>{session.title}</Text>
+                <Text style={[styles.sessionTitle, { color: colors.text }]}>{session.title}</Text>
                 {session.description && (
-                  <Text style={styles.sessionDescription}>
+                  <Text style={[styles.sessionDescription, { color: colors.textSecondary }]}>
                     {session.description}
                   </Text>
                 )}
 
                 <View style={styles.sessionInfo}>
                   <View style={styles.infoRow}>
-                    <Ionicons name="person" size={16} color="#6B7280" />
-                    <Text style={styles.infoText}>
+                    <Ionicons name="person" size={16} color={colors.textSecondary} />
+                    <Text style={[styles.infoText, { color: colors.textSecondary }]}>
                       {user?.role === 'CUSTOMER'
                         ? `Trener: ${session.trainer?.firstName || ''} ${session.trainer?.lastName || ''}`
                         : `Kunde: ${session.customer?.firstName || ''} ${session.customer?.lastName || ''}`}
@@ -542,16 +552,16 @@ export default function PTSessionsScreen({ navigation }: any) {
                   </View>
                   {session.location && (
                     <View style={styles.infoRow}>
-                      <Ionicons name="location" size={16} color="#6B7280" />
-                      <Text style={styles.infoText}>{session.location}</Text>
+                      <Ionicons name="location" size={16} color={colors.textSecondary} />
+                      <Text style={[styles.infoText, { color: colors.textSecondary }]}>{session.location}</Text>
                     </View>
                   )}
                 </View>
 
                 {session.notes && (
-                  <View style={styles.notesContainer}>
-                    <Text style={styles.notesLabel}>Notater:</Text>
-                    <Text style={styles.notesText}>{session.notes}</Text>
+                  <View style={[styles.notesContainer, { backgroundColor: colors.background }]}>
+                    <Text style={[styles.notesLabel, { color: colors.textSecondary }]}>Notater:</Text>
+                    <Text style={[styles.notesText, { color: colors.text }]}>{session.notes}</Text>
                   </View>
                 )}
 
@@ -559,25 +569,25 @@ export default function PTSessionsScreen({ navigation }: any) {
                 {user?.role === 'CUSTOMER' && session.status === 'PENDING_APPROVAL' && (
                   <View style={styles.actionContainer}>
                     <TouchableOpacity
-                      style={styles.approveButton}
+                      style={[styles.approveButton, { backgroundColor: colors.success }]}
                       onPress={(e) => {
                         e.stopPropagation();
                         approveSession(session.id);
                       }}
                     >
-                      <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
-                      <Text style={styles.approveButtonText}>Godta</Text>
+                      <Ionicons name="checkmark-circle-outline" size={20} color={colors.cardBg} />
+                      <Text style={[styles.approveButtonText, { color: colors.cardBg }]}>Godta</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.rejectButton}
+                      style={[styles.rejectButton, { backgroundColor: colors.danger }]}
                       onPress={(e) => {
                         e.stopPropagation();
                         setSelectedSession(session);
                         setRejectModalVisible(true);
                       }}
                     >
-                      <Ionicons name="close-circle-outline" size={20} color="#FFF" />
-                      <Text style={styles.rejectButtonText}>Avslå</Text>
+                      <Ionicons name="close-circle-outline" size={20} color={colors.cardBg} />
+                      <Text style={[styles.rejectButtonText, { color: colors.cardBg }]}>Avslå</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -587,23 +597,23 @@ export default function PTSessionsScreen({ navigation }: any) {
                   session.status === 'CONFIRMED' && (
                     <View style={styles.actionContainer}>
                       <TouchableOpacity
-                        style={styles.completeButton}
+                        style={[styles.completeButton, { backgroundColor: colors.success }]}
                         onPress={(e) => {
                           e.stopPropagation();
                           completeSession(session.id);
                         }}
                       >
-                        <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
-                        <Text style={styles.completeButtonText}>Fullfør økt</Text>
+                        <Ionicons name="checkmark-circle-outline" size={20} color={colors.cardBg} />
+                        <Text style={[styles.completeButtonText, { color: colors.cardBg }]}>Fullfør økt</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={styles.editButton}
+                        style={[styles.editButton, { borderColor: colors.primary }]}
                         onPress={(e) => {
                           e.stopPropagation();
                           navigation.navigate('EditPTSession', { sessionId: session.id });
                         }}
                       >
-                        <Ionicons name="create-outline" size={20} color="#3B82F6" />
+                        <Ionicons name="create-outline" size={20} color={colors.primary} />
                       </TouchableOpacity>
                     </View>
                   )}
@@ -613,15 +623,15 @@ export default function PTSessionsScreen({ navigation }: any) {
                   session.status !== 'CANCELLED' &&
                   session.status !== 'REJECTED' && (
                     <TouchableOpacity
-                      style={styles.cancelButton}
+                      style={[styles.cancelButton, { borderColor: colors.danger }]}
                       onPress={(e) => {
                         e.stopPropagation();
                         setSelectedSession(session);
                         setCancelModalVisible(true);
                       }}
                     >
-                      <Ionicons name="close-circle-outline" size={16} color="#EF4444" />
-                      <Text style={styles.cancelButtonText}>Avlys økt</Text>
+                      <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+                      <Text style={[styles.cancelButtonText, { color: colors.danger }]}>Avlys økt</Text>
                     </TouchableOpacity>
                   )}
               </TouchableOpacity>
@@ -643,18 +653,19 @@ export default function PTSessionsScreen({ navigation }: any) {
         style={{ flex: 1 }}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Avslå PT-økt</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Avslå PT-økt</Text>
               <TouchableOpacity onPress={() => setRejectModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalLabel}>Hvorfor avslår du denne økten?</Text>
+            <Text style={[styles.modalLabel, { color: colors.text }]}>Hvorfor avslår du denne økten?</Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Skriv en grunn (valgfritt)"
+              placeholderTextColor={colors.textLight}
               value={rejectionReason}
               onChangeText={setRejectionReason}
               multiline
@@ -664,19 +675,19 @@ export default function PTSessionsScreen({ navigation }: any) {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.modalButtonCancel}
+                style={[styles.modalButtonCancel, { borderColor: colors.border }]}
                 onPress={() => {
                   setRejectModalVisible(false);
                   setRejectionReason('');
                 }}
               >
-                <Text style={styles.modalButtonCancelText}>Avbryt</Text>
+                <Text style={[styles.modalButtonCancelText, { color: colors.text }]}>Avbryt</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.modalButtonReject}
+                style={[styles.modalButtonReject, { backgroundColor: colors.danger }]}
                 onPress={rejectSession}
               >
-                <Text style={styles.modalButtonRejectText}>Avslå</Text>
+                <Text style={[styles.modalButtonRejectText, { color: colors.cardBg }]}>Avslå</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -696,18 +707,19 @@ export default function PTSessionsScreen({ navigation }: any) {
         style={{ flex: 1 }}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Avlys PT-økt</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Avlys PT-økt</Text>
               <TouchableOpacity onPress={() => setCancelModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalLabel}>Hvorfor avlyser du denne økten?</Text>
+            <Text style={[styles.modalLabel, { color: colors.text }]}>Hvorfor avlyser du denne økten?</Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Skriv en grunn (valgfritt)"
+              placeholderTextColor={colors.textLight}
               value={cancellationReason}
               onChangeText={setCancellationReason}
               multiline
@@ -717,19 +729,19 @@ export default function PTSessionsScreen({ navigation }: any) {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.modalButtonCancel}
+                style={[styles.modalButtonCancel, { borderColor: colors.border }]}
                 onPress={() => {
                   setCancelModalVisible(false);
                   setCancellationReason('');
                 }}
               >
-                <Text style={styles.modalButtonCancelText}>Avbryt</Text>
+                <Text style={[styles.modalButtonCancelText, { color: colors.text }]}>Avbryt</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.modalButtonReject}
+                style={[styles.modalButtonReject, { backgroundColor: colors.danger }]}
                 onPress={cancelSession}
               >
-                <Text style={styles.modalButtonRejectText}>Avlys</Text>
+                <Text style={[styles.modalButtonRejectText, { color: colors.cardBg }]}>Avlys</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -743,16 +755,12 @@ export default function PTSessionsScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   screenHeader: {
-    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
     paddingVertical: 16,
   },
   headerContent: {
@@ -769,21 +777,17 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
     marginTop: 2,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
   },
   addButton: {
-    backgroundColor: '#3B82F6',
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -793,7 +797,6 @@ const styles = StyleSheet.create({
   creditsCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -807,7 +810,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -817,16 +819,13 @@ const styles = StyleSheet.create({
   },
   creditsLabel: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 4,
   },
   creditsValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
   },
   bookButton: {
-    backgroundColor: '#10B981',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -837,10 +836,8 @@ const styles = StyleSheet.create({
   bookButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFF',
   },
   buyButton: {
-    backgroundColor: '#3B82F6',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -851,10 +848,8 @@ const styles = StyleSheet.create({
   buyButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFF',
   },
   trainerCard: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -862,7 +857,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   trainerCardHeader: {
     flexDirection: 'row',
@@ -874,7 +868,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#F3E8FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -884,15 +877,12 @@ const styles = StyleSheet.create({
   trainerLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
     marginBottom: 4,
   },
   trainerSubtext: {
     fontSize: 14,
-    color: '#6B7280',
   },
   availabilityButton: {
-    backgroundColor: '#8B5CF6',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -903,7 +893,6 @@ const styles = StyleSheet.create({
   availabilityButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFF',
   },
   filterScroll: {
     marginBottom: 16,
@@ -921,27 +910,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFF',
   },
   filterButtonActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
   },
   filterButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
   },
   filterButtonTextActive: {
-    color: '#FFF',
   },
   sessionsList: {
     gap: 16,
     paddingBottom: 24,
   },
   sessionCard: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -962,14 +944,12 @@ const styles = StyleSheet.create({
   sessionDate: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3B82F6',
     textTransform: 'capitalize',
     marginBottom: 4,
   },
   sessionTime: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#111827',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -986,12 +966,10 @@ const styles = StyleSheet.create({
   sessionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
     marginBottom: 8,
   },
   sessionDescription: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 12,
     lineHeight: 20,
   },
@@ -1006,10 +984,8 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: '#6B7280',
   },
   notesContainer: {
-    backgroundColor: '#F9FAFB',
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
@@ -1017,12 +993,10 @@ const styles = StyleSheet.create({
   notesLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
     marginBottom: 4,
   },
   notesText: {
     fontSize: 14,
-    color: '#374151',
     lineHeight: 20,
   },
   actionContainer: {
@@ -1036,14 +1010,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#10B981',
     paddingVertical: 12,
     borderRadius: 8,
   },
   completeButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFF',
   },
   editButton: {
     width: 44,
@@ -1052,7 +1024,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#3B82F6',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -1060,12 +1031,10 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#9CA3AF',
     marginTop: 16,
     marginBottom: 24,
   },
   emptyButton: {
-    backgroundColor: '#3B82F6',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -1073,7 +1042,6 @@ const styles = StyleSheet.create({
   emptyButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFF',
   },
   // Modal styles
   modalOverlay: {
@@ -1082,7 +1050,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -1102,22 +1069,17 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
   },
   modalLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 12,
   },
   modalInput: {
-    backgroundColor: '#F9FAFB',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#111827',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     marginBottom: 20,
     minHeight: 100,
   },
@@ -1130,25 +1092,21 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     alignItems: 'center',
   },
   modalButtonCancelText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
   },
   modalButtonReject: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#EF4444',
     alignItems: 'center',
   },
   modalButtonRejectText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFF',
   },
   approveButton: {
     flex: 1,
@@ -1156,14 +1114,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#10B981',
     paddingVertical: 12,
     borderRadius: 8,
   },
   approveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFF',
   },
   rejectButton: {
     flex: 1,
@@ -1171,21 +1127,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#EF4444',
     paddingVertical: 12,
     borderRadius: 8,
   },
   rejectButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFF',
   },
   cancelButton: {
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#EF4444',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -1193,6 +1146,5 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#EF4444',
   },
 });

@@ -24,4 +24,8 @@ router.post('/config/:provider/test', authorize('ADMIN', 'SUPER_ADMIN'), (req, r
 // Available payment methods (for checkout - all authenticated users)
 router.get('/available', (req, res) => paymentController.getAvailablePaymentMethods(req, res));
 
+// Payment initiation routes (for customers during checkout)
+router.post('/vipps/initiate', (req, res) => paymentController.initiateVippsPayment(req, res));
+router.post('/stripe/create-intent', (req, res) => paymentController.createStripeIntent(req, res));
+
 export default router;

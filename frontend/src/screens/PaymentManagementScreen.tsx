@@ -10,10 +10,13 @@ import {
   ActivityIndicator,
   Switch,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { API_URL } from '../config';
+import { API_URL } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface PaymentConfig {
   id: string;
@@ -40,6 +43,7 @@ interface StripeCredentials {
 
 export default function PaymentManagementScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [configs, setConfigs] = useState<PaymentConfig[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -69,7 +73,7 @@ export default function PaymentManagementScreen({ navigation }: any) {
 
   const loadPaymentConfigs = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/payments/config`, {
+      const response = await fetch(`${API_URL}/payments/config`, {
         headers: {
           'Authorization': `Bearer ${user?.token}`,
         },
@@ -147,7 +151,7 @@ export default function PaymentManagementScreen({ navigation }: any) {
 
     setSaving(true);
     try {
-      const response = await fetch(`${API_URL}/api/payments/config`, {
+      const response = await fetch(`${API_URL}/payments/config`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${user?.token}`,
@@ -181,7 +185,7 @@ export default function PaymentManagementScreen({ navigation }: any) {
 
   const toggleProvider = async (provider: string, newEnabled: boolean) => {
     try {
-      const response = await fetch(`${API_URL}/api/payments/config/${provider}/toggle`, {
+      const response = await fetch(`${API_URL}/payments/config/${provider}/toggle`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${user?.token}`,
@@ -205,7 +209,7 @@ export default function PaymentManagementScreen({ navigation }: any) {
   const testConnection = async (provider: string) => {
     setTesting(provider);
     try {
-      const response = await fetch(`${API_URL}/api/payments/config/${provider}/test`, {
+      const response = await fetch(`${API_URL}/payments/config/${provider}/test`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${user?.token}`,
@@ -237,7 +241,7 @@ export default function PaymentManagementScreen({ navigation }: any) {
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await fetch(`${API_URL}/api/payments/config/${provider}`, {
+              const response = await fetch(`${API_URL}/payments/config/${provider}`, {
                 method: 'DELETE',
                 headers: {
                   'Authorization': `Bearer ${user?.token}`,
@@ -275,46 +279,46 @@ export default function PaymentManagementScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>Laster...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Laster...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Betalingsadministrasjon</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Betalingsadministrasjon</Text>
       </View>
 
       <ScrollView style={styles.content}>
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={24} color="#3B82F6" />
-          <Text style={styles.infoText}>
+        <View style={[styles.infoCard, { backgroundColor: colors.primaryLight + '33' }]}>
+          <Ionicons name="information-circle" size={24} color={colors.primary} />
+          <Text style={[styles.infoText, { color: colors.primaryDark }]}>
             Konfigurer betalingsleverandører for din butikk. Credentials lagres kryptert.
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tilgjengelige betalingsleverandører</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Tilgjengelige betalingsleverandører</Text>
 
           {['VIPPS', 'STRIPE'].map((providerName) => {
             const config = configs.find(c => c.provider === providerName);
             const providerColor = getProviderColor(providerName);
 
             return (
-              <View key={providerName} style={styles.providerCard}>
+              <View key={providerName} style={[styles.providerCard, { backgroundColor: colors.cardBg }]}>
                 <View style={styles.providerHeader}>
                   <View style={[styles.providerIcon, { backgroundColor: providerColor + '15' }]}>
                     <Ionicons name={getProviderIcon(providerName) as any} size={24} color={providerColor} />
                   </View>
                   <View style={styles.providerInfo}>
-                    <Text style={styles.providerName}>{config?.displayName || providerName}</Text>
-                    <Text style={styles.providerStatus}>
+                    <Text style={[styles.providerName, { color: colors.text }]}>{config?.displayName || providerName}</Text>
+                    <Text style={[styles.providerStatus, { color: colors.textSecondary }]}>
                       {config ? (
                         <>
                           {config.enabled ? '✓ Aktivert' : '○ Deaktivert'}
@@ -330,25 +334,25 @@ export default function PaymentManagementScreen({ navigation }: any) {
                     <Switch
                       value={config.enabled}
                       onValueChange={(value) => toggleProvider(providerName, value)}
-                      trackColor={{ false: '#D1D5DB', true: providerColor }}
+                      trackColor={{ false: colors.border, true: providerColor }}
                     />
                   )}
                 </View>
 
                 {config && config.provider === 'VIPPS' && config.vippsMerchantSerialNumber && (
                   <View style={styles.providerDetail}>
-                    <Text style={styles.providerDetailLabel}>MSN:</Text>
-                    <Text style={styles.providerDetailValue}>{config.vippsMerchantSerialNumber}</Text>
+                    <Text style={[styles.providerDetailLabel, { color: colors.textSecondary }]}>MSN:</Text>
+                    <Text style={[styles.providerDetailValue, { color: colors.text }]}>{config.vippsMerchantSerialNumber}</Text>
                   </View>
                 )}
 
                 <View style={styles.providerActions}>
                   <TouchableOpacity
-                    style={[styles.actionButton, styles.configButton]}
+                    style={[styles.actionButton, styles.configButton, { backgroundColor: colors.primary }]}
                     onPress={() => openConfigModal(providerName as any)}
                   >
-                    <Ionicons name="settings-outline" size={18} color="#FFF" />
-                    <Text style={styles.actionButtonText}>
+                    <Ionicons name="settings-outline" size={18} color={colors.cardBg} />
+                    <Text style={[styles.actionButtonText, { color: colors.cardBg }]}>
                       {config ? 'Oppdater' : 'Konfigurer'}
                     </Text>
                   </TouchableOpacity>
@@ -356,25 +360,25 @@ export default function PaymentManagementScreen({ navigation }: any) {
                   {config && (
                     <>
                       <TouchableOpacity
-                        style={[styles.actionButton, styles.testButton]}
+                        style={[styles.actionButton, styles.testButton, { backgroundColor: colors.success }]}
                         onPress={() => testConnection(providerName)}
                         disabled={testing === providerName}
                       >
                         {testing === providerName ? (
-                          <ActivityIndicator size="small" color="#FFF" />
+                          <ActivityIndicator size="small" color={colors.cardBg} />
                         ) : (
                           <>
-                            <Ionicons name="checkmark-circle-outline" size={18} color="#FFF" />
-                            <Text style={styles.actionButtonText}>Test</Text>
+                            <Ionicons name="checkmark-circle-outline" size={18} color={colors.cardBg} />
+                            <Text style={[styles.actionButtonText, { color: colors.cardBg }]}>Test</Text>
                           </>
                         )}
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.actionButton, styles.deleteButton]}
+                        style={[styles.actionButton, styles.deleteButton, { backgroundColor: colors.danger }]}
                         onPress={() => deleteConfiguration(providerName)}
                       >
-                        <Ionicons name="trash-outline" size={18} color="#FFF" />
+                        <Ionicons name="trash-outline" size={18} color={colors.cardBg} />
                       </TouchableOpacity>
                     </>
                   )}
@@ -387,37 +391,47 @@ export default function PaymentManagementScreen({ navigation }: any) {
 
       {/* Configuration Modal */}
       <Modal visible={showModal} animationType="slide" presentationStyle="pageSheet">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              Konfigurer {selectedProvider === 'VIPPS' ? 'Vipps' : 'Stripe'}
-            </Text>
-            <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Ionicons name="close" size={28} color="#111827" />
-            </TouchableOpacity>
-          </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={[styles.modalContainer, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                Konfigurer {selectedProvider === 'VIPPS' ? 'Vipps' : 'Stripe'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowModal(false)}>
+                <Ionicons name="close" size={28} color={colors.text} />
+              </TouchableOpacity>
+            </View>
 
-          <ScrollView style={styles.modalContent}>
+            <ScrollView
+              style={styles.modalContent}
+              contentContainerStyle={{ paddingBottom: 40 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={true}
+            >
             <View style={styles.formSection}>
-              <Text style={styles.formSectionTitle}>Generelle innstillinger</Text>
+              <Text style={[styles.formSectionTitle, { color: colors.text }]}>Generelle innstillinger</Text>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Visningsnavn</Text>
+                <Text style={[styles.label, { color: colors.text }]}>Visningsnavn</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                   value={displayName}
                   onChangeText={setDisplayName}
                   placeholder={selectedProvider === 'VIPPS' ? 'Vipps' : 'Stripe'}
+                  placeholderTextColor={colors.textLight}
                 />
               </View>
 
               <View style={styles.formRow}>
                 <View style={styles.formGroupHalf}>
-                  <Text style={styles.label}>Test-modus</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Test-modus</Text>
                   <Switch value={testMode} onValueChange={setTestMode} />
                 </View>
                 <View style={styles.formGroupHalf}>
-                  <Text style={styles.label}>Aktivert</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Aktivert</Text>
                   <Switch value={enabled} onValueChange={setEnabled} />
                 </View>
               </View>
@@ -425,53 +439,57 @@ export default function PaymentManagementScreen({ navigation }: any) {
 
             {selectedProvider === 'VIPPS' && (
               <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Vipps ePay API Credentials</Text>
-                <Text style={styles.helpText}>
+                <Text style={[styles.formSectionTitle, { color: colors.text }]}>Vipps ePay API Credentials</Text>
+                <Text style={[styles.helpText, { color: colors.textSecondary }]}>
                   Hent disse verdiene fra portal.vipps.no
                 </Text>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Client ID *</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Client ID *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                     value={vippsClientId}
                     onChangeText={setVippsClientId}
                     placeholder="client-id-fra-vipps"
+                    placeholderTextColor={colors.textLight}
                     autoCapitalize="none"
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Client Secret *</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Client Secret *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                     value={vippsClientSecret}
                     onChangeText={setVippsClientSecret}
                     placeholder="client-secret-fra-vipps"
+                    placeholderTextColor={colors.textLight}
                     secureTextEntry
                     autoCapitalize="none"
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Subscription Key (Primary) *</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Subscription Key (Primary) *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                     value={vippsSubscriptionKey}
                     onChangeText={setVippsSubscriptionKey}
                     placeholder="Ocp-Apim-Subscription-Key"
+                    placeholderTextColor={colors.textLight}
                     secureTextEntry
                     autoCapitalize="none"
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Merchant Serial Number (MSN) *</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Merchant Serial Number (MSN) *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                     value={vippsMSN}
                     onChangeText={setVippsMSN}
                     placeholder="123456"
+                    placeholderTextColor={colors.textLight}
                     keyboardType="numeric"
                   />
                 </View>
@@ -480,41 +498,44 @@ export default function PaymentManagementScreen({ navigation }: any) {
 
             {selectedProvider === 'STRIPE' && (
               <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Stripe API Credentials</Text>
-                <Text style={styles.helpText}>
+                <Text style={[styles.formSectionTitle, { color: colors.text }]}>Stripe API Credentials</Text>
+                <Text style={[styles.helpText, { color: colors.textSecondary }]}>
                   Hent disse verdiene fra Stripe Dashboard
                 </Text>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Secret Key *</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Secret Key *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                     value={stripeSecretKey}
                     onChangeText={setStripeSecretKey}
                     placeholder="sk_test_... eller sk_live_..."
+                    placeholderTextColor={colors.textLight}
                     secureTextEntry
                     autoCapitalize="none"
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Publishable Key *</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Publishable Key *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                     value={stripePublishableKey}
                     onChangeText={setStripePublishableKey}
                     placeholder="pk_test_... eller pk_live_..."
+                    placeholderTextColor={colors.textLight}
                     autoCapitalize="none"
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Webhook Secret (valgfri)</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Webhook Secret (valgfri)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                     value={stripeWebhookSecret}
                     onChangeText={setStripeWebhookSecret}
                     placeholder="whsec_..."
+                    placeholderTextColor={colors.textLight}
                     secureTextEntry
                     autoCapitalize="none"
                   />
@@ -522,28 +543,29 @@ export default function PaymentManagementScreen({ navigation }: any) {
               </View>
             )}
 
-            <View style={styles.modalActions}>
+            <View style={[styles.modalActions, { borderTopColor: colors.border }]}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+                style={[styles.modalButton, styles.cancelButton, { backgroundColor: colors.borderLight }]}
                 onPress={() => setShowModal(false)}
               >
-                <Text style={styles.cancelButtonText}>Avbryt</Text>
+                <Text style={[styles.cancelButtonText, { color: colors.text }]}>Avbryt</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
+                style={[styles.modalButton, styles.saveButton, { backgroundColor: colors.primary }]}
                 onPress={saveConfiguration}
                 disabled={saving}
               >
                 {saving ? (
-                  <ActivityIndicator color="#FFF" />
+                  <ActivityIndicator color={colors.cardBg} />
                 ) : (
-                  <Text style={styles.saveButtonText}>Lagre konfigurasjon</Text>
+                  <Text style={[styles.saveButtonText, { color: colors.cardBg }]}>Lagre konfigurasjon</Text>
                 )}
               </TouchableOpacity>
             </View>
           </ScrollView>
-        </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -552,26 +574,21 @@ export default function PaymentManagementScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6B7280',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     marginRight: 16,
@@ -579,7 +596,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
   },
   content: {
     flex: 1,
@@ -587,7 +603,6 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: '#EFF6FF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
@@ -597,7 +612,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     fontSize: 14,
-    color: '#1E40AF',
     lineHeight: 20,
   },
   section: {
@@ -606,11 +620,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
     marginBottom: 16,
   },
   providerCard: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -639,12 +651,10 @@ const styles = StyleSheet.create({
   providerName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
     marginBottom: 4,
   },
   providerStatus: {
     fontSize: 14,
-    color: '#6B7280',
   },
   providerDetail: {
     flexDirection: 'row',
@@ -652,12 +662,10 @@ const styles = StyleSheet.create({
   },
   providerDetailLabel: {
     fontSize: 14,
-    color: '#6B7280',
     marginRight: 8,
   },
   providerDetailValue: {
     fontSize: 14,
-    color: '#111827',
     fontWeight: '500',
   },
   providerActions: {
@@ -675,24 +683,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   configButton: {
-    backgroundColor: '#3B82F6',
     flex: 2,
   },
   testButton: {
-    backgroundColor: '#10B981',
   },
   deleteButton: {
-    backgroundColor: '#EF4444',
     flex: 0.5,
   },
   actionButtonText: {
-    color: '#FFF',
     fontSize: 14,
     fontWeight: '600',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#FFF',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -700,12 +703,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
   },
   modalContent: {
     flex: 1,
@@ -717,12 +718,10 @@ const styles = StyleSheet.create({
   formSectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#111827',
     marginBottom: 4,
   },
   helpText: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 16,
   },
   formGroup: {
@@ -738,24 +737,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#F9FAFB',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#111827',
   },
   modalActions: {
     flexDirection: 'row',
     gap: 12,
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
   },
   modalButton: {
     flex: 1,
@@ -764,19 +758,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#F3F4F6',
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
   },
   saveButton: {
-    backgroundColor: '#3B82F6',
   },
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFF',
   },
 });

@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
 import Container from '../components/Container';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface AnalyticsData {
   revenue: {
@@ -45,6 +46,7 @@ interface AnalyticsData {
 }
 
 export default function AnalyticsScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -114,24 +116,24 @@ export default function AnalyticsScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   if (!data) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.errorText}>Kunne ikke laste analysedata</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.textSecondary }]}>Kunne ikke laste analysedata</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -139,8 +141,8 @@ export default function AnalyticsScreen({ navigation }: any) {
         <Container>
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>Rapporter & Analyse</Text>
-              <Text style={styles.subtitle}>Se statistikk og rapporter</Text>
+              <Text style={[styles.title, { color: colors.text }]}>Rapporter & Analyse</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Se statistikk og rapporter</Text>
             </View>
           </View>
 
@@ -149,14 +151,16 @@ export default function AnalyticsScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.timeRangeButton,
-              timeRange === 'week' && styles.timeRangeButtonActive,
+              { borderColor: colors.border, backgroundColor: colors.cardBg },
+              timeRange === 'week' && { backgroundColor: colors.primary, borderColor: colors.primary },
             ]}
             onPress={() => setTimeRange('week')}
           >
             <Text
               style={[
                 styles.timeRangeText,
-                timeRange === 'week' && styles.timeRangeTextActive,
+                { color: colors.text },
+                timeRange === 'week' && { color: colors.cardBg },
               ]}
             >
               Uke
@@ -166,14 +170,16 @@ export default function AnalyticsScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.timeRangeButton,
-              timeRange === 'month' && styles.timeRangeButtonActive,
+              { borderColor: colors.border, backgroundColor: colors.cardBg },
+              timeRange === 'month' && { backgroundColor: colors.primary, borderColor: colors.primary },
             ]}
             onPress={() => setTimeRange('month')}
           >
             <Text
               style={[
                 styles.timeRangeText,
-                timeRange === 'month' && styles.timeRangeTextActive,
+                { color: colors.text },
+                timeRange === 'month' && { color: colors.cardBg },
               ]}
             >
               Måned
@@ -183,14 +189,16 @@ export default function AnalyticsScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.timeRangeButton,
-              timeRange === 'year' && styles.timeRangeButtonActive,
+              { borderColor: colors.border, backgroundColor: colors.cardBg },
+              timeRange === 'year' && { backgroundColor: colors.primary, borderColor: colors.primary },
             ]}
             onPress={() => setTimeRange('year')}
           >
             <Text
               style={[
                 styles.timeRangeText,
-                timeRange === 'year' && styles.timeRangeTextActive,
+                { color: colors.text },
+                timeRange === 'year' && { color: colors.cardBg },
               ]}
             >
               År

@@ -18,8 +18,10 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { api } from '../services/api';
 import { Membership, MembershipStats } from '../types/membership';
+import { useTheme } from '../contexts/ThemeContext';
 
 const MembershipManagementScreen = ({ navigation }: any) => {
+  const { colors } = useTheme();
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [stats, setStats] = useState<MembershipStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -300,33 +302,34 @@ const MembershipManagementScreen = ({ navigation }: any) => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Medlemsoversikt</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Medlemsoversikt</Text>
         <TouchableOpacity
           style={styles.addButton}
           onPress={openCreateModal}>
-          <Ionicons name="add" size={24} color="#3B82F6" />
+          <Ionicons name="add" size={24} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
 
-      <View style={styles.searchAndFilterWrapper}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+      <View style={[styles.searchAndFilterWrapper, { backgroundColor: colors.cardBg }]}>
+        <View style={[styles.searchContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <Ionicons name="search" size={20} color={colors.textLight} style={styles.searchIcon} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Søk etter medlemmer..."
+            placeholderTextColor={colors.textLight}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -335,13 +338,13 @@ const MembershipManagementScreen = ({ navigation }: any) => {
           {['all', 'ACTIVE', 'FROZEN', 'SUSPENDED', 'CANCELLED', 'BLACKLISTED'].map(f => (
             <TouchableOpacity
               key={f}
-              style={[styles.filterChip, filter === f && styles.filterChipActive]}
+              style={[styles.filterChip, { backgroundColor: filter === f ? colors.primary : colors.cardBg, borderColor: filter === f ? colors.primary : colors.border }]}
               onPress={() => setFilter(f)}
             >
               <Ionicons
                 name={getFilterIcon(f)}
                 size={16}
-                color={filter === f ? '#fff' : '#6B7280'}
+                color={filter === f ? colors.cardBg : colors.textSecondary}
               />
             </TouchableOpacity>
           ))}
@@ -355,15 +358,15 @@ const MembershipManagementScreen = ({ navigation }: any) => {
         {filteredMemberships.map(membership => (
           <TouchableOpacity
             key={membership.id}
-            style={styles.memberCard}
+            style={[styles.memberCard, { backgroundColor: colors.cardBg }]}
             onPress={() => navigation.navigate('MembershipDetail', { membershipId: membership.id })}
           >
             <View style={styles.memberHeader}>
               <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>
+                <Text style={[styles.memberName, { color: colors.text }]}>
                   {membership.user?.firstName} {membership.user?.lastName}
                 </Text>
-                <Text style={styles.memberEmail}>{membership.user?.email}</Text>
+                <Text style={[styles.memberEmail, { color: colors.textSecondary }]}>{membership.user?.email}</Text>
               </View>
               <View style={[styles.statusBadge, { backgroundColor: getStatusColor(membership.status) }]}>
                 <Text style={styles.statusBadgeText}>{getStatusLabel(membership.status)}</Text>
@@ -372,12 +375,12 @@ const MembershipManagementScreen = ({ navigation }: any) => {
 
             <View style={styles.memberDetails}>
               <View style={styles.detailRow}>
-                <Ionicons name="card" size={16} color="#6B7280" />
-                <Text style={styles.detailText}>{membership.plan?.name || 'N/A'}</Text>
+                <Ionicons name="card" size={16} color={colors.textSecondary} />
+                <Text style={[styles.detailText, { color: colors.textSecondary }]}>{membership.plan?.name || 'N/A'}</Text>
               </View>
               <View style={styles.detailRow}>
-                <Ionicons name="calendar" size={16} color="#6B7280" />
-                <Text style={styles.detailText}>
+                <Ionicons name="calendar" size={16} color={colors.textSecondary} />
+                <Text style={[styles.detailText, { color: colors.textSecondary }]}>
                   Medlem siden {new Date(membership.startDate).toLocaleDateString('no-NO')}
                 </Text>
               </View>
@@ -386,8 +389,8 @@ const MembershipManagementScreen = ({ navigation }: any) => {
                 if (freezeInfo) {
                   return (
                     <View style={styles.detailRow}>
-                      <Ionicons name="snow" size={16} color="#3B82F6" />
-                      <Text style={[styles.detailText, styles.freezeText]}>
+                      <Ionicons name="snow" size={16} color={colors.primary} />
+                      <Text style={[styles.detailText, styles.freezeText, { color: colors.primary }]}>
                         Fryst: {formatFreezeDate(freezeInfo.startDate)} - {formatFreezeDate(freezeInfo.endDate)}
                       </Text>
                     </View>
@@ -397,8 +400,8 @@ const MembershipManagementScreen = ({ navigation }: any) => {
               })()}
               {membership.lastCheckInAt && (
                 <View style={styles.detailRow}>
-                  <Ionicons name="time" size={16} color="#6B7280" />
-                  <Text style={styles.detailText}>
+                  <Ionicons name="time" size={16} color={colors.textSecondary} />
+                  <Text style={[styles.detailText, { color: colors.textSecondary }]}>
                     Sist inne {new Date(membership.lastCheckInAt).toLocaleDateString('no-NO')}
                   </Text>
                 </View>
@@ -711,7 +714,6 @@ const MembershipManagementScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   loadingContainer: {
     flex: 1,
@@ -724,9 +726,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     padding: 8,
@@ -734,7 +734,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
   },
   addButton: {
     padding: 8,
@@ -743,25 +742,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#fff',
     gap: 8,
   },
   statCard: {
     flex: 1,
     paddingVertical: 8,
     paddingHorizontal: 6,
-    backgroundColor: '#F9FAFB',
     borderRadius: 8,
     alignItems: 'center',
   },
   statValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
   },
   statLabel: {
     fontSize: 12,
-    color: '#6B7280',
     marginTop: 4,
   },
   statIconContainer: {

@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
 import type { Order } from '../types';
@@ -21,7 +22,6 @@ type OrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELL
 const toNumber = (v: any) => {
   if (v == null) return 0;
   if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
-  // fjern evt. "kr", mellomrom og tusenskilletegn før parse
   const cleaned = String(v).replace(/\skr|kr|\s| |,/gi, '').trim();
   const n = parseFloat(cleaned);
   return Number.isFinite(n) ? n : 0;
@@ -30,6 +30,7 @@ const toNumber = (v: any) => {
 const formatNOK = (v: any) => `${toNumber(v).toLocaleString('nb-NO')} kr`;
 
 export default function OrdersManagementScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,7 +45,7 @@ export default function OrdersManagementScreen({ navigation }: any) {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const response = await api.getAllOrders(); // Admin endpoint
+      const response = await api.getAllOrders();
       if (response.success) {
         setOrders(response.data);
       }
@@ -98,17 +99,17 @@ export default function OrdersManagementScreen({ navigation }: any) {
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
       case 'PENDING':
-        return '#F59E0B';
+        return colors.warning;
       case 'PROCESSING':
-        return '#3B82F6';
+        return colors.primary;
       case 'SHIPPED':
-        return '#8B5CF6';
+        return colors.accent;
       case 'DELIVERED':
-        return '#10B981';
+        return colors.success;
       case 'CANCELLED':
-        return '#EF4444';
+        return colors.danger;
       default:
-        return '#6B7280';
+        return colors.textSecondary;
     }
   };
 
@@ -166,8 +167,8 @@ export default function OrdersManagementScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -177,7 +178,7 @@ export default function OrdersManagementScreen({ navigation }: any) {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={{ flex: 1, backgroundColor: colors.background }}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
@@ -185,40 +186,40 @@ export default function OrdersManagementScreen({ navigation }: any) {
       <Container>
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="time-outline" size={24} color="#F59E0B" />
+          <View style={{ flex: 1, minWidth: Platform.OS === 'web' ? '23%' : '47%', backgroundColor: colors.cardBg, borderRadius: 12, padding: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 }}>
+            <View style={[styles.statIcon, { backgroundColor: colors.warning + '20' }]}>
+              <Ionicons name="time-outline" size={24} color={colors.warning} />
             </View>
-            <Text style={styles.statValue}>{stats.pending}</Text>
-            <Text style={styles.statLabel}>Nye</Text>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>{stats.pending}</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>Nye</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#DBEAFE' }]}>
-              <Ionicons name="sync-outline" size={24} color="#3B82F6" />
+          <View style={{ flex: 1, minWidth: Platform.OS === 'web' ? '23%' : '47%', backgroundColor: colors.cardBg, borderRadius: 12, padding: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 }}>
+            <View style={[styles.statIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="sync-outline" size={24} color={colors.primary} />
             </View>
-            <Text style={styles.statValue}>{stats.processing}</Text>
-            <Text style={styles.statLabel}>Aktive</Text>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>{stats.processing}</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>Aktive</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#D1FAE5' }]}>
-              <Ionicons name="checkmark-circle-outline" size={24} color="#10B981" />
+          <View style={{ flex: 1, minWidth: Platform.OS === 'web' ? '23%' : '47%', backgroundColor: colors.cardBg, borderRadius: 12, padding: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 }}>
+            <View style={[styles.statIcon, { backgroundColor: colors.success + '20' }]}>
+              <Ionicons name="checkmark-circle-outline" size={24} color={colors.success} />
             </View>
-            <Text style={styles.statValue}>{stats.completed}</Text>
-            <Text style={styles.statLabel}>Fullført</Text>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>{stats.completed}</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>Fullført</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#E9D5FF' }]}>
-              <Ionicons name="cash-outline" size={24} color="#A855F7" />
+          <View style={{ flex: 1, minWidth: Platform.OS === 'web' ? '23%' : '47%', backgroundColor: colors.cardBg, borderRadius: 12, padding: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 }}>
+            <View style={[styles.statIcon, { backgroundColor: colors.accent + '20' }]}>
+              <Ionicons name="cash-outline" size={24} color={colors.accent} />
             </View>
-            <Text style={styles.statValue}>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>
               {stats.totalRevenue.toLocaleString('nb-NO', {
                 maximumFractionDigits: 0,
               })}
             </Text>
-            <Text style={styles.statLabel}>Omsetning (kr)</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>Omsetning (kr)</Text>
           </View>
         </View>
 
@@ -226,15 +227,15 @@ export default function OrdersManagementScreen({ navigation }: any) {
         <View style={styles.filterContainer}>
           <TouchableOpacity
             style={[
-              styles.filterButton,
-              filter === 'all' && styles.filterButtonActive,
+              { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardBg, alignItems: 'center' },
+              filter === 'all' && { backgroundColor: colors.primary, borderColor: colors.primary },
             ]}
             onPress={() => setFilter('all')}
           >
             <Text
               style={[
-                styles.filterButtonText,
-                filter === 'all' && styles.filterButtonTextActive,
+                { fontSize: 13, fontWeight: '600', color: colors.text },
+                filter === 'all' && { color: '#FFF' },
               ]}
             >
               Alle
@@ -243,15 +244,15 @@ export default function OrdersManagementScreen({ navigation }: any) {
 
           <TouchableOpacity
             style={[
-              styles.filterButton,
-              filter === 'pending' && styles.filterButtonActive,
+              { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardBg, alignItems: 'center' },
+              filter === 'pending' && { backgroundColor: colors.primary, borderColor: colors.primary },
             ]}
             onPress={() => setFilter('pending')}
           >
             <Text
               style={[
-                styles.filterButtonText,
-                filter === 'pending' && styles.filterButtonTextActive,
+                { fontSize: 13, fontWeight: '600', color: colors.text },
+                filter === 'pending' && { color: '#FFF' },
               ]}
             >
               Nye
@@ -260,15 +261,15 @@ export default function OrdersManagementScreen({ navigation }: any) {
 
           <TouchableOpacity
             style={[
-              styles.filterButton,
-              filter === 'active' && styles.filterButtonActive,
+              { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardBg, alignItems: 'center' },
+              filter === 'active' && { backgroundColor: colors.primary, borderColor: colors.primary },
             ]}
             onPress={() => setFilter('active')}
           >
             <Text
               style={[
-                styles.filterButtonText,
-                filter === 'active' && styles.filterButtonTextActive,
+                { fontSize: 13, fontWeight: '600', color: colors.text },
+                filter === 'active' && { color: '#FFF' },
               ]}
             >
               Aktive
@@ -277,15 +278,15 @@ export default function OrdersManagementScreen({ navigation }: any) {
 
           <TouchableOpacity
             style={[
-              styles.filterButton,
-              filter === 'completed' && styles.filterButtonActive,
+              { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardBg, alignItems: 'center' },
+              filter === 'completed' && { backgroundColor: colors.primary, borderColor: colors.primary },
             ]}
             onPress={() => setFilter('completed')}
           >
             <Text
               style={[
-                styles.filterButtonText,
-                filter === 'completed' && styles.filterButtonTextActive,
+                { fontSize: 13, fontWeight: '600', color: colors.text },
+                filter === 'completed' && { color: '#FFF' },
               ]}
             >
               Fullført
@@ -297,56 +298,59 @@ export default function OrdersManagementScreen({ navigation }: any) {
         <View style={styles.ordersList}>
           {filteredOrders.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyText}>Ingen bestillinger funnet</Text>
+              <Ionicons name="receipt-outline" size={64} color={colors.border} />
+              <Text style={{ fontSize: 16, color: colors.textLight, marginTop: 16 }}>Ingen bestillinger funnet</Text>
             </View>
           ) : (
             filteredOrders.map((order) => (
               <TouchableOpacity
                 key={order.id}
-                style={styles.orderCard}
+                style={{ backgroundColor: colors.cardBg, borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2, marginBottom: 12 }}
                 onPress={() => {
                   setSelectedOrder(order);
                   setModalVisible(true);
                 }}
               >
-                <View style={styles.orderHeader}>
-                  <View style={styles.orderInfo}>
-                    <Text style={styles.orderNumber}>#{order.orderNumber}</Text>
-                    <Text style={styles.orderDate}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>#{order.orderNumber}</Text>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 2 }}>
                       {formatDate(order.createdAt)} - {formatTime(order.createdAt)}
                     </Text>
-                    <Text style={styles.customerName}>
+                    <Text style={{ fontSize: 14, color: colors.text, fontWeight: '500' }}>
                       Kunde: {order.user?.firstName} {order.user?.lastName}
                     </Text>
                   </View>
                   <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: getStatusColor(order.status) + '20' },
-                    ]}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 12,
+                      backgroundColor: getStatusColor(order.status) + '20',
+                    }}
                   >
                     <Text
-                      style={[
-                        styles.statusText,
-                        { color: getStatusColor(order.status) },
-                      ]}
+                      style={{
+                        fontSize: 12,
+                        fontWeight: '600',
+                        color: getStatusColor(order.status),
+                      }}
                     >
                       {getStatusText(order.status)}
                     </Text>
                   </View>
                 </View>
 
-                <View style={styles.orderDetails}>
-                  <View style={styles.orderDetailRow}>
-                    <Ionicons name="cube-outline" size={16} color="#6B7280" />
-                    <Text style={styles.orderDetailText}>
+                <View style={{ flexDirection: 'row', gap: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.background }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="cube-outline" size={16} color={colors.textSecondary} />
+                    <Text style={{ fontSize: 14, color: colors.textSecondary }}>
                       {order.items.length} {order.items.length === 1 ? 'vare' : 'varer'}
                     </Text>
                   </View>
-                  <View style={styles.orderDetailRow}>
-                    <Ionicons name="cash-outline" size={16} color="#6B7280" />
-                    <Text style={styles.orderDetailText}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="cash-outline" size={16} color={colors.textSecondary} />
+                    <Text style={{ fontSize: 14, color: colors.textSecondary }}>
                       {formatNOK(order.total)}
                     </Text>
                   </View>
@@ -364,127 +368,152 @@ export default function OrdersManagementScreen({ navigation }: any) {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.cardBg, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', paddingBottom: Platform.OS === 'ios' ? 34 : 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>
                 Ordre #{selectedOrder?.orderNumber}
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#111827" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody}>
+            <ScrollView style={{ padding: 20 }}>
               {/* Customer Info */}
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Kundeinformasjon</Text>
-                <Text style={styles.modalText}>
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.text, marginBottom: 12 }}>Kundeinformasjon</Text>
+                <Text style={{ fontSize: 14, color: colors.text, marginBottom: 6 }}>
                   Navn: {selectedOrder?.user?.firstName}{' '}
                   {selectedOrder?.user?.lastName}
                 </Text>
-                <Text style={styles.modalText}>
+                <Text style={{ fontSize: 14, color: colors.text }}>
                   E-post: {selectedOrder?.user?.email}
                 </Text>
               </View>
 
               {/* Order Items */}
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Varer</Text>
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.text, marginBottom: 12 }}>Varer</Text>
                 {(selectedOrder?.items ?? []).map((item, index) => (
-                  <View key={index} style={styles.itemRow}>
-                    <Text style={styles.itemName}>
+                  <View key={index} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.background }}>
+                    <Text style={{ fontSize: 14, color: colors.text, flex: 1 }}>
                       {(item?.productName ?? 'Ukjent produkt')} x{toNumber(item?.quantity)}
                     </Text>
-                    <Text style={styles.itemPrice}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>
                       {formatNOK(toNumber(item?.subtotal))}
                     </Text>
                   </View>
                 ))}
 
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total:</Text>
-  <Text style={styles.totalAmount}>
-    {formatNOK(selectedOrder?.total)}
-  </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, marginTop: 8 }}>
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.text }}>Total:</Text>
+                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.primary }}>
+                    {formatNOK(selectedOrder?.total)}
+                  </Text>
                 </View>
               </View>
 
               {/* Update Status */}
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Oppdater status</Text>
-                <View style={styles.statusButtons}>
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.text, marginBottom: 12 }}>Oppdater status</Text>
+                <View style={{ gap: 8 }}>
                   <TouchableOpacity
-                    style={[
-                      styles.statusUpdateButton,
-                      { backgroundColor: '#F59E0B' + '20', borderColor: '#F59E0B' },
-                    ]}
+                    style={{
+                      paddingVertical: 12,
+                      paddingHorizontal: 16,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      backgroundColor: colors.warning + '20',
+                      borderColor: colors.warning,
+                      alignItems: 'center',
+                    }}
                     onPress={() =>
                       selectedOrder &&
                       updateOrderStatus(selectedOrder.id, 'PENDING')
                     }
                   >
-                    <Text style={[styles.statusUpdateText, { color: '#F59E0B' }]}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.warning }}>
                       Venter
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[
-                      styles.statusUpdateButton,
-                      { backgroundColor: '#3B82F6' + '20', borderColor: '#3B82F6' },
-                    ]}
+                    style={{
+                      paddingVertical: 12,
+                      paddingHorizontal: 16,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      backgroundColor: colors.primary + '20',
+                      borderColor: colors.primary,
+                      alignItems: 'center',
+                    }}
                     onPress={() =>
                       selectedOrder &&
                       updateOrderStatus(selectedOrder.id, 'PROCESSING')
                     }
                   >
-                    <Text style={[styles.statusUpdateText, { color: '#3B82F6' }]}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
                       Behandles
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[
-                      styles.statusUpdateButton,
-                      { backgroundColor: '#8B5CF6' + '20', borderColor: '#8B5CF6' },
-                    ]}
+                    style={{
+                      paddingVertical: 12,
+                      paddingHorizontal: 16,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      backgroundColor: colors.accent + '20',
+                      borderColor: colors.accent,
+                      alignItems: 'center',
+                    }}
                     onPress={() =>
                       selectedOrder &&
                       updateOrderStatus(selectedOrder.id, 'SHIPPED')
                     }
                   >
-                    <Text style={[styles.statusUpdateText, { color: '#8B5CF6' }]}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.accent }}>
                       Sendt
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[
-                      styles.statusUpdateButton,
-                      { backgroundColor: '#10B981' + '20', borderColor: '#10B981' },
-                    ]}
+                    style={{
+                      paddingVertical: 12,
+                      paddingHorizontal: 16,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      backgroundColor: colors.success + '20',
+                      borderColor: colors.success,
+                      alignItems: 'center',
+                    }}
                     onPress={() =>
                       selectedOrder &&
                       updateOrderStatus(selectedOrder.id, 'DELIVERED')
                     }
                   >
-                    <Text style={[styles.statusUpdateText, { color: '#10B981' }]}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.success }}>
                       Levert
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[
-                      styles.statusUpdateButton,
-                      { backgroundColor: '#EF4444' + '20', borderColor: '#EF4444' },
-                    ]}
+                    style={{
+                      paddingVertical: 12,
+                      paddingHorizontal: 16,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      backgroundColor: colors.danger + '20',
+                      borderColor: colors.danger,
+                      alignItems: 'center',
+                    }}
                     onPress={() =>
                       selectedOrder &&
                       updateOrderStatus(selectedOrder.id, 'CANCELLED')
                     }
                   >
-                    <Text style={[styles.statusUpdateText, { color: '#EF4444' }]}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.danger }}>
                       Kanseller
                     </Text>
                   </TouchableOpacity>
@@ -499,49 +528,12 @@ export default function OrdersManagementScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  header: {
-    paddingTop: 24,
-    paddingBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
     marginTop: 16,
     marginBottom: 24,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: Platform.OS === 'web' ? '23%' : '47%',
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
   },
   statIcon: {
     width: 48,
@@ -551,206 +543,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
   filterContainer: {
     flexDirection: 'row',
     gap: 8,
     marginBottom: 16,
   },
-  filterButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFF',
-    alignItems: 'center',
-  },
-  filterButtonActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
-  },
-  filterButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  filterButtonTextActive: {
-    color: '#FFF',
-  },
   ordersList: {
-    gap: 12,
     paddingBottom: 24,
-  },
-  orderCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  orderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  orderInfo: {
-    flex: 1,
-  },
-  orderNumber: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  orderDate: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  customerName: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  orderDetails: {
-    flexDirection: 'row',
-    gap: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  orderDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  orderDetailText: {
-    fontSize: 14,
-    color: '#6B7280',
   },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 64,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    marginTop: 16,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  modalSection: {
-    marginBottom: 24,
-  },
-  modalSectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  modalText: {
-    fontSize: 14,
-    color: '#374151',
-    marginBottom: 6,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  itemName: {
-    fontSize: 14,
-    color: '#374151',
-    flex: 1,
-  },
-  itemPrice: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    marginTop: 8,
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  totalAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#3B82F6',
-  },
-  statusButtons: {
-    gap: 8,
-  },
-  statusUpdateButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  statusUpdateText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
 });

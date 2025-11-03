@@ -20,8 +20,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { api } from '../services/api';
 import Container from '../components/Container';
 import type { Product } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function ProductsManagementScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -309,15 +311,15 @@ export default function ProductsManagementScreen({ navigation }: any) {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'PHYSICAL_PRODUCT':
-        return '#3B82F6';
+        return colors.primary;
       case 'DIGITAL':
-        return '#10B981';
+        return colors.success;
       case 'PT_SERVICE':
-        return '#F59E0B';
+        return colors.warning;
       case 'MEMBERSHIP':
-        return '#8B5CF6';
+        return colors.accent;
       default:
-        return '#6B7280';
+        return colors.textSecondary;
     }
   };
 
@@ -332,8 +334,8 @@ export default function ProductsManagementScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -341,9 +343,9 @@ export default function ProductsManagementScreen({ navigation }: any) {
   const stats = getProductStats();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -351,10 +353,10 @@ export default function ProductsManagementScreen({ navigation }: any) {
         <Container>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Produktadministrasjon</Text>
-            <Text style={styles.subtitle}>Administrer produkter og priser</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Produktadministrasjon</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Administrer produkter og priser</Text>
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+          <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.primary }]} onPress={openAddModal}>
             <Ionicons name="add" size={20} color="#FFF" />
             <Text style={styles.addButtonText}>Nytt</Text>
           </TouchableOpacity>
@@ -362,40 +364,40 @@ export default function ProductsManagementScreen({ navigation }: any) {
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#DBEAFE' }]}>
-              <Ionicons name="cube-outline" size={24} color="#3B82F6" />
+          <View style={[styles.statCard, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.statIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="cube-outline" size={24} color={colors.primary} />
             </View>
-            <Text style={styles.statValue}>{stats.totalProducts}</Text>
-            <Text style={styles.statLabel}>Produkter</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{stats.totalProducts}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Produkter</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#E9D5FF' }]}>
-              <Ionicons name="cash-outline" size={24} color="#A855F7" />
+          <View style={[styles.statCard, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.statIcon, { backgroundColor: colors.accent + '20' }]}>
+              <Ionicons name="cash-outline" size={24} color={colors.accent} />
             </View>
-            <Text style={styles.statValue}>
+            <Text style={[styles.statValue, { color: colors.text }]}>
               {stats.totalValue.toLocaleString('nb-NO', {
                 maximumFractionDigits: 0,
               })}
             </Text>
-            <Text style={styles.statLabel}>Lagerverdi (kr)</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Lagerverdi (kr)</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="alert-circle-outline" size={24} color="#F59E0B" />
+          <View style={[styles.statCard, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.statIcon, { backgroundColor: colors.warning + '20' }]}>
+              <Ionicons name="alert-circle-outline" size={24} color={colors.warning} />
             </View>
-            <Text style={styles.statValue}>{stats.lowStock}</Text>
-            <Text style={styles.statLabel}>Lavt lager</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{stats.lowStock}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Lavt lager</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#FEE2E2' }]}>
-              <Ionicons name="close-circle-outline" size={24} color="#EF4444" />
+          <View style={[styles.statCard, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.statIcon, { backgroundColor: colors.danger + '20' }]}>
+              <Ionicons name="close-circle-outline" size={24} color={colors.danger} />
             </View>
-            <Text style={styles.statValue}>{stats.outOfStock}</Text>
-            <Text style={styles.statLabel}>Utsolgt</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{stats.outOfStock}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Utsolgt</Text>
           </View>
         </View>
 
@@ -403,19 +405,19 @@ export default function ProductsManagementScreen({ navigation }: any) {
         <View style={styles.productsList}>
           {products.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="cube-outline" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyText}>Ingen produkter funnet</Text>
-              <TouchableOpacity style={styles.emptyButton} onPress={openAddModal}>
+              <Ionicons name="cube-outline" size={64} color={colors.border} />
+              <Text style={[styles.emptyText, { color: colors.textLight }]}>Ingen produkter funnet</Text>
+              <TouchableOpacity style={[styles.emptyButton, { backgroundColor: colors.primary }]} onPress={openAddModal}>
                 <Text style={styles.emptyButtonText}>Legg til produkt</Text>
               </TouchableOpacity>
             </View>
           ) : (
             products.map((product) => (
-              <View key={product.id} style={styles.productCard}>
+              <View key={product.id} style={[styles.productCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
                 <View style={styles.productHeader}>
                   <View style={styles.productInfo}>
-                    <Text style={styles.productName}>{product.name}</Text>
-                    <Text style={styles.productDescription} numberOfLines={2}>
+                    <Text style={[styles.productName, { color: colors.text }]}>{product.name}</Text>
+                    <Text style={[styles.productDescription, { color: colors.textSecondary }]} numberOfLines={2}>
                       {product.description}
                     </Text>
                     <View style={styles.productMeta}>
@@ -438,7 +440,7 @@ export default function ProductsManagementScreen({ navigation }: any) {
                         </Text>
                       </View>
                       {(product as any).trackInventory !== false && (
-                        <Text style={styles.stockText}>
+                        <Text style={[styles.stockText, { color: colors.textSecondary }]}>
                           Lager: {product.stock || 0}
                         </Text>
                       )}
@@ -446,16 +448,16 @@ export default function ProductsManagementScreen({ navigation }: any) {
                   </View>
                   <View style={styles.productActions}>
                     <View style={styles.priceContainer}>
-                      <Text style={styles.productPrice}>
+                      <Text style={[styles.productPrice, { color: colors.primary }]}>
                         {`${product.price.toLocaleString('nb-NO')} kr`}
                       </Text>
                       {(product as any).compareAtPrice && (product as any).compareAtPrice > product.price && (
                         <>
-                          <Text style={styles.comparePriceInCard}>
+                          <Text style={[styles.comparePriceInCard, { color: colors.textLight }]}>
                             {`${((product as any).compareAtPrice).toLocaleString('nb-NO')} kr`}
                           </Text>
-                          <View style={styles.saleBadge}>
-                            <Text style={styles.saleBadgeText}>
+                          <View style={[styles.saleBadge, { backgroundColor: colors.danger + '20' }]}>
+                            <Text style={[styles.saleBadgeText, { color: colors.danger }]}>
                               {`-${Math.round((1 - product.price / (product as any).compareAtPrice) * 100)}%`}
                             </Text>
                           </View>
@@ -465,37 +467,37 @@ export default function ProductsManagementScreen({ navigation }: any) {
                   </View>
                 </View>
 
-                <View style={styles.actionButtons}>
+                <View style={[styles.actionButtons, { borderTopColor: colors.border }]}>
                   {(product as any).status === 'PUBLISHED' ? (
                     <TouchableOpacity
-                      style={styles.unpublishButton}
+                      style={[styles.unpublishButton, { borderColor: colors.warning, backgroundColor: colors.warning + '10' }]}
                       onPress={() => handleUnpublishProduct(product.id)}
                     >
-                      <Ionicons name="eye-off-outline" size={18} color="#F59E0B" />
-                      <Text style={styles.unpublishButtonText}>Avpubliser</Text>
+                      <Ionicons name="eye-off-outline" size={18} color={colors.warning} />
+                      <Text style={[styles.unpublishButtonText, { color: colors.warning }]}>Avpubliser</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
-                      style={styles.publishButton}
+                      style={[styles.publishButton, { borderColor: colors.success, backgroundColor: colors.success + '10' }]}
                       onPress={() => handlePublishProduct(product.id)}
                     >
-                      <Ionicons name="eye-outline" size={18} color="#10B981" />
-                      <Text style={styles.publishButtonText}>Publiser</Text>
+                      <Ionicons name="eye-outline" size={18} color={colors.success} />
+                      <Text style={[styles.publishButtonText, { color: colors.success }]}>Publiser</Text>
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity
-                    style={styles.editButton}
+                    style={[styles.editButton, { borderColor: colors.primary, backgroundColor: colors.primary + '10' }]}
                     onPress={() => openEditModal(product)}
                   >
-                    <Ionicons name="create-outline" size={18} color="#3B82F6" />
-                    <Text style={styles.editButtonText}>Rediger</Text>
+                    <Ionicons name="create-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.editButtonText, { color: colors.primary }]}>Rediger</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.deleteButton}
+                    style={[styles.deleteButton, { borderColor: colors.danger, backgroundColor: colors.danger + '10' }]}
                     onPress={() => handleDeleteProduct(product.id)}
                   >
-                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                    <Text style={styles.deleteButtonText}>Slett</Text>
+                    <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                    <Text style={[styles.deleteButtonText, { color: colors.danger }]}>Slett</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -517,74 +519,78 @@ export default function ProductsManagementScreen({ navigation }: any) {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={{ flex: 1 }}
           >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>
+            <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
                   {editMode ? 'Rediger produkt' : 'Nytt produkt'}
                 </Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={24} color="#111827" />
+                  <Ionicons name="close" size={24} color={colors.text} />
                 </TouchableOpacity>
               </View>
 
             <ScrollView style={styles.modalBody}>
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Produktnavn *</Text>
+                <Text style={[styles.label, { color: colors.text }]}>Produktnavn *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                   value={formData.name}
                   onChangeText={(text) =>
                     setFormData({ ...formData, name: text })
                   }
                   placeholder="Eks: Proteinpulver 1kg"
+                  placeholderTextColor={colors.textLight}
                 />
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Beskrivelse</Text>
+                <Text style={[styles.label, { color: colors.text }]}>Beskrivelse</Text>
                 <TextInput
-                  style={[styles.input, styles.textArea]}
+                  style={[styles.input, styles.textArea, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                   value={formData.description}
                   onChangeText={(text) =>
                     setFormData({ ...formData, description: text })
                   }
                   placeholder="Beskrivelse av produktet"
+                  placeholderTextColor={colors.textLight}
                   multiline
                   numberOfLines={4}
                 />
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Pris (kr) *</Text>
+                <Text style={[styles.label, { color: colors.text }]}>Pris (kr) *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                   value={formData.price}
                   onChangeText={(text) =>
                     setFormData({ ...formData, price: text })
                   }
                   placeholder="0"
+                  placeholderTextColor={colors.textLight}
                   keyboardType="decimal-pad"
                 />
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Sammenlign pris (kr)</Text>
+                <Text style={[styles.label, { color: colors.text }]}>Sammenlign pris (kr)</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                   value={formData.compareAtPrice}
                   onChangeText={(text) =>
                     setFormData({ ...formData, compareAtPrice: text })
                   }
                   placeholder="0"
+                  placeholderTextColor={colors.textLight}
                   keyboardType="decimal-pad"
                 />
-                <Text style={styles.helpText}>
+                <Text style={[styles.helpText, { color: colors.textSecondary }]}>
                   Valgfritt: Den originale prisen før rabatt. Vil vise tilbud med prosent og strek over gammel pris.
                 </Text>
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Produkttype</Text>
+                <Text style={[styles.label, { color: colors.text }]}>Produkttype</Text>
                 <View style={styles.categoryButtons}>
                   {(['PHYSICAL_PRODUCT', 'DIGITAL', 'PT_SERVICE', 'MEMBERSHIP'] as const).map(
                     (type) => (
@@ -622,26 +628,28 @@ export default function ProductsManagementScreen({ navigation }: any) {
               {formData.type === 'PT_SERVICE' && (
                 <>
                   <View style={styles.formGroup}>
-                    <Text style={styles.label}>Antall økter</Text>
+                    <Text style={[styles.label, { color: colors.text }]}>Antall økter</Text>
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                       value={formData.sessionCount}
                       onChangeText={(text) =>
                         setFormData({ ...formData, sessionCount: text })
                       }
                       placeholder="1"
+                      placeholderTextColor={colors.textLight}
                       keyboardType="number-pad"
                     />
                   </View>
                   <View style={styles.formGroup}>
-                    <Text style={styles.label}>Gyldig i (dager)</Text>
+                    <Text style={[styles.label, { color: colors.text }]}>Gyldig i (dager)</Text>
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                       value={formData.validityDays}
                       onChangeText={(text) =>
                         setFormData({ ...formData, validityDays: text })
                       }
                       placeholder="365"
+                      placeholderTextColor={colors.textLight}
                       keyboardType="number-pad"
                     />
                   </View>
@@ -660,9 +668,9 @@ export default function ProductsManagementScreen({ navigation }: any) {
                       <Ionicons
                         name={formData.trackInventory ? 'checkbox' : 'square-outline'}
                         size={24}
-                        color="#3B82F6"
+                        color={colors.primary}
                       />
-                      <Text style={styles.checkboxLabel}>Spor lagerbeholdning</Text>
+                      <Text style={[styles.checkboxLabel, { color: colors.text }]}>Spor lagerbeholdning</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -670,47 +678,49 @@ export default function ProductsManagementScreen({ navigation }: any) {
 
               {(formData.type === 'PHYSICAL_PRODUCT' && formData.trackInventory) && (
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Lager</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Lager</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                     value={formData.stock}
                     onChangeText={(text) =>
                       setFormData({ ...formData, stock: text })
                     }
                     placeholder="0"
+                    placeholderTextColor={colors.textLight}
                     keyboardType="number-pad"
                   />
                 </View>
               )}
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Bilder</Text>
+                <Text style={[styles.label, { color: colors.text }]}>Bilder</Text>
                 <View style={styles.imagesContainer}>
                   {selectedImages.map((uri, index) => (
                     <View key={index} style={styles.imagePreview}>
                       <Image source={{ uri }} style={styles.imagePreviewImg} />
                       <TouchableOpacity
-                        style={styles.removeImageBtn}
+                        style={[styles.removeImageBtn, { backgroundColor: colors.cardBg }]}
                         onPress={() => removeImage(index)}
                       >
-                        <Ionicons name="close-circle" size={24} color="#EF4444" />
+                        <Ionicons name="close-circle" size={24} color={colors.danger} />
                       </TouchableOpacity>
                     </View>
                   ))}
                   <TouchableOpacity
-                    style={styles.addImageBtn}
+                    style={[styles.addImageBtn, { borderColor: colors.border, backgroundColor: colors.background }]}
                     onPress={pickImage}
                   >
-                    <Ionicons name="add" size={32} color="#6B7280" />
-                    <Text style={styles.addImageText}>Legg til bilde</Text>
+                    <Ionicons name="add" size={32} color={colors.textSecondary} />
+                    <Text style={[styles.addImageText, { color: colors.textSecondary }]}>Legg til bilde</Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.helpText}>
+                <Text style={[styles.helpText, { color: colors.textSecondary }]}>
                   Du kan også legge inn bilde-URL direkte nedenfor
                 </Text>
                 <TextInput
-                  style={[styles.input, { marginTop: 8 }]}
+                  style={[styles.input, { marginTop: 8, backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                   placeholder="https://..."
+                  placeholderTextColor={colors.textLight}
                   autoCapitalize="none"
                   onChangeText={(text) => {
                     if (text && text.startsWith('http')) {
@@ -721,7 +731,7 @@ export default function ProductsManagementScreen({ navigation }: any) {
               </View>
 
               <TouchableOpacity
-                style={styles.saveButton}
+                style={[styles.saveButton, { backgroundColor: colors.primary }]}
                 onPress={handleSaveProduct}
               >
                 <Text style={styles.saveButtonText}>
@@ -740,17 +750,14 @@ export default function ProductsManagementScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
   },
   header: {
     flexDirection: 'row',
@@ -762,18 +769,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#111827',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#3B82F6',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -792,7 +796,6 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: Platform.OS === 'web' ? '23%' : '47%',
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -813,12 +816,10 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#6B7280',
     textAlign: 'center',
   },
   productsList: {

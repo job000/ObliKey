@@ -47,6 +47,7 @@ import accessRoutes from './routes/access.routes';
 import doorAccessRuleRoutes from './routes/door-access-rule.routes';
 import superAdminRoutes from './routes/super-admin.routes';
 import workoutRoutes from './routes/workout.routes';
+import webhookRoutes from './routes/webhook.routes';
 
 // Import scheduler
 import { initScheduler } from './services/scheduler.service';
@@ -102,6 +103,7 @@ app.use('/api/classes', classRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/pt', ptRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/webhooks', webhookRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/platform', platformRoutes);
 app.use('/api/feedback', feedbackRoutes);

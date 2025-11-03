@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
 
 interface Tenant {
@@ -32,6 +33,7 @@ interface Feature {
 
 export default function CreateSubscriptionScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -191,15 +193,15 @@ export default function CreateSubscriptionScreen({ navigation }: any) {
 
     return (
       <View style={styles.formGroup}>
-        <Text style={styles.label}>
-          Tenant <Text style={styles.required}>*</Text>
+        <Text style={[styles.label, { color: colors.text }]}>
+          Tenant <Text style={[styles.required, { color: colors.danger }]}>*</Text>
         </Text>
-        <View style={styles.pickerContainer}>
-          <Text style={styles.pickerPlaceholder}>
+        <View style={[styles.pickerContainer, { borderColor: colors.border, backgroundColor: colors.cardBg }]}>
+          <Text style={[styles.pickerPlaceholder, { color: colors.textSecondary }]}>
             {selectedTenant ? selectedTenant.name : 'Velg tenant...'}
           </Text>
         </View>
-        {errors.tenant && <Text style={styles.errorText}>{errors.tenant}</Text>}
+        {errors.tenant && <Text style={[styles.errorText, { color: colors.danger }]}>{errors.tenant}</Text>}
 
         <ScrollView style={styles.optionsList} nestedScrollEnabled>
           {tenants.map(tenant => (
@@ -232,14 +234,14 @@ export default function CreateSubscriptionScreen({ navigation }: any) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>Laster...</Text>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Laster...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.contentContainer, isWeb && styles.contentContainerWeb]}
@@ -247,16 +249,16 @@ export default function CreateSubscriptionScreen({ navigation }: any) {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#111827" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
-            <Text style={styles.title}>Opprett Nytt Abonnement</Text>
-            <Text style={styles.subtitle}>Konfigurer abonnement for en tenant</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Opprett Nytt Abonnement</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Konfigurer abonnement for en tenant</Text>
           </View>
         </View>
 
         {/* Form */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
           {/* Tenant Selection */}
           {renderTenantPicker()}
 

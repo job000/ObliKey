@@ -10,7 +10,7 @@ const getApiUrl = () => {
   // DEVELOPMENT MODE OVERRIDE
   // Set USE_LOCAL_BACKEND to true when developing locally
   // Set to false when you want to test against Railway production
-  const USE_LOCAL_BACKEND = true; // Toggle this for local development
+  const USE_LOCAL_BACKEND = false; // Toggle this for local development (set to false for tunnel testing)
 
   // For development, you can use localhost or ngrok
   // Note: iOS/Android simulator cannot reach localhost - use IP address instead
@@ -32,6 +32,9 @@ const getApiUrl = () => {
 
 const API_URL = getApiUrl();
 console.log('[API] Using API URL:', API_URL);
+
+// Export API_URL so it can be used in screens that need direct fetch calls
+export { API_URL };
 
 // Storage helper that works on both web and mobile
 const storage = {

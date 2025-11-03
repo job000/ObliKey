@@ -11,17 +11,19 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useModules } from '../contexts/ModuleContext';
+import { useTheme } from '../contexts/ThemeContext';
 import Container from '../components/Container';
 
 export default function AdminScreen({ navigation }: any) {
   const { user } = useAuth();
   const { modules, loading } = useModules();
+  const { colors } = useTheme();
 
   const allMenuItems = [
     {
       title: 'Brukeradministrasjon',
       icon: 'people',
-      color: '#3B82F6',
+      color: colors.primary,
       screen: 'UserManagement',
       description: 'Administrer brukere og roller',
       show: true, // Core feature - always shown
@@ -29,7 +31,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Produktadministrasjon',
       icon: 'pricetag',
-      color: '#10B981',
+      color: colors.success,
       screen: 'ProductsManagement',
       description: 'Administrer produkter og priser',
       show: modules.shop,
@@ -37,7 +39,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Bestillingsadministrasjon',
       icon: 'receipt',
-      color: '#F59E0B',
+      color: colors.warning,
       screen: 'OrdersManagement',
       description: 'Håndter bestillinger og levering',
       show: modules.shop,
@@ -45,7 +47,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Anmeldelsesadministrasjon',
       icon: 'star',
-      color: '#EAB308',
+      color: colors.warning,
       screen: 'ReviewManagement',
       description: 'Godkjenn og moderer produktanmeldelser',
       show: modules.shop,
@@ -53,7 +55,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Betalingsadministrasjon',
       icon: 'card-outline',
-      color: '#8B5CF6',
+      color: colors.accent,
       screen: 'PaymentManagement',
       description: 'Konfigurer Vipps og betalingsmetoder',
       show: modules.shop,
@@ -61,7 +63,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Klasseadministrasjon',
       icon: 'calendar',
-      color: '#EC4899',
+      color: colors.accent,
       screen: 'ClassManagement',
       description: 'Administrer klasser og bookinger',
       show: modules.classes,
@@ -69,7 +71,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'PT-administrasjon',
       icon: 'barbell',
-      color: '#8B5CF6',
+      color: colors.accent,
       screen: 'PTManagement',
       description: 'Administrer PT-økter og kreditter',
       show: modules.pt,
@@ -77,7 +79,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Treningsprogramadministrasjon',
       icon: 'fitness',
-      color: '#EF4444',
+      color: colors.danger,
       screen: 'WorkoutTemplateManagement',
       description: 'Administrer treningsprogrammaler',
       show: modules.workout,
@@ -85,7 +87,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Øvelsesadministrasjon',
       icon: 'barbell-outline',
-      color: '#F59E0B',
+      color: colors.warning,
       screen: 'ExerciseManagement',
       description: 'Administrer øvelser med bilder og beskrivelser',
       show: modules.workout,
@@ -93,7 +95,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Medlemskapsstyring',
       icon: 'card',
-      color: '#14B8A6',
+      color: colors.success,
       screen: 'MembershipManagement',
       description: 'Administrer medlemskap og betalinger',
       show: modules.membership,
@@ -101,7 +103,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Dørstyring',
       icon: 'lock-closed',
-      color: '#7C3AED',
+      color: colors.accent,
       screen: 'DoorManagement',
       description: 'Administrer dører og tilgangskontroll',
       show: modules.doorAccess,
@@ -109,7 +111,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Tilgangslogger',
       icon: 'reader',
-      color: '#0891B2',
+      color: colors.primary,
       screen: 'AccessLogs',
       description: 'Se dør-tilgangslogger og statistikk',
       show: modules.doorAccess,
@@ -117,7 +119,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Rapporter & Analyse',
       icon: 'stats-chart',
-      color: '#06B6D4',
+      color: colors.primary,
       screen: 'Analytics',
       description: 'Se statistikk og rapporter',
       show: true, // Core feature - always shown
@@ -125,7 +127,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Aktivitetslogger',
       icon: 'list',
-      color: '#F97316',
+      color: colors.warning,
       screen: 'ActivityLogs',
       description: 'Se brukeraktivitet og systemlogger',
       show: true, // Core feature - always shown
@@ -133,7 +135,7 @@ export default function AdminScreen({ navigation }: any) {
     {
       title: 'Innstillinger',
       icon: 'settings',
-      color: '#6B7280',
+      color: colors.textSecondary,
       screen: 'Settings',
       description: 'System- og tenant-innstillinger',
       show: true, // Core feature - always shown
@@ -144,30 +146,30 @@ export default function AdminScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>Laster funksjoner...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Laster funksjoner...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <Container>
         <View style={styles.header}>
-          <Text style={styles.title}>Administrasjon</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: colors.text }]}>Administrasjon</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Innlogget som {user?.firstName} {user?.lastName}
           </Text>
         </View>
 
-        <View style={styles.roleCard}>
-          <View style={styles.roleIcon}>
-            <Ionicons name="shield-checkmark" size={24} color="#10B981" />
+        <View style={[styles.roleCard, { backgroundColor: colors.cardBg }]}>
+          <View style={[styles.roleIcon, { backgroundColor: colors.successLight + '33' }]}>
+            <Ionicons name="shield-checkmark" size={24} color={colors.success} />
           </View>
           <View style={styles.roleInfo}>
-            <Text style={styles.roleLabel}>Din rolle</Text>
-            <Text style={styles.roleValue}>
+            <Text style={[styles.roleLabel, { color: colors.textSecondary }]}>Din rolle</Text>
+            <Text style={[styles.roleValue, { color: colors.text }]}>
               {user?.role === 'SUPER_ADMIN' ? 'Superadministrator' :
                user?.role === 'ADMIN' ? 'Administrator' : 'Trener'}
             </Text>
@@ -178,7 +180,7 @@ export default function AdminScreen({ navigation }: any) {
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.menuItem}
+              style={[styles.menuItem, { backgroundColor: colors.cardBg }]}
               onPress={() => navigation.navigate(item.screen)}
             >
               <View
@@ -187,32 +189,32 @@ export default function AdminScreen({ navigation }: any) {
                 <Ionicons name={item.icon as any} size={28} color={item.color} />
               </View>
               <View style={styles.menuContent}>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                <Text style={styles.menuDescription}>{item.description}</Text>
+                <Text style={[styles.menuTitle, { color: colors.text }]}>{item.title}</Text>
+                <Text style={[styles.menuDescription, { color: colors.textSecondary }]}>{item.description}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
             </TouchableOpacity>
           ))}
         </View>
 
         <View style={styles.quickStats}>
-          <Text style={styles.statsTitle}>Rask oversikt</Text>
+          <Text style={[styles.statsTitle, { color: colors.text }]}>Rask oversikt</Text>
           <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>24</Text>
-              <Text style={styles.statLabel}>Aktive brukere</Text>
+            <View style={[styles.statCard, { backgroundColor: colors.cardBg }]}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>24</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Aktive brukere</Text>
             </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>15</Text>
-              <Text style={styles.statLabel}>Nye bestillinger</Text>
+            <View style={[styles.statCard, { backgroundColor: colors.cardBg }]}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>15</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Nye bestillinger</Text>
             </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>8</Text>
-              <Text style={styles.statLabel}>Kommende klasser</Text>
+            <View style={[styles.statCard, { backgroundColor: colors.cardBg }]}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>8</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Kommende klasser</Text>
             </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>12</Text>
-              <Text style={styles.statLabel}>PT-økter i dag</Text>
+            <View style={[styles.statCard, { backgroundColor: colors.cardBg }]}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>12</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>PT-økter i dag</Text>
             </View>
           </View>
         </View>
@@ -224,18 +226,15 @@ export default function AdminScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6B7280',
   },
   header: {
     paddingTop: 24,
@@ -244,17 +243,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#111827',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
   },
   roleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
@@ -268,7 +264,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#D1FAE5',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -278,13 +273,11 @@ const styles = StyleSheet.create({
   },
   roleLabel: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 4,
   },
   roleValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
   },
   menuGrid: {
     gap: 12,
@@ -293,7 +286,6 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -316,12 +308,10 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 4,
   },
   menuDescription: {
     fontSize: 14,
-    color: '#6B7280',
   },
   quickStats: {
     marginBottom: 24,
@@ -329,7 +319,6 @@ const styles = StyleSheet.create({
   statsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
     marginBottom: 16,
   },
   statsGrid: {
@@ -340,7 +329,6 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: Platform.OS === 'web' ? '23%' : '47%',
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -353,12 +341,10 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#3B82F6',
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
   },
 });

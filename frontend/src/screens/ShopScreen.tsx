@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
 import { useCart } from '../contexts/CartContext';
@@ -49,6 +50,7 @@ interface Product {
 
 export default function ShopScreen() {
   const navigation = useNavigation();
+  const { colors } = useTheme();
   const { addItem } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,14 +172,14 @@ export default function ShopScreen() {
             />
           ) : (
             <View style={styles.placeholderImage}>
-              <Ionicons name="image-outline" size={48} color="#9CA3AF" />
+              <Ionicons name="image-outline" size={48} color={colors.textLight} />
             </View>
           )}
 
           {/* Image Count */}
           {product.images.length > 1 && (
             <View style={styles.imageCount}>
-              <Ionicons name="images-outline" size={12} color="#FFF" />
+              <Ionicons name="images-outline" size={12} color={colors.cardBg} />
               <Text style={styles.imageCountText}>{`${product.images.length}`}</Text>
             </View>
           )}
@@ -185,7 +187,7 @@ export default function ShopScreen() {
           {/* Featured Badge */}
           {product.featured && (
             <View style={styles.featuredBadge}>
-              <Ionicons name="star" size={12} color="#FFF" />
+              <Ionicons name="star" size={12} color={colors.cardBg} />
               <Text style={styles.featuredText}>Fremhevet</Text>
             </View>
           )}
@@ -208,7 +210,7 @@ export default function ShopScreen() {
         {/* Product Info */}
         <View style={styles.productInfo}>
           <View style={styles.productType}>
-            <Ionicons name={getTypeIcon(product.type)} size={14} color="#6B7280" />
+            <Ionicons name={getTypeIcon(product.type)} size={14} color={colors.textSecondary} />
             <Text style={styles.productTypeText}>{getTypeLabel(product.type)}</Text>
           </View>
 
@@ -236,11 +238,11 @@ export default function ShopScreen() {
           {product.type === 'PT_SERVICE' && (
             <View style={styles.ptDetails}>
               <View style={styles.ptDetailRow}>
-                <Ionicons name="calendar-outline" size={12} color="#6B7280" />
+                <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
                 <Text style={styles.ptDetail}>{`${product.sessionCount} økter`}</Text>
               </View>
               <View style={styles.ptDetailRow}>
-                <Ionicons name="time-outline" size={12} color="#6B7280" />
+                <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
                 <Text style={styles.ptDetail}>{`Gyldig i ${product.validityDays} dager`}</Text>
               </View>
             </View>
@@ -267,7 +269,7 @@ export default function ShopScreen() {
                 onPress={() => navigation.goBack()}
                 style={styles.backButton}
               >
-                <Ionicons name="arrow-back" size={24} color="#111827" />
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
               </TouchableOpacity>
               <Text style={styles.headerTitle}>Vår Butikk</Text>
             </View>
@@ -285,7 +287,7 @@ export default function ShopScreen() {
           {/* Search and Filter */}
           <View style={styles.searchFilter}>
             <View style={styles.searchContainer}>
-              <Ionicons name="search-outline" size={20} color="#9CA3AF" style={styles.searchIcon} />
+              <Ionicons name="search-outline" size={20} color={colors.textLight} style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Søk produkter..."
@@ -333,7 +335,7 @@ export default function ShopScreen() {
           {/* Loading */}
           {loading && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#3B82F6" />
+              <ActivityIndicator size="large" color={colors.primary} />
               <Text style={styles.loadingText}>Laster produkter...</Text>
             </View>
           )}
@@ -342,7 +344,7 @@ export default function ShopScreen() {
           {!loading && featuredProducts.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="star" size={24} color="#EAB308" />
+                <Ionicons name="star" size={24} color={colors.warning} />
                 <Text style={styles.sectionTitle}>Fremhevede produkter</Text>
               </View>
               <View style={styles.productGrid}>
@@ -366,7 +368,7 @@ export default function ShopScreen() {
           {/* Empty State */}
           {!loading && products.length === 0 && (
             <View style={styles.emptyState}>
-              <Ionicons name="cube-outline" size={64} color="#9CA3AF" />
+              <Ionicons name="cube-outline" size={64} color={colors.textLight} />
               <Text style={styles.emptyTitle}>Ingen produkter funnet</Text>
               <Text style={styles.emptyText}>Prøv å endre søket eller filteret</Text>
             </View>
@@ -385,7 +387,7 @@ export default function ShopScreen() {
           <ScrollView style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <TouchableOpacity onPress={closeProductModal} style={styles.closeButton}>
-                <Ionicons name="close" size={28} color="#111827" />
+                <Ionicons name="close" size={28} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -401,10 +403,10 @@ export default function ShopScreen() {
                   {selectedProduct.images.length > 1 && (
                     <>
                       <TouchableOpacity style={styles.prevButton} onPress={prevImage}>
-                        <Ionicons name="chevron-back" size={24} color="#FFF" />
+                        <Ionicons name="chevron-back" size={24} color={colors.cardBg} />
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.nextButton} onPress={nextImage}>
-                        <Ionicons name="chevron-forward" size={24} color="#FFF" />
+                        <Ionicons name="chevron-forward" size={24} color={colors.cardBg} />
                       </TouchableOpacity>
                       <Text style={styles.imageIndicator}>
                         {`${currentImageIndex + 1} / ${selectedProduct.images.length}`}
@@ -414,7 +416,7 @@ export default function ShopScreen() {
                 </>
               ) : (
                 <View style={styles.placeholderImage}>
-                  <Ionicons name="image-outline" size={64} color="#9CA3AF" />
+                  <Ionicons name="image-outline" size={64} color={colors.textLight} />
                 </View>
               )}
             </View>
@@ -423,7 +425,7 @@ export default function ShopScreen() {
             <Container>
               <View style={styles.modalContent}>
                 <View style={styles.productType}>
-                  <Ionicons name={getTypeIcon(selectedProduct.type)} size={18} color="#6B7280" />
+                  <Ionicons name={getTypeIcon(selectedProduct.type)} size={18} color={colors.textSecondary} />
                   <Text style={styles.productTypeText}>{getTypeLabel(selectedProduct.type)}</Text>
                 </View>
 
@@ -454,11 +456,11 @@ export default function ShopScreen() {
                 {selectedProduct.type === 'PT_SERVICE' && (
                   <View style={styles.detailsList}>
                     <View style={styles.detailItem}>
-                      <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
+                      <Ionicons name="calendar-outline" size={20} color={colors.primary} />
                       <Text style={styles.detailText}>{`${selectedProduct.sessionCount} økter inkludert`}</Text>
                     </View>
                     <View style={styles.detailItem}>
-                      <Ionicons name="time-outline" size={20} color="#3B82F6" />
+                      <Ionicons name="time-outline" size={20} color={colors.primary} />
                       <Text style={styles.detailText}>{`Gyldig i ${selectedProduct.validityDays} dager`}</Text>
                     </View>
                   </View>
@@ -468,15 +470,15 @@ export default function ShopScreen() {
                   <View style={styles.detailItem}>
                     {selectedProduct.stock! > 0 ? (
                       <>
-                        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                        <Text style={[styles.detailText, { color: '#10B981' }]}>
+                        <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                        <Text style={[styles.detailText, { color: colors.success }]}>
                           {`${selectedProduct.stock} på lager`}
                         </Text>
                       </>
                     ) : (
                       <>
-                        <Ionicons name="close-circle" size={20} color="#EF4444" />
-                        <Text style={[styles.detailText, { color: '#EF4444' }]}>Utsolgt</Text>
+                        <Ionicons name="close-circle" size={20} color={colors.danger} />
+                        <Text style={[styles.detailText, { color: colors.danger }]}>Utsolgt</Text>
                       </>
                     )}
                   </View>
@@ -491,7 +493,7 @@ export default function ShopScreen() {
                   onPress={() => handleAddToCart(selectedProduct)}
                   disabled={selectedProduct.trackInventory && selectedProduct.stock === 0}
                 >
-                  <Ionicons name="cart-outline" size={20} color="#FFF" />
+                  <Ionicons name="cart-outline" size={20} color={colors.cardBg} />
                   <Text style={styles.addToCartText}>
                     {selectedProduct.trackInventory && selectedProduct.stock === 0
                       ? 'Utsolgt'

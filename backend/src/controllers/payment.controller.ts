@@ -447,6 +447,8 @@ export class PaymentController {
         select: {
           provider: true,
           displayName: true,
+          enabled: true,
+          testMode: true,
           sortOrder: true,
         },
         orderBy: { sortOrder: 'asc' },
@@ -456,6 +458,122 @@ export class PaymentController {
     } catch (error) {
       console.error('Get available payment methods error:', error);
       res.status(500).json({ success: false, error: 'Kunne ikke hente betalingsmetoder' });
+    }
+  }
+
+  /**
+   * POST /api/payments/vipps/initiate
+   * Initiate Vipps payment for an order
+   */
+  async initiateVippsPayment(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+      const userId = req.user!.userId;
+      const { orderId, phoneNumber, amount, description } = req.body;
+
+      if (!orderId || !phoneNumber || !amount) {
+        res.status(400).json({
+          success: false,
+          error: 'orderId, phoneNumber og amount er påkrevd'
+        });
+        return;
+      }
+
+      // Get Vipps service
+      const vippsService = await getVippsService(tenantId);
+      if (!vippsService) {
+        res.status(400).json({
+          success: false,
+          error: 'Vipps er ikke konfigurert for denne tenanten'
+        });
+        return;
+      }
+
+      // Generate unique Vipps order ID
+      const vippsOrderId = `ORDER-${orderId}-${Date.now()}`;
+
+      // Initiate payment
+      const paymentResult = await vippsService.initiatePayment({
+        amount,
+        phoneNumber,
+        orderId: vippsOrderId,
+        tenantId,
+        userId,
+        description: description || `Ordre ${orderId}`,
+        paymentType: 'ORDER',
+        orderDatabaseId: orderId,
+      });
+
+      res.json({
+        success: true,
+        data: {
+          url: paymentResult.url,
+          vippsOrderId: paymentResult.orderId,
+        },
+        message: 'Vipps-betaling initiert'
+      });
+    } catch (error: any) {
+      console.error('Initiate Vipps payment error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Kunne ikke initiere Vipps-betaling'
+      });
+    }
+  }
+
+  /**
+   * POST /api/payments/stripe/create-intent
+   * Create Stripe payment intent for an order
+   */
+  async createStripeIntent(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.tenantId!;
+      const userId = req.user!.userId;
+      const { orderId, amount, currency, description } = req.body;
+
+      if (!orderId || !amount) {
+        res.status(400).json({
+          success: false,
+          error: 'orderId og amount er påkrevd'
+        });
+        return;
+      }
+
+      // Get Stripe service
+      const stripeService = await getStripeService(tenantId);
+      if (!stripeService) {
+        res.status(400).json({
+          success: false,
+          error: 'Stripe er ikke konfigurert for denne tenanten'
+        });
+        return;
+      }
+
+      // Create payment intent
+      const paymentIntent = await stripeService.createPaymentIntent({
+        amount,
+        currency: currency || 'NOK',
+        tenantId,
+        userId,
+        orderId,
+        paymentType: 'ORDER',
+        description: description || `Ordre ${orderId}`,
+      });
+
+      res.json({
+        success: true,
+        data: {
+          clientSecret: paymentIntent.clientSecret,
+          paymentIntentId: paymentIntent.paymentIntentId,
+        },
+        message: 'Stripe Payment Intent opprettet'
+      });
+    } catch (error: any) {
+      console.error('Create Stripe payment intent error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Kunne ikke opprette Stripe Payment Intent'
+      });
     }
   }
 }

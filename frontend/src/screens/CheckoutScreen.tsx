@@ -12,14 +12,24 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 
-type PaymentMethod = 'CARD' | 'VIPPS' | 'KLARNA';
+type PaymentMethod = 'CARD' | 'VIPPS';
+
+interface AvailablePaymentMethod {
+  provider: string;
+  displayName: string;
+  enabled: boolean;
+  testMode: boolean;
+}
 
 interface DeliveryInfo {
   address: string;
@@ -30,9 +40,13 @@ interface DeliveryInfo {
 
 export default function CheckoutScreen() {
   const navigation = useNavigation();
+  const { colors } = useTheme();
   const { items, total, clearCart, loadCart } = useCart();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('CARD');
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<AvailablePaymentMethod[]>([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
   const [requiresDelivery, setRequiresDelivery] = useState(false);
 
   // Delivery information
@@ -51,17 +65,45 @@ export default function CheckoutScreen() {
   // Vipps payment fields
   const [vippsPhone, setVippsPhone] = useState('');
 
-  // Klarna payment fields
-  const [klarnaEmail, setKlarnaEmail] = useState('');
-
   useEffect(() => {
     loadCart();
+    fetchAvailablePaymentMethods();
     // Check if any items require physical delivery
     const hasPhysicalProducts = items.some(
       (item: any) => item.product?.type === 'PHYSICAL_PRODUCT'
     );
     setRequiresDelivery(hasPhysicalProducts);
   }, []);
+
+  const fetchAvailablePaymentMethods = async () => {
+    try {
+      setLoadingPaymentMethods(true);
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+      const response = await fetch(`${API_URL}/api/payments/available`, {
+        headers: {
+          'Authorization': `Bearer ${user?.token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAvailablePaymentMethods(data.data || []);
+
+        // Auto-select first available payment method
+        const enabledMethods = data.data?.filter((m: AvailablePaymentMethod) => m.enabled) || [];
+        if (enabledMethods.length > 0) {
+          const firstMethod = enabledMethods[0].provider;
+          if (firstMethod === 'VIPPS' || firstMethod === 'STRIPE') {
+            setSelectedPaymentMethod(firstMethod === 'STRIPE' ? 'CARD' : 'VIPPS');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch payment methods:', error);
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  };
 
   const formatCardNumber = (text: string) => {
     const cleaned = text.replace(/\s/g, '');
@@ -117,15 +159,6 @@ export default function CheckoutScreen() {
     return true;
   };
 
-  const validateKlarnaPayment = (): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(klarnaEmail)) {
-      Alert.alert('Ugyldig e-post', 'Vennligst skriv inn en gyldig e-postadresse');
-      return false;
-    }
-    return true;
-  };
-
   const validateDeliveryInfo = (): boolean => {
     if (!requiresDelivery) return true;
 
@@ -150,6 +183,11 @@ export default function CheckoutScreen() {
       return;
     }
 
+    if (!selectedPaymentMethod) {
+      Alert.alert('Velg betalingsmetode', 'Vennligst velg en betalingsmetode');
+      return;
+    }
+
     // Validate delivery info if needed
     if (!validateDeliveryInfo()) {
       return;
@@ -164,9 +202,6 @@ export default function CheckoutScreen() {
       case 'VIPPS':
         paymentValid = validateVippsPayment();
         break;
-      case 'KLARNA':
-        paymentValid = validateKlarnaPayment();
-        break;
     }
 
     if (!paymentValid) {
@@ -175,6 +210,7 @@ export default function CheckoutScreen() {
 
     try {
       setLoading(true);
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
       // Prepare order data
       const orderData: any = {
@@ -194,32 +230,102 @@ export default function CheckoutScreen() {
         orderData.deliveryCountry = deliveryInfo.country;
       }
 
-      // Create order
+      // Create order first
       const response = await api.createOrder(orderData);
 
-      if (response.success) {
-        // Clear cart after successful order
-        await clearCart();
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to create order');
+      }
 
-        // Show success message
-        Alert.alert(
-          'Bestilling bekreftet!',
-          `Din bestilling er mottatt. Ordrenummer: ${response.data.orderNumber}`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                navigation.navigate('PurchaseHistory' as never);
+      const orderId = response.data.id;
+      const orderNumber = response.data.orderNumber;
+
+      // Handle payment based on selected method
+      if (selectedPaymentMethod === 'VIPPS') {
+        // Initiate Vipps payment
+        const vippsResponse = await fetch(`${API_URL}/api/payments/vipps/initiate`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${user?.token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orderId,
+            phoneNumber: vippsPhone,
+            amount: total,
+            description: `Ordre ${orderNumber}`,
+          }),
+        });
+
+        const vippsData = await vippsResponse.json();
+
+        if (vippsData.success && vippsData.data?.url) {
+          // Clear cart before redirecting
+          await clearCart();
+
+          // Redirect to Vipps payment
+          const canOpen = await Linking.canOpenURL(vippsData.data.url);
+          if (canOpen) {
+            await Linking.openURL(vippsData.data.url);
+            // Show info message
+            Alert.alert(
+              'Omdirigerer til Vipps',
+              'Du blir nå omdirigert til Vipps for å fullføre betalingen.',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => navigation.navigate('PurchaseHistory' as never),
+                },
+              ]
+            );
+          } else {
+            throw new Error('Kunne ikke åpne Vipps');
+          }
+        } else {
+          throw new Error(vippsData.error || 'Vipps-betaling feilet');
+        }
+      } else if (selectedPaymentMethod === 'CARD') {
+        // Create Stripe payment intent
+        const stripeResponse = await fetch(`${API_URL}/api/payments/stripe/create-intent`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${user?.token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orderId,
+            amount: total,
+            currency: 'NOK',
+            description: `Ordre ${orderNumber}`,
+          }),
+        });
+
+        const stripeData = await stripeResponse.json();
+
+        if (stripeData.success && stripeData.data?.clientSecret) {
+          // For now, show a message that card payment is initiated
+          // In production, you would integrate Stripe's Payment Element here
+          await clearCart();
+
+          Alert.alert(
+            'Betaling initiert',
+            'Kortbetaling er initiert. I produksjon ville du nå bli tatt til Stripe for å fullføre betalingen.',
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate('PurchaseHistory' as never),
               },
-            },
-          ]
-        );
+            ]
+          );
+        } else {
+          throw new Error(stripeData.error || 'Kortbetaling feilet');
+        }
       }
     } catch (error: any) {
-      console.error('Order creation error:', error);
+      console.error('Order/Payment error:', error);
       Alert.alert(
         'Feil',
-        error.response?.data?.error || 'Kunne ikke fullføre bestillingen. Prøv igjen.'
+        error.message || error.response?.data?.error || 'Kunne ikke fullføre bestillingen. Prøv igjen.'
       );
     } finally {
       setLoading(false);
@@ -244,7 +350,7 @@ export default function CheckoutScreen() {
             <Ionicons
               name={icon as any}
               size={24}
-              color={isSelected ? '#3B82F6' : '#6B7280'}
+              color={isSelected ? colors.primary : colors.textSecondary}
             />
             <Text
               style={[
@@ -267,11 +373,22 @@ export default function CheckoutScreen() {
   };
 
   const renderPaymentForm = () => {
+    if (!selectedPaymentMethod) {
+      return null;
+    }
+
     switch (selectedPaymentMethod) {
       case 'CARD':
+        const isTestMode = availablePaymentMethods.find(m => m.provider === 'STRIPE')?.testMode;
         return (
           <View style={styles.paymentForm}>
             <Text style={styles.formSectionTitle}>Kortinformasjon</Text>
+            {isTestMode && (
+              <View style={styles.testModeBanner}>
+                <Ionicons name="warning-outline" size={16} color={colors.warning} />
+                <Text style={styles.testModeText}>Testmodus aktivert</Text>
+              </View>
+            )}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Kortnummer</Text>
               <TextInput
@@ -326,19 +443,28 @@ export default function CheckoutScreen() {
             </View>
 
             <View style={styles.infoBox}>
-              <Ionicons name="information-circle-outline" size={20} color="#3B82F6" />
+              <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
               <Text style={styles.infoText}>
-                Dette er en demo. Alle kortnumre vil bli godkjent.
+                {isTestMode
+                  ? 'Testmodus: Bruk testkortnummer 4242424242424242'
+                  : 'Sikker kortbetaling via Stripe'}
               </Text>
             </View>
           </View>
         );
 
       case 'VIPPS':
+        const vippsTestMode = availablePaymentMethods.find(m => m.provider === 'VIPPS')?.testMode;
         return (
           <View style={styles.paymentForm}>
             <View style={styles.vippsHeader}>
               <Text style={styles.formSectionTitle}>Betal med Vipps</Text>
+              {vippsTestMode && (
+                <View style={styles.testModeBanner}>
+                  <Ionicons name="warning-outline" size={16} color={colors.warning} />
+                  <Text style={styles.testModeText}>Testmodus aktivert</Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.inputContainer}>
@@ -354,37 +480,11 @@ export default function CheckoutScreen() {
             </View>
 
             <View style={styles.infoBox}>
-              <Ionicons name="information-circle-outline" size={20} color="#3B82F6" />
+              <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
               <Text style={styles.infoText}>
-                Dette er en demo. Betalingen vil automatisk godkjennes.
-              </Text>
-            </View>
-          </View>
-        );
-
-      case 'KLARNA':
-        return (
-          <View style={styles.paymentForm}>
-            <View style={styles.klarnaHeader}>
-              <Text style={styles.formSectionTitle}>Betal med Klarna</Text>
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>E-postadresse</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="din@epost.no"
-                value={klarnaEmail}
-                onChangeText={setKlarnaEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.infoBox}>
-              <Ionicons name="information-circle-outline" size={20} color="#3B82F6" />
-              <Text style={styles.infoText}>
-                Dette er en demo. Betalingen vil automatisk godkjennes.
+                {vippsTestMode
+                  ? 'Testmodus: Vipps-betaling vil ikke belaste din konto'
+                  : 'Du blir omdirigert til Vipps for å fullføre betalingen'}
               </Text>
             </View>
           </View>
@@ -406,7 +506,7 @@ export default function CheckoutScreen() {
                 onPress={() => navigation.goBack()}
                 style={styles.backButton}
               >
-                <Ionicons name="arrow-back" size={24} color="#111827" />
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
               </TouchableOpacity>
               <Text style={styles.headerTitle}>Kasse</Text>
             </View>
@@ -499,23 +599,48 @@ export default function CheckoutScreen() {
             {/* Payment Method Selection */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Betalingsmetode</Text>
-              {renderPaymentMethodCard(
-                'CARD',
-                'Kort',
-                'card-outline',
-                'Betal med debet- eller kredittkort'
-              )}
-              {renderPaymentMethodCard(
-                'VIPPS',
-                'Vipps',
-                'phone-portrait-outline',
-                'Betal enkelt med Vipps'
-              )}
-              {renderPaymentMethodCard(
-                'KLARNA',
-                'Klarna',
-                'wallet-outline',
-                'Betal senere med Klarna'
+              {loadingPaymentMethods ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator color={colors.primary} />
+                  <Text style={styles.loadingText}>Laster betalingsmetoder...</Text>
+                </View>
+              ) : availablePaymentMethods.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="alert-circle-outline" size={48} color={colors.textLight} />
+                  <Text style={styles.emptyStateText}>
+                    Ingen betalingsmetoder tilgjengelig
+                  </Text>
+                  <Text style={styles.emptyStateSubtext}>
+                    Kontakt administrator for å konfigurere betalingsmetoder
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  {availablePaymentMethods
+                    .filter((m) => m.enabled && m.provider === 'STRIPE')
+                    .map((method) => (
+                      <View key={method.provider}>
+                        {renderPaymentMethodCard(
+                          'CARD',
+                          method.displayName || 'Kort',
+                          'card-outline',
+                          'Betal med debet- eller kredittkort'
+                        )}
+                      </View>
+                    ))}
+                  {availablePaymentMethods
+                    .filter((m) => m.enabled && m.provider === 'VIPPS')
+                    .map((method) => (
+                      <View key={method.provider}>
+                        {renderPaymentMethodCard(
+                          'VIPPS',
+                          method.displayName || 'Vipps',
+                          'phone-portrait-outline',
+                          'Betal enkelt med Vipps'
+                        )}
+                      </View>
+                    ))}
+                </>
               )}
             </View>
 
@@ -529,10 +654,10 @@ export default function CheckoutScreen() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={colors.cardBg} />
               ) : (
                 <>
-                  <Ionicons name="checkmark-circle-outline" size={24} color="#FFF" />
+                  <Ionicons name="checkmark-circle-outline" size={24} color={colors.cardBg} />
                   <Text style={styles.placeOrderText}>
                     Bekreft bestilling ({(total || 0).toLocaleString('nb-NO')} kr)
                   </Text>
@@ -792,5 +917,51 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: '#93C5FD',
+  },
+  testModeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  testModeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 32,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

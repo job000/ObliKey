@@ -15,7 +15,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.CHEST],
     secondaryMuscles: [MuscleGroup.TRICEPS, MuscleGroup.SHOULDERS],
     difficulty: 'Intermediate',
-    imageUrl: 'https://i.pinimg.com/736x/c5/8f/34/c58f348a0e52c2c97c01c8b29d2e4a82.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80',
     tips: 'Keep feet flat on ground, maintain natural arch in lower back, control descent',
     warnings: 'Always use safety bars or spotter for heavy sets'
   },
@@ -28,7 +28,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.CHEST],
     secondaryMuscles: [MuscleGroup.TRICEPS, MuscleGroup.SHOULDERS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/dumbbell-bench-press-exercise-flat-600nw-2192880579.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
     tips: 'Keep dumbbells aligned with mid-chest, don\'t let them drift forward',
     warnings: 'Start with lighter weight to practice form'
   },
@@ -41,7 +41,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.CHEST],
     secondaryMuscles: [MuscleGroup.SHOULDERS, MuscleGroup.TRICEPS],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/incline-barbell-bench-press-flat-600nw-2169820761.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=800&q=80',
     tips: 'Don\'t set angle too steep or it becomes a shoulder press',
     warnings: 'Use spotter for heavy sets'
   },
@@ -54,7 +54,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.CHEST],
     secondaryMuscles: [MuscleGroup.TRICEPS, MuscleGroup.SHOULDERS, MuscleGroup.ABS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/push-ups-exercise-flat-vector-600nw-2169806933.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=800&q=80',
     tips: 'Keep core tight, elbows at 45-degree angle',
     warnings: 'Stop if you feel shoulder pain'
   },
@@ -67,7 +67,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.CHEST],
     secondaryMuscles: [MuscleGroup.SHOULDERS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/cable-crossover-exercise-flat-vector-600nw-2192874607.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&q=80',
     tips: 'Slight bend in elbows, focus on squeezing chest',
     warnings: 'Don\'t use too much weight - this is an isolation exercise'
   },
@@ -80,7 +80,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.CHEST],
     secondaryMuscles: [MuscleGroup.TRICEPS, MuscleGroup.SHOULDERS],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/chest-dips-exercise-flat-vector-600nw-2169807393.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1584863231364-2edc166de576?w=800&q=80',
     tips: 'Lean forward to target chest more than triceps',
     warnings: 'Don\'t go too deep if you feel shoulder strain'
   },
@@ -97,7 +97,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.LATS, MuscleGroup.BACK],
     secondaryMuscles: [MuscleGroup.BICEPS, MuscleGroup.FOREARMS],
     difficulty: 'Advanced',
-    imageUrl: 'https://www.shutterstock.com/image-vector/pullups-exercise-flat-vector-illustration-600nw-2169812173.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1598632640486-6c8534f0e5d8?w=800&q=80',
     tips: 'Pull with elbows, not hands. Squeeze shoulder blades together at top',
     warnings: 'Use assisted machine or bands if you can\'t do full pull-ups yet'
   },
@@ -110,7 +110,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.LATS, MuscleGroup.BACK],
     secondaryMuscles: [MuscleGroup.BICEPS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/lat-pulldown-exercise-flat-vector-600nw-2192871433.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1594381898411-846e7d193883?w=800&q=80',
     tips: 'Pull to chest, not behind neck. Keep torso stable',
     warnings: 'Don\'t lean back excessively'
   },
@@ -123,7 +123,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.BACK, MuscleGroup.LATS],
     secondaryMuscles: [MuscleGroup.BICEPS, MuscleGroup.LOWER_BACK],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/barbell-row-exercise-flat-vector-600nw-2169819957.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1605296867304-46d5465a13f1?w=800&q=80',
     tips: 'Keep back straight, pull to lower chest/upper abs',
     warnings: 'Don\'t round back - can cause injury'
   },
@@ -136,7 +136,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.BACK, MuscleGroup.LATS],
     secondaryMuscles: [MuscleGroup.BICEPS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/dumbbell-row-exercise-flat-vector-600nw-2192876179.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800&q=80',
     tips: 'Pull with elbow, squeeze at top',
     warnings: 'Keep lower back neutral'
   },
@@ -149,7 +149,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.BACK, MuscleGroup.HAMSTRINGS, MuscleGroup.GLUTES],
     secondaryMuscles: [MuscleGroup.QUADS, MuscleGroup.FOREARMS, MuscleGroup.TRAPS],
     difficulty: 'Advanced',
-    imageUrl: 'https://www.shutterstock.com/image-vector/deadlift-exercise-flat-vector-illustration-600nw-2169818529.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Keep bar close to body, drive through heels, keep back straight',
     warnings: 'Master form before adding weight - risk of back injury if done incorrectly'
   },
@@ -162,7 +162,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.BACK, MuscleGroup.LATS],
     secondaryMuscles: [MuscleGroup.BICEPS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/cable-row-exercise-flat-vector-600nw-2192872851.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1599744331534-2fe661a863b4?w=800&q=80',
     tips: 'Keep torso stable, pull to lower chest',
     warnings: 'Don\'t use momentum'
   },
@@ -179,7 +179,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.SHOULDERS],
     secondaryMuscles: [MuscleGroup.TRICEPS, MuscleGroup.TRAPS],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/overhead-press-exercise-flat-vector-600nw-2169821243.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Press slightly back so bar path is vertical',
     warnings: 'Don\'t arch back excessively'
   },
@@ -192,7 +192,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.SHOULDERS],
     secondaryMuscles: [MuscleGroup.TRAPS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/lateral-raise-exercise-flat-vector-600nw-2192873921.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Slight bend in elbows, lead with elbows not hands',
     warnings: 'Don\'t use momentum or swing weights'
   },
@@ -205,7 +205,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.SHOULDERS],
     secondaryMuscles: [],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/front-raise-exercise-flat-vector-600nw-2192874013.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Keep core tight, don\'t swing',
     warnings: 'Use lighter weight than lateral raises'
   },
@@ -218,7 +218,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.SHOULDERS],
     secondaryMuscles: [MuscleGroup.TRAPS, MuscleGroup.BACK],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/face-pull-exercise-flat-vector-600nw-2192875329.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Pull to nose/forehead level, external rotate at end',
     warnings: 'Excellent for shoulder health'
   },
@@ -231,7 +231,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.TRAPS],
     secondaryMuscles: [],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/dumbbell-shrug-exercise-flat-vector-600nw-2192876541.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Straight up and down motion, don\'t roll shoulders',
     warnings: 'Don\'t use neck to assist'
   },
@@ -248,7 +248,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.BICEPS],
     secondaryMuscles: [MuscleGroup.FOREARMS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/barbell-curl-exercise-flat-vector-600nw-2169819401.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Keep elbows pinned to sides, squeeze at top',
     warnings: 'Don\'t swing or use momentum'
   },
@@ -261,7 +261,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.BICEPS],
     secondaryMuscles: [MuscleGroup.FOREARMS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/dumbbell-curl-exercise-flat-vector-600nw-2192877103.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Supinate wrist at top for peak contraction',
     warnings: 'Control the negative portion'
   },
@@ -274,7 +274,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.BICEPS],
     secondaryMuscles: [MuscleGroup.FOREARMS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/hammer-curl-exercise-flat-vector-600nw-2192877219.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Keep neutral grip throughout movement',
     warnings: 'Good for elbow health'
   },
@@ -287,7 +287,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.BICEPS],
     secondaryMuscles: [MuscleGroup.FOREARMS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/cable-curl-exercise-flat-vector-600nw-2192877687.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Constant tension is key benefit',
     warnings: 'Control the weight'
   },
@@ -300,7 +300,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.BICEPS],
     secondaryMuscles: [],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/preacher-curl-exercise-flat-vector-600nw-2192878001.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Prevents cheating, good for isolation',
     warnings: 'Don\'t hyperextend at bottom'
   },
@@ -317,7 +317,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.TRICEPS],
     secondaryMuscles: [MuscleGroup.CHEST, MuscleGroup.SHOULDERS],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/close-grip-bench-press-exercise-600nw-2192878413.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Keep elbows tucked, don\'t flare out',
     warnings: 'Don\'t grip too narrow - can stress wrists'
   },
@@ -330,7 +330,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.TRICEPS],
     secondaryMuscles: [MuscleGroup.CHEST, MuscleGroup.SHOULDERS],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/tricep-dips-exercise-flat-vector-600nw-2169807951.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Stay upright to target triceps, lean forward targets chest',
     warnings: 'Don\'t go too deep if shoulders hurt'
   },
@@ -343,7 +343,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.TRICEPS],
     secondaryMuscles: [],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/skull-crusher-exercise-flat-vector-600nw-2192878881.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Keep upper arms stationary, move only at elbow',
     warnings: 'Be careful lowering weight near face'
   },
@@ -356,7 +356,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.TRICEPS],
     secondaryMuscles: [],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/cable-pushdown-exercise-flat-vector-600nw-2192879213.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Keep elbows pinned to sides, squeeze at bottom',
     warnings: 'Don\'t lean on cable stack'
   },
@@ -369,7 +369,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.TRICEPS],
     secondaryMuscles: [],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/overhead-tricep-extension-exercise-flat-600nw-2192879541.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Keep elbows pointing forward, don\'t flare out',
     warnings: 'Start light to get used to stretch'
   },
@@ -386,7 +386,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.QUADS, MuscleGroup.GLUTES],
     secondaryMuscles: [MuscleGroup.HAMSTRINGS, MuscleGroup.LOWER_BACK],
     difficulty: 'Advanced',
-    imageUrl: 'https://www.shutterstock.com/image-vector/barbell-squat-exercise-flat-vector-600nw-2169817981.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Keep chest up, knees tracking over toes, drive through heels',
     warnings: 'Master form before adding weight'
   },
@@ -399,7 +399,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.QUADS],
     secondaryMuscles: [MuscleGroup.GLUTES, MuscleGroup.ABS],
     difficulty: 'Advanced',
-    imageUrl: 'https://www.shutterstock.com/image-vector/front-squat-exercise-flat-vector-600nw-2192880213.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Keep elbows high, chest up, very upright torso',
     warnings: 'Easier on lower back than back squat'
   },
@@ -412,7 +412,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.QUADS, MuscleGroup.GLUTES],
     secondaryMuscles: [MuscleGroup.HAMSTRINGS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/leg-press-exercise-flat-vector-600nw-2192880681.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Don\'t lock knees at top, keep lower back against pad',
     warnings: 'Don\'t lower too far - butt should stay on seat'
   },
@@ -425,7 +425,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.QUADS, MuscleGroup.GLUTES],
     secondaryMuscles: [MuscleGroup.HAMSTRINGS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/walking-lunges-exercise-flat-vector-600nw-2192881143.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Keep torso upright, knee shouldn\'t pass toes',
     warnings: 'Good for balance and stability'
   },
@@ -438,7 +438,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.HAMSTRINGS],
     secondaryMuscles: [],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/leg-curl-exercise-flat-vector-600nw-2192881457.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Control the negative, squeeze at top',
     warnings: 'Don\'t hyperextend'
   },
@@ -451,7 +451,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.QUADS],
     secondaryMuscles: [],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/leg-extension-exercise-flat-vector-600nw-2192881789.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Squeeze quads at top, control descent',
     warnings: 'Can be hard on knees - use moderate weight'
   },
@@ -464,7 +464,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.HAMSTRINGS, MuscleGroup.GLUTES],
     secondaryMuscles: [MuscleGroup.LOWER_BACK],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/romanian-deadlift-exercise-flat-vector-600nw-2192882113.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Feel stretch in hamstrings, keep back straight',
     warnings: 'Master hip hinge pattern first'
   },
@@ -477,7 +477,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.GLUTES],
     secondaryMuscles: [MuscleGroup.HAMSTRINGS],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/hip-thrust-exercise-flat-vector-600nw-2192882437.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Squeeze glutes hard at top, tuck chin',
     warnings: 'Use pad on bar for comfort'
   },
@@ -490,7 +490,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.QUADS, MuscleGroup.GLUTES],
     secondaryMuscles: [MuscleGroup.HAMSTRINGS],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/bulgarian-split-squat-exercise-flat-600nw-2192882789.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Keep torso upright, knee tracks over toe',
     warnings: 'Excellent for single-leg strength'
   },
@@ -503,7 +503,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.CALVES],
     secondaryMuscles: [],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/calf-raise-exercise-flat-vector-600nw-2192883101.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Full range of motion, squeeze at top',
     warnings: 'Can do with dumbbells or bodyweight'
   },
@@ -520,7 +520,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.ABS],
     secondaryMuscles: [MuscleGroup.LOWER_BACK, MuscleGroup.SHOULDERS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/plank-exercise-flat-vector-illustration-600nw-2169813241.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Don\'t let hips sag, squeeze glutes and core',
     warnings: 'Start with short holds, build up time'
   },
@@ -533,7 +533,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.ABS],
     secondaryMuscles: [],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/crunches-exercise-flat-vector-illustration-600nw-2192883413.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Focus on quality over quantity',
     warnings: 'Don\'t pull on neck'
   },
@@ -546,7 +546,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.ABS],
     secondaryMuscles: [MuscleGroup.FOREARMS],
     difficulty: 'Advanced',
-    imageUrl: 'https://www.shutterstock.com/image-vector/hanging-leg-raises-exercise-flat-600nw-2192883741.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Control the movement, don\'t swing',
     warnings: 'Requires good grip strength'
   },
@@ -559,7 +559,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.OBLIQUES],
     secondaryMuscles: [MuscleGroup.ABS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/russian-twist-exercise-flat-vector-600nw-2192884069.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Rotate through torso, not just arms',
     warnings: 'Can do with weight plate or medicine ball'
   },
@@ -572,7 +572,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.ABS],
     secondaryMuscles: [],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/cable-crunch-exercise-flat-vector-600nw-2192884397.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Crunch with abs, not pull with arms',
     warnings: 'Control the weight'
   },
@@ -589,7 +589,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.CARDIO],
     secondaryMuscles: [MuscleGroup.QUADS, MuscleGroup.HAMSTRINGS, MuscleGroup.CALVES],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/treadmill-running-cardio-exercise-flat-600nw-2192884721.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Vary speed and incline for best results',
     warnings: 'Start slow if you\'re new to running'
   },
@@ -602,7 +602,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.CARDIO],
     secondaryMuscles: [MuscleGroup.BACK, MuscleGroup.QUADS, MuscleGroup.ABS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/rowing-machine-exercise-flat-vector-600nw-2192885053.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Drive with legs first, then pull with arms',
     warnings: 'Excellent low-impact cardio'
   },
@@ -615,7 +615,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.CARDIO],
     secondaryMuscles: [MuscleGroup.QUADS, MuscleGroup.HAMSTRINGS],
     difficulty: 'Beginner',
-    imageUrl: 'https://www.shutterstock.com/image-vector/stationary-bike-exercise-flat-vector-600nw-2192885381.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Adjust seat height properly',
     warnings: 'Great for joint-friendly cardio'
   },
@@ -628,7 +628,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.CARDIO],
     secondaryMuscles: [MuscleGroup.CALVES, MuscleGroup.SHOULDERS],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/jump-rope-exercise-flat-vector-600nw-2192885709.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Land softly on balls of feet',
     warnings: 'High-impact - not suitable for everyone'
   },
@@ -641,7 +641,7 @@ const exercises = [
     primaryMuscles: [MuscleGroup.FULL_BODY, MuscleGroup.CARDIO],
     secondaryMuscles: [MuscleGroup.CHEST, MuscleGroup.QUADS, MuscleGroup.ABS],
     difficulty: 'Intermediate',
-    imageUrl: 'https://www.shutterstock.com/image-vector/burpees-exercise-flat-vector-illustration-600nw-2192886037.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
     tips: 'Modify by stepping instead of jumping',
     warnings: 'Very demanding - pace yourself'
   },

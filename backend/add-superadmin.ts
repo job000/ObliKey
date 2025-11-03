@@ -7,13 +7,13 @@ async function addSuperAdmin() {
   console.log('🔐 Adding SUPER_ADMIN user to existing database...');
 
   try {
-    // Find the existing otico-demo tenant
+    // Find the existing oblikey-demo tenant
     const tenant = await prisma.tenant.findUnique({
-      where: { subdomain: 'otico-demo' }
+      where: { subdomain: 'oblikey-demo' }
     });
 
     if (!tenant) {
-      console.error('❌ Error: otico-demo tenant not found!');
+      console.error('❌ Error: oblikey-demo tenant not found!');
       console.log('Please run seed-railway.ts first to create the tenant.');
       process.exit(1);
     }
@@ -40,7 +40,7 @@ async function addSuperAdmin() {
     // Create SUPER_ADMIN user
     console.log('Creating SUPER_ADMIN user...');
     const superAdminPassword = await bcrypt.hash('SuperAdmin123!', 10);
-    const superAdminUser = await prisma.user.create({
+    await prisma.user.create({
       data: {
         tenantId: tenant.id,
         email: 'superadmin@otico.com',

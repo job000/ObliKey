@@ -12,6 +12,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 import Container from '../components/Container';
 import { api } from '../services/api';
 
@@ -37,6 +38,7 @@ interface AvailableSlot {
 }
 
 export default function PTBookingScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [credits, setCredits] = useState<PTCredits | null>(null);
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
@@ -216,7 +218,8 @@ export default function PTBookingScreen({ navigation }: any) {
     <TouchableOpacity
       style={[
         styles.trainerItem,
-        selectedTrainer?.id === item.id && styles.trainerItemSelected,
+        { borderBottomColor: colors.borderLight },
+        selectedTrainer?.id === item.id && { backgroundColor: colors.background },
       ]}
       onPress={() => {
         setSelectedTrainer(item);
@@ -224,8 +227,8 @@ export default function PTBookingScreen({ navigation }: any) {
         setTrainerModalVisible(false);
       }}
     >
-      <View style={styles.trainerAvatar}>
-        <Text style={styles.trainerInitials}>
+      <View style={[styles.trainerAvatar, { backgroundColor: colors.primary }]}>
+        <Text style={[styles.trainerInitials, { color: colors.cardBg }]}>
           {item.firstName[0]}
           {item.lastName[0]}
         </Text>
@@ -234,15 +237,15 @@ export default function PTBookingScreen({ navigation }: any) {
         <Text
           style={[
             styles.trainerName,
-            selectedTrainer?.id === item.id && styles.trainerNameSelected,
+            { color: selectedTrainer?.id === item.id ? colors.primary : colors.text },
           ]}
         >
           {item.firstName} {item.lastName}
         </Text>
-        <Text style={styles.trainerEmail}>{item.email}</Text>
+        <Text style={[styles.trainerEmail, { color: colors.textSecondary }]}>{item.email}</Text>
       </View>
       {selectedTrainer?.id === item.id && (
-        <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+        <Ionicons name="checkmark-circle" size={24} color={colors.success} />
       )}
     </TouchableOpacity>
   );
@@ -254,19 +257,22 @@ export default function PTBookingScreen({ navigation }: any) {
     return (
       <TouchableOpacity
         key={index}
-        style={[styles.dateCard, isSelected && styles.dateCardSelected]}
+        style={[
+          styles.dateCard,
+          { borderColor: isSelected ? colors.primary : colors.border, backgroundColor: isSelected ? colors.background : colors.cardBg },
+        ]}
         onPress={() => {
           setSelectedDate(date);
           setSelectedSlot(null);
         }}
       >
-        <Text style={[styles.dateDay, isSelected && styles.dateDaySelected]}>
+        <Text style={[styles.dateDay, { color: isSelected ? colors.primary : colors.textSecondary }]}>
           {date.toLocaleDateString('nb-NO', { weekday: 'short' })}
         </Text>
-        <Text style={[styles.dateNumber, isSelected && styles.dateNumberSelected]}>
+        <Text style={[styles.dateNumber, { color: isSelected ? colors.primary : colors.text }]}>
           {date.getDate()}
         </Text>
-        <Text style={[styles.dateMonth, isSelected && styles.dateMonthSelected]}>
+        <Text style={[styles.dateMonth, { color: isSelected ? colors.primary : colors.textSecondary }]}>
           {date.toLocaleDateString('nb-NO', { month: 'short' })}
         </Text>
       </TouchableOpacity>
@@ -279,21 +285,24 @@ export default function PTBookingScreen({ navigation }: any) {
     return (
       <TouchableOpacity
         key={index}
-        style={[styles.timeSlot, isSelected && styles.timeSlotSelected]}
+        style={[
+          styles.timeSlot,
+          { borderColor: isSelected ? colors.primary : colors.border, backgroundColor: isSelected ? colors.primary : colors.cardBg },
+        ]}
         onPress={() => setSelectedSlot(slot)}
       >
         <View style={styles.timeSlotContent}>
           <Ionicons
             name="time-outline"
             size={20}
-            color={isSelected ? '#FFF' : '#3B82F6'}
+            color={isSelected ? colors.cardBg : colors.primary}
           />
-          <Text style={[styles.timeSlotText, isSelected && styles.timeSlotTextSelected]}>
+          <Text style={[styles.timeSlotText, { color: isSelected ? colors.cardBg : colors.text }]}>
             {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
           </Text>
         </View>
         {isSelected && (
-          <Ionicons name="checkmark-circle" size={20} color="#FFF" />
+          <Ionicons name="checkmark-circle" size={20} color={colors.cardBg} />
         )}
       </TouchableOpacity>
     );
@@ -301,33 +310,33 @@ export default function PTBookingScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>Laster...</Text>
+      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Laster...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Container maxWidth={600}>
           {/* Credits Display */}
           {credits && (
-            <View style={styles.creditsCard}>
+            <View style={[styles.creditsCard, { backgroundColor: colors.background, borderColor: colors.borderLight }]}>
               <View style={styles.creditsHeader}>
-                <Ionicons name="trophy-outline" size={20} color="#3B82F6" />
-                <Text style={styles.creditsText}>
-                  Tilgjengelige PT-timer: <Text style={styles.creditsNumber}>{credits.available}</Text>
+                <Ionicons name="trophy-outline" size={20} color={colors.primary} />
+                <Text style={[styles.creditsText, { color: colors.primary }]}>
+                  Tilgjengelige PT-timer: <Text style={[styles.creditsNumber, { color: colors.primary }]}>{credits.available}</Text>
                 </Text>
               </View>
               {credits.available === 0 && (
                 <TouchableOpacity
-                  style={styles.buyMoreButton}
+                  style={[styles.buyMoreButton, { backgroundColor: colors.primary }]}
                   onPress={() => navigation.navigate('PTShop')}
                 >
-                  <Ionicons name="cart-outline" size={16} color="#FFF" />
-                  <Text style={styles.buyMoreText}>Kjøp flere timer</Text>
+                  <Ionicons name="cart-outline" size={16} color={colors.cardBg} />
+                  <Text style={[styles.buyMoreText, { color: colors.cardBg }]}>Kjøp flere timer</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -336,33 +345,33 @@ export default function PTBookingScreen({ navigation }: any) {
           {/* Step 1: Select Trainer */}
           <View style={styles.section}>
             <View style={styles.stepHeader}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>1</Text>
+              <View style={[styles.stepNumber, { backgroundColor: colors.primary }]}>
+                <Text style={[styles.stepNumberText, { color: colors.cardBg }]}>1</Text>
               </View>
-              <Text style={styles.stepTitle}>Velg trener</Text>
+              <Text style={[styles.stepTitle, { color: colors.text }]}>Velg trener</Text>
             </View>
             <TouchableOpacity
-              style={styles.trainerSelector}
+              style={[styles.trainerSelector, { borderColor: colors.border, backgroundColor: colors.cardBg }]}
               onPress={() => setTrainerModalVisible(true)}
             >
               {selectedTrainer ? (
                 <View style={styles.selectedTrainerRow}>
-                  <View style={styles.selectedTrainerAvatar}>
-                    <Text style={styles.selectedTrainerInitials}>
+                  <View style={[styles.selectedTrainerAvatar, { backgroundColor: colors.primary }]}>
+                    <Text style={[styles.selectedTrainerInitials, { color: colors.cardBg }]}>
                       {selectedTrainer.firstName[0]}
                       {selectedTrainer.lastName[0]}
                     </Text>
                   </View>
-                  <Text style={styles.selectedTrainerText}>
+                  <Text style={[styles.selectedTrainerText, { color: colors.text }]}>
                     {selectedTrainer.firstName} {selectedTrainer.lastName}
                   </Text>
                 </View>
               ) : (
-                <Text style={styles.trainerSelectorPlaceholder}>
+                <Text style={[styles.trainerSelectorPlaceholder, { color: colors.textLight }]}>
                   Trykk for å velge trener
                 </Text>
               )}
-              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -370,10 +379,10 @@ export default function PTBookingScreen({ navigation }: any) {
           {selectedTrainer && (
             <View style={styles.section}>
               <View style={styles.stepHeader}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>2</Text>
+                <View style={[styles.stepNumber, { backgroundColor: colors.primary }]}>
+                  <Text style={[styles.stepNumberText, { color: colors.cardBg }]}>2</Text>
                 </View>
-                <Text style={styles.stepTitle}>Velg dato</Text>
+                <Text style={[styles.stepTitle, { color: colors.text }]}>Velg dato</Text>
               </View>
               <ScrollView
                 horizontal
@@ -390,24 +399,24 @@ export default function PTBookingScreen({ navigation }: any) {
           {selectedTrainer && selectedDate && (
             <View style={styles.section}>
               <View style={styles.stepHeader}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>3</Text>
+                <View style={[styles.stepNumber, { backgroundColor: colors.primary }]}>
+                  <Text style={[styles.stepNumberText, { color: colors.cardBg }]}>3</Text>
                 </View>
-                <Text style={styles.stepTitle}>Velg tidspunkt</Text>
+                <Text style={[styles.stepTitle, { color: colors.text }]}>Velg tidspunkt</Text>
               </View>
 
               {loadingSlots ? (
                 <View style={styles.loadingSlots}>
-                  <ActivityIndicator color="#3B82F6" />
-                  <Text style={styles.loadingSlotsText}>Laster ledige tider...</Text>
+                  <ActivityIndicator color={colors.primary} />
+                  <Text style={[styles.loadingSlotsText, { color: colors.textSecondary }]}>Laster ledige tider...</Text>
                 </View>
               ) : availableSlots.length === 0 ? (
-                <View style={styles.noSlotsContainer}>
-                  <Ionicons name="calendar-outline" size={48} color="#D1D5DB" />
-                  <Text style={styles.noSlotsText}>
+                <View style={[styles.noSlotsContainer, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+                  <Ionicons name="calendar-outline" size={48} color={colors.border} />
+                  <Text style={[styles.noSlotsText, { color: colors.textSecondary }]}>
                     Ingen ledige tider på denne dagen
                   </Text>
-                  <Text style={styles.noSlotsHint}>
+                  <Text style={[styles.noSlotsHint, { color: colors.textLight }]}>
                     Prøv en annen dag eller trener
                   </Text>
                 </View>
@@ -423,43 +432,43 @@ export default function PTBookingScreen({ navigation }: any) {
           {selectedTrainer && selectedDate && selectedSlot && (
             <View style={styles.section}>
               <View style={styles.stepHeader}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>4</Text>
+                <View style={[styles.stepNumber, { backgroundColor: colors.primary }]}>
+                  <Text style={[styles.stepNumberText, { color: colors.cardBg }]}>4</Text>
                 </View>
-                <Text style={styles.stepTitle}>Detaljer</Text>
+                <Text style={[styles.stepTitle, { color: colors.text }]}>Detaljer</Text>
               </View>
 
-              <View style={styles.formCard}>
+              <View style={[styles.formCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Tittel</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Tittel</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                     value={title}
                     onChangeText={setTitle}
                     placeholder="Hva skal du trene?"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textLight}
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Lokasjon</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Lokasjon</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                     value={location}
                     onChangeText={setLocation}
                     placeholder="Hvor skal økten være?"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textLight}
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Notater (valgfritt)</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Notater (valgfritt)</Text>
                   <TextInput
-                    style={[styles.input, styles.textArea]}
+                    style={[styles.input, styles.textArea, { backgroundColor: colors.cardBg, borderColor: colors.border, color: colors.text }]}
                     value={notes}
                     onChangeText={setNotes}
                     placeholder="Eventuelle skader, fokusområder eller annen info til treneren..."
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textLight}
                     multiline
                     numberOfLines={4}
                     textAlignVertical="top"
@@ -474,25 +483,26 @@ export default function PTBookingScreen({ navigation }: any) {
             <TouchableOpacity
               style={[
                 styles.bookButton,
+                { backgroundColor: colors.success },
                 (booking || !credits || credits.available < 1) &&
-                  styles.bookButtonDisabled,
+                  [styles.bookButtonDisabled, { backgroundColor: colors.textLight }],
               ]}
               onPress={handleBookSession}
               disabled={booking || !credits || credits.available < 1}
             >
               {booking ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={colors.cardBg} />
               ) : (
                 <>
-                  <Ionicons name="checkmark-circle-outline" size={24} color="#FFF" />
-                  <Text style={styles.bookButtonText}>Book PT-time</Text>
+                  <Ionicons name="checkmark-circle-outline" size={24} color={colors.cardBg} />
+                  <Text style={[styles.bookButtonText, { color: colors.cardBg }]}>Book PT-time</Text>
                 </>
               )}
             </TouchableOpacity>
           )}
 
           {(!credits || credits.available < 1) && selectedSlot && (
-            <Text style={styles.warningText}>
+            <Text style={[styles.warningText, { color: colors.danger }]}>
               Du må ha minst 1 tilgjengelig PT-time for å booke
             </Text>
           )}
@@ -507,14 +517,14 @@ export default function PTBookingScreen({ navigation }: any) {
         onRequestClose={() => setTrainerModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Velg trener</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Velg trener</Text>
               <TouchableOpacity
                 onPress={() => setTrainerModalVisible(false)}
                 style={styles.closeButton}
               >
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -524,8 +534,8 @@ export default function PTBookingScreen({ navigation }: any) {
               renderItem={renderTrainerItem}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
-                  <Ionicons name="person-outline" size={48} color="#D1D5DB" />
-                  <Text style={styles.emptyText}>Ingen trenere tilgjengelig</Text>
+                  <Ionicons name="person-outline" size={48} color={colors.border} />
+                  <Text style={[styles.emptyText, { color: colors.textLight }]}>Ingen trenere tilgjengelig</Text>
                 </View>
               }
             />
@@ -539,29 +549,24 @@ export default function PTBookingScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6B7280',
   },
   scrollContent: {
     padding: 16,
   },
   creditsCard: {
-    backgroundColor: '#EFF6FF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#DBEAFE',
   },
   creditsHeader: {
     flexDirection: 'row',
@@ -570,26 +575,22 @@ const styles = StyleSheet.create({
   },
   creditsText: {
     fontSize: 16,
-    color: '#1E40AF',
     fontWeight: '600',
   },
   creditsNumber: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#3B82F6',
   },
   buyMoreButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3B82F6',
     borderRadius: 8,
     padding: 12,
     marginTop: 12,
     gap: 8,
   },
   buyMoreText: {
-    color: '#FFF',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -606,29 +607,24 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   stepNumberText: {
-    color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
   },
   stepTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
   },
   trainerSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 12,
     padding: 16,
-    backgroundColor: '#FFF',
   },
   selectedTrainerRow: {
     flexDirection: 'row',
@@ -639,23 +635,19 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   selectedTrainerInitials: {
-    color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
   },
   selectedTrainerText: {
     fontSize: 16,
-    color: '#111827',
     fontWeight: '500',
   },
   trainerSelectorPlaceholder: {
     fontSize: 16,
-    color: '#9CA3AF',
   },
   datesScroll: {
     marginHorizontal: -16,
@@ -670,39 +662,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFF',
     minWidth: 70,
   },
   dateCardSelected: {
-    borderColor: '#3B82F6',
-    backgroundColor: '#EFF6FF',
   },
   dateDay: {
     fontSize: 12,
-    color: '#6B7280',
     fontWeight: '600',
     textTransform: 'capitalize',
   },
   dateDaySelected: {
-    color: '#3B82F6',
   },
   dateNumber: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
     marginVertical: 4,
   },
   dateNumberSelected: {
-    color: '#3B82F6',
   },
   dateMonth: {
     fontSize: 12,
-    color: '#6B7280',
     textTransform: 'capitalize',
   },
   dateMonthSelected: {
-    color: '#3B82F6',
   },
   loadingSlots: {
     padding: 32,
@@ -710,26 +692,21 @@ const styles = StyleSheet.create({
   },
   loadingSlotsText: {
     marginTop: 12,
-    color: '#6B7280',
     fontSize: 14,
   },
   noSlotsContainer: {
     alignItems: 'center',
     padding: 32,
-    backgroundColor: '#FFF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   noSlotsText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
     marginTop: 12,
   },
   noSlotsHint: {
     fontSize: 14,
-    color: '#9CA3AF',
     marginTop: 4,
   },
   timeSlotsContainer: {
@@ -742,12 +719,8 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFF',
   },
   timeSlotSelected: {
-    borderColor: '#3B82F6',
-    backgroundColor: '#3B82F6',
   },
   timeSlotContent: {
     flexDirection: 'row',
@@ -757,32 +730,26 @@ const styles = StyleSheet.create({
   timeSlotText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
   },
   timeSlotTextSelected: {
-    color: '#FFF',
   },
   bookButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#10B981',
     borderRadius: 12,
     padding: 18,
     gap: 12,
     marginTop: 8,
   },
   bookButtonDisabled: {
-    backgroundColor: '#93C5FD',
   },
   bookButtonText: {
-    color: '#FFF',
     fontSize: 18,
     fontWeight: '700',
   },
   warningText: {
     fontSize: 14,
-    color: '#EF4444',
     textAlign: 'center',
     marginTop: 12,
   },
@@ -792,7 +759,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
@@ -804,12 +770,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
   },
   closeButton: {
     padding: 4,
@@ -819,22 +783,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   trainerItemSelected: {
-    backgroundColor: '#EFF6FF',
   },
   trainerAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   trainerInitials: {
-    color: '#FFF',
     fontSize: 18,
     fontWeight: '700',
   },
@@ -844,15 +804,12 @@ const styles = StyleSheet.create({
   trainerName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 4,
   },
   trainerNameSelected: {
-    color: '#1E40AF',
   },
   trainerEmail: {
     fontSize: 14,
-    color: '#6B7280',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -860,15 +817,12 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#9CA3AF',
     marginTop: 12,
   },
   formCard: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   formGroup: {
     marginBottom: 16,
@@ -876,17 +830,13 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#FFF',
-    color: '#111827',
   },
   textArea: {
     minHeight: 100,

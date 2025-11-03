@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   Image,
   ActivityIndicator,
   Alert,
-  Platform,
-  Dimensions,
-  SafeAreaView,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../services/api';
+import { useFocusEffect } from '@react-navigation/native';
 import Container from '../components/Container';
+import { api } from '../services/api';
 import { useCart } from '../contexts/CartContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface ProductImage {
   id: string;
@@ -29,71 +29,79 @@ interface Product {
   id: string;
   name: string;
   description: string;
-  type: string;
-  status: string;
   price: number;
-  compareAtPrice?: number;
   currency: string;
-  sku?: string;
+  type: string;
+  images: ProductImage[];
+  compareAtPrice?: number;
   stock?: number;
   trackInventory: boolean;
-  slug: string;
-  featured: boolean;
-  images: ProductImage[];
 }
 
 interface WishlistItem {
   id: string;
   productId: string;
   product: Product;
-  notes?: string;
   createdAt: string;
 }
 
 export default function WishlistScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const { addItem } = useCart();
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [removing, setRemoving] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadWishlist();
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      loadWishlist();
+    }, [])
+  );
+
   const loadWishlist = async () => {
     try {
       setLoading(true);
       const response = await api.getWishlist();
+
       if (response.success && response.data) {
         setWishlistItems(response.data.items || []);
       }
     } catch (error: any) {
       console.error('Failed to load wishlist:', error);
-      if (error.response?.status !== 401) {
+      if (error?.response?.status !== 403) {
         Alert.alert('Feil', 'Kunne ikke laste ønskeliste');
       }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const removeFromWishlist = async (itemId: string) => {
+  const handleRemoveFromWishlist = async (itemId: string) => {
     try {
-      setRemoving(itemId);
       await api.removeFromWishlist(itemId);
       setWishlistItems(prev => prev.filter(item => item.id !== itemId));
-      Alert.alert('Suksess', 'Fjernet fra ønskeliste');
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Failed to remove from wishlist:', error);
       Alert.alert('Feil', 'Kunne ikke fjerne fra ønskeliste');
-    } finally {
-      setRemoving(null);
     }
   };
 
-  const addToCart = async (product: Product) => {
-    const primaryImage = product.images.find(img => img.isPrimary) || product.images[0];
+  const handleAddToCart = async (item: WishlistItem) => {
+    const product = item.product;
+
+    if (product.trackInventory && product.stock === 0) {
+      Alert.alert('Utsolgt', 'Dette produktet er dessverre utsolgt');
+      return;
+    }
 
     try {
+      const primaryImage = product.images.find(img => img.isPrimary) || product.images[0];
+
       await addItem({
         productId: product.id,
         name: product.name,
@@ -103,306 +111,220 @@ export default function WishlistScreen({ navigation }: any) {
         type: product.type,
       });
 
-      Alert.alert('Suksess', `${product.name} lagt til i handlekurven!`);
-    } catch (error) {
-      Alert.alert('Feil', 'Kunne ikke legge til i handlekurv');
+      Alert.alert(
+        'Lagt til i handlekurven',
+        'Vil du fjerne produktet fra ønskelisten?',
+        [
+          { text: 'Nei', style: 'cancel' },
+          {
+            text: 'Ja',
+            onPress: () => handleRemoveFromWishlist(item.id),
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error('Failed to add to cart:', error);
+      Alert.alert('Feil', 'Kunne ikke legge til i handlekurven');
     }
   };
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'PHYSICAL_PRODUCT': return 'Fysisk produkt';
-      case 'PT_SERVICE': return 'PT-tjeneste';
-      case 'MEMBERSHIP': return 'Medlemskap';
-      case 'DIGITAL': return 'Digitalt';
-      default: return type;
-    }
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'PHYSICAL_PRODUCT': return 'cube-outline';
-      case 'PT_SERVICE': return 'calendar-outline';
-      case 'MEMBERSHIP': return 'star-outline';
-      case 'DIGITAL': return 'download-outline';
-      default: return 'cube-outline';
-    }
-  };
-
-  const renderWishlistItem = (item: WishlistItem) => {
+  const renderWishlistItem = ({ item }: { item: WishlistItem }) => {
     const product = item.product;
     const primaryImage = product.images.find(img => img.isPrimary) || product.images[0];
     const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
     const discountPercent = hasDiscount
       ? Math.round((1 - product.price / product.compareAtPrice!) * 100)
       : 0;
-    const isRemoving = removing === item.id;
     const isOutOfStock = product.trackInventory && product.stock === 0;
 
     return (
-      <View key={item.id} style={styles.wishlistItem}>
-        {/* Product Image */}
+      <View style={[styles.wishlistItem, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
         <TouchableOpacity
-          style={styles.imageContainer}
-          onPress={() => navigation.navigate('Shop')}
+          style={styles.itemContent}
+          onPress={() => {
+            /* Navigate to product detail */
+          }}
         >
-          {primaryImage ? (
-            <Image
-              source={{ uri: primaryImage.url }}
-              style={styles.productImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={styles.placeholderImage}>
-              <Ionicons name="image-outline" size={48} color="#9CA3AF" />
-            </View>
-          )}
-          {hasDiscount && (
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>{`-${discountPercent}%`}</Text>
-            </View>
-          )}
-          {isOutOfStock && (
-            <View style={styles.outOfStockOverlay}>
-              <Text style={styles.outOfStockText}>UTSOLGT</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        {/* Product Info */}
-        <View style={styles.itemDetails}>
-          <View style={styles.productType}>
-            <Ionicons name={getTypeIcon(product.type)} size={14} color="#6B7280" />
-            <Text style={styles.productTypeText}>{getTypeLabel(product.type)}</Text>
-          </View>
-
-          <Text style={styles.productName} numberOfLines={2}>
-            {product.name}
-          </Text>
-
-          <Text style={styles.productDescription} numberOfLines={2}>
-            {product.description}
-          </Text>
-
-          {/* Price */}
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>
-              {`${product.price.toLocaleString('nb-NO')} ${product.currency}`}
-            </Text>
+          <View style={styles.imageContainer}>
+            {primaryImage ? (
+              <Image source={{ uri: primaryImage.url }} style={styles.productImage} resizeMode="cover" />
+            ) : (
+              <View style={[styles.placeholderImage, { backgroundColor: colors.background }]}>
+                <Ionicons name="image-outline" size={32} color={colors.textLight} />
+              </View>
+            )}
             {hasDiscount && (
-              <Text style={styles.comparePrice}>
-                {`${product.compareAtPrice!.toLocaleString('nb-NO')}`}
-              </Text>
+              <View style={[styles.discountBadge, { backgroundColor: colors.danger }]}>
+                <Text style={[styles.discountText, { color: colors.cardBg }]}>{`-${discountPercent}%`}</Text>
+              </View>
+            )}
+            {isOutOfStock && (
+              <View style={styles.outOfStockOverlay}>
+                <Text style={[styles.outOfStockText, { backgroundColor: colors.cardBg, color: colors.text }]}>UTSOLGT</Text>
+              </View>
             )}
           </View>
 
-          {/* Stock Warning */}
-          {product.trackInventory && product.stock! > 0 && product.stock! <= 5 && (
-            <Text style={styles.stockWarning}>
-              {`Kun ${product.stock} igjen på lager`}
+          <View style={styles.productInfo}>
+            <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>
+              {product.name}
             </Text>
-          )}
-
-          {item.notes && (
-            <Text style={styles.notes}>
-              {`Notat: ${item.notes}`}
+            <Text style={[styles.productDescription, { color: colors.textSecondary }]} numberOfLines={2}>
+              {product.description}
             </Text>
-          )}
 
-          {/* Actions */}
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity
-              style={[styles.addToCartButton, isOutOfStock && styles.buttonDisabled]}
-              onPress={() => addToCart(product)}
-              disabled={isOutOfStock}
-            >
-              <Ionicons name="cart-outline" size={16} color={isOutOfStock ? '#9CA3AF' : '#3B82F6'} />
-              <Text style={[styles.addToCartText, isOutOfStock && styles.buttonTextDisabled]}>
-                {isOutOfStock ? 'Utsolgt' : 'Legg til i kurv'}
+            <View style={styles.priceContainer}>
+              <Text style={[styles.price, { color: colors.text }]}>
+                {`${product.price.toLocaleString('nb-NO')} ${product.currency}`}
               </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.removeButton, isRemoving && styles.buttonDisabled]}
-              onPress={() => removeFromWishlist(item.id)}
-              disabled={isRemoving}
-            >
-              {isRemoving ? (
-                <ActivityIndicator size="small" color="#EF4444" />
-              ) : (
-                <>
-                  <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                  <Text style={styles.removeText}>Fjern</Text>
-                </>
+              {hasDiscount && (
+                <Text style={[styles.comparePrice, { color: colors.textLight }]}>
+                  {`${product.compareAtPrice!.toLocaleString('nb-NO')}`}
+                </Text>
               )}
-            </TouchableOpacity>
+            </View>
+
+            {product.trackInventory && product.stock! > 0 && product.stock! <= 5 && (
+              <Text style={[styles.stockWarning, { color: colors.warning }]}>
+                {`Kun ${product.stock} igjen på lager`}
+              </Text>
+            )}
           </View>
+        </TouchableOpacity>
+
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.addToCartButton, { backgroundColor: colors.primary }]}
+            onPress={() => handleAddToCart(item)}
+            disabled={isOutOfStock}
+          >
+            <Ionicons name="cart-outline" size={20} color={colors.cardBg} />
+            <Text style={[styles.actionButtonText, { color: colors.cardBg }]}>
+              {isOutOfStock ? 'Utsolgt' : 'Legg i handlekurv'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.removeButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+            onPress={() => handleRemoveFromWishlist(item.id)}
+          >
+            <Ionicons name="trash-outline" size={20} color={colors.danger} />
+            <Text style={[styles.actionButtonText, { color: colors.danger }]}>Fjern</Text>
+          </TouchableOpacity>
         </View>
+
+        <Text style={[styles.addedDate, { color: colors.textLight }]}>
+          Lagt til: {new Date(item.createdAt).toLocaleDateString('nb-NO')}
+        </Text>
       </View>
     );
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <Container title="Min Ønskeliste">
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={styles.loadingText}>Laster ønskeliste...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Laster ønskeliste...</Text>
         </View>
-      </SafeAreaView>
+      </Container>
     );
   }
 
   if (wishlistItems.length === 0) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
-          <Container>
-            <View style={styles.emptyContainer}>
-              <Ionicons name="heart-outline" size={80} color="#D1D5DB" />
-              <Text style={styles.emptyTitle}>Ønskelisten er tom</Text>
-              <Text style={styles.emptySubtitle}>
-                Legg til produkter du ønsker deg fra butikken
-              </Text>
-              <TouchableOpacity
-                style={styles.shopButton}
-                onPress={() => navigation.navigate('Shop')}
-              >
-                <Text style={styles.shopButtonText}>Gå til butikken</Text>
-              </TouchableOpacity>
-            </View>
-          </Container>
+      <Container title="Min Ønskeliste">
+        <View style={styles.emptyContainer}>
+          <Ionicons name="heart-outline" size={80} color={colors.textLight} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Din ønskeliste er tom</Text>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            Legg til produkter fra butikken for å se dem her
+          </Text>
+          <TouchableOpacity
+            style={[styles.shopButton, { backgroundColor: colors.primary }]}
+            onPress={() => navigation.navigate('Shop')}
+          >
+            <Ionicons name="storefront-outline" size={20} color={colors.cardBg} />
+            <Text style={[styles.shopButtonText, { color: colors.cardBg }]}>Gå til butikk</Text>
+          </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </Container>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-      <View style={styles.screenHeader}>
-        <Container>
-          <View style={styles.headerContent}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-            >
-              <Ionicons name="arrow-back" size={24} color="#111827" />
-            </TouchableOpacity>
-            <View>
-              <Text style={styles.headerTitle}>Min ønskeliste</Text>
-              <Text style={styles.headerSubtitle}>
-                {`${wishlistItems.length} ${wishlistItems.length === 1 ? 'produkt' : 'produkter'}`}
-              </Text>
-            </View>
-          </View>
-        </Container>
-      </View>
-      <ScrollView>
-        <Container>
+    <Container title="Min Ønskeliste">
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {wishlistItems.length} {wishlistItems.length === 1 ? 'produkt' : 'produkter'}
+          </Text>
+          <TouchableOpacity
+            style={[styles.shopButton, { backgroundColor: colors.primary }]}
+            onPress={() => navigation.navigate('Shop')}
+          >
+            <Ionicons name="storefront-outline" size={16} color={colors.cardBg} />
+            <Text style={[styles.shopButtonText, { color: colors.cardBg, fontSize: 14 }]}>Butikk</Text>
+          </TouchableOpacity>
+        </View>
 
-          <View style={styles.listContainer}>
-            {wishlistItems.map(renderWishlistItem)}
-          </View>
-        </Container>
-      </ScrollView>
+        <FlatList
+          data={wishlistItems}
+          renderItem={renderWishlistItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={loadWishlist} tintColor={colors.primary} />
+          }
+        />
       </View>
-    </SafeAreaView>
+    </Container>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  screenHeader: {
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    paddingVertical: 16,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    paddingVertical: 48,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 80,
+    padding: 16,
+    borderBottomWidth: 1,
   },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
   },
-  emptySubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  shopButton: {
-    backgroundColor: '#3B82F6',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 8,
-  },
-  shopButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  listContainer: {
-    gap: 16,
-    paddingBottom: 24,
+  listContent: {
+    padding: 16,
   },
   wishlistItem: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF',
     borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+  },
+  itemContent: {
+    flexDirection: 'row',
+    padding: 12,
   },
   imageContainer: {
-    width: 140,
-    height: 140,
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    overflow: 'hidden',
     position: 'relative',
   },
   productImage: {
@@ -414,136 +336,121 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
   },
   discountBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    top: 4,
+    right: 4,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   discountText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 10,
+    fontWeight: '700',
   },
   outOfStockOverlay: {
     position: 'absolute',
     inset: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   outOfStockText: {
-    backgroundColor: '#FFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    fontWeight: 'bold',
-    color: '#111827',
-    fontSize: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    fontWeight: '700',
+    fontSize: 10,
   },
-  itemDetails: {
+  productInfo: {
     flex: 1,
-    padding: 12,
-  },
-  productType: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 6,
-  },
-  productTypeText: {
-    fontSize: 12,
-    color: '#6B7280',
+    marginLeft: 12,
+    justifyContent: 'space-between',
   },
   productName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   productDescription: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 14,
     marginBottom: 8,
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 6,
-    marginBottom: 6,
+    gap: 8,
   },
   price: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '700',
   },
   comparePrice: {
     fontSize: 14,
-    color: '#9CA3AF',
     textDecorationLine: 'line-through',
   },
   stockWarning: {
     fontSize: 12,
-    color: '#F97316',
     fontWeight: '600',
-    marginBottom: 6,
+    marginTop: 4,
   },
-  notes: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontStyle: 'italic',
-    marginBottom: 8,
-  },
-  actionsContainer: {
+  actions: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 'auto',
+    padding: 12,
+    paddingTop: 0,
   },
-  addToCartButton: {
+  actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#EFF6FF',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#3B82F6',
+    padding: 12,
+    gap: 6,
   },
-  addToCartText: {
-    color: '#3B82F6',
+  addToCartButton: {},
+  removeButton: {
+    borderWidth: 1,
+  },
+  actionButtonText: {
     fontSize: 14,
     fontWeight: '600',
   },
-  removeButton: {
+  addedDate: {
+    fontSize: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 48,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  shopButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#FEF2F2',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#EF4444',
-    minWidth: 90,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
   },
-  removeText: {
-    color: '#EF4444',
-    fontSize: 14,
+  shopButtonText: {
+    fontSize: 16,
     fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonTextDisabled: {
-    color: '#9CA3AF',
   },
 });

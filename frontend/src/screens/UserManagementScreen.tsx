@@ -17,6 +17,7 @@ import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useTenant } from '../contexts/TenantContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { api, storage } from '../services/api';
 import Container from '../components/Container';
 import type { User } from '../types';
@@ -33,6 +34,7 @@ interface Tenant {
 export default function UserManagementScreen({ navigation }: any) {
   const { user: currentUser } = useAuth();
   const { selectedTenant } = useTenant();
+  const { colors } = useTheme();
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
 
   const [users, setUsers] = useState<User[]>([]);
@@ -317,7 +319,7 @@ export default function UserManagementScreen({ navigation }: any) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -350,7 +352,7 @@ export default function UserManagementScreen({ navigation }: any) {
               onPress={handleCreateUser}
               activeOpacity={0.7}
             >
-              <Ionicons name="person-add" size={20} color="#FFFFFF" />
+              <Ionicons name="person-add" size={20} color={colors.cardBg} />
               <Text style={styles.createButtonText}>Opprett</Text>
             </TouchableOpacity>
           ) : null}
@@ -369,7 +371,7 @@ export default function UserManagementScreen({ navigation }: any) {
         {/* Viewing Tenant Banner for SUPER_ADMIN */}
         {isSuperAdmin && selectedTenant && (
           <View style={styles.viewingTenantBanner}>
-            <Ionicons name="business" size={20} color="#3B82F6" />
+            <Ionicons name="business" size={20} color={colors.primary} />
             <View style={{flex: 1}}>
               <Text style={styles.viewingTenantLabel}>Viser brukere for:</Text>
               <Text style={styles.viewingTenantName}>{selectedTenant.name}</Text>
@@ -380,7 +382,7 @@ export default function UserManagementScreen({ navigation }: any) {
         {/* No Tenant Selected for SUPER_ADMIN */}
         {isSuperAdmin && !selectedTenant && (
           <View style={styles.infoMessage}>
-            <Ionicons name="information-circle-outline" size={20} color="#3B82F6" />
+            <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
             <Text style={styles.infoMessageText}>
               Velg en tenant i Super Admin Portal for å administrere brukere
             </Text>
@@ -390,32 +392,32 @@ export default function UserManagementScreen({ navigation }: any) {
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#DBEAFE' }]}>
-              <Ionicons name="people-outline" size={24} color="#3B82F6" />
+            <View style={[styles.statIcon, { backgroundColor: colors.primary + '15' }]}>
+              <Ionicons name="people-outline" size={24} color={colors.primary} />
             </View>
             <Text style={styles.statValue}>{stats.total}</Text>
             <Text style={styles.statLabel}>Totalt</Text>
           </View>
 
           <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#D1FAE5' }]}>
-              <Ionicons name="checkmark-circle-outline" size={24} color="#10B981" />
+            <View style={[styles.statIcon, { backgroundColor: colors.success + '15' }]}>
+              <Ionicons name="checkmark-circle-outline" size={24} color={colors.success} />
             </View>
             <Text style={styles.statValue}>{stats.active}</Text>
             <Text style={styles.statLabel}>Aktive</Text>
           </View>
 
           <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="person-outline" size={24} color="#3B82F6" />
+            <View style={[styles.statIcon, { backgroundColor: colors.primary + '10' }]}>
+              <Ionicons name="person-outline" size={24} color={colors.primary} />
             </View>
             <Text style={styles.statValue}>{stats.customers}</Text>
             <Text style={styles.statLabel}>Kunder</Text>
           </View>
 
           <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#F3E8FF' }]}>
-              <Ionicons name="barbell-outline" size={24} color="#8B5CF6" />
+            <View style={[styles.statIcon, { backgroundColor: colors.accent + '15' }]}>
+              <Ionicons name="barbell-outline" size={24} color={colors.accent} />
             </View>
             <Text style={styles.statValue}>{stats.trainers}</Text>
             <Text style={styles.statLabel}>Trenere</Text>
@@ -425,13 +427,13 @@ export default function UserManagementScreen({ navigation }: any) {
         {/* Search and Filter */}
         <View style={styles.searchContainer}>
           <View style={styles.searchBox}>
-            <Ionicons name="search" size={20} color="#6B7280" />
+            <Ionicons name="search" size={20} color={colors.textSecondary} />
             <TextInput
               style={styles.searchInput}
               value={searchTerm}
               onChangeText={setSearchTerm}
               placeholder="Søk etter brukere..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.textLight}
             />
           </View>
         </View>
@@ -464,7 +466,7 @@ export default function UserManagementScreen({ navigation }: any) {
         <View style={styles.usersList}>
           {filteredUsers.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={64} color="#D1D5DB" />
+              <Ionicons name="people-outline" size={64} color={colors.border} />
               <Text style={styles.emptyText}>Ingen brukere funnet</Text>
             </View>
           ) : (
@@ -503,15 +505,15 @@ export default function UserManagementScreen({ navigation }: any) {
                           styles.statusBadge,
                           {
                             backgroundColor: user.active
-                              ? '#D1FAE5'
-                              : '#FEE2E2',
+                              ? colors.success + '15'
+                              : colors.danger + '15',
                           },
                         ]}
                       >
                         <Text
                           style={[
                             styles.statusText,
-                            { color: user.active ? '#10B981' : '#EF4444' },
+                            { color: user.active ? colors.success : colors.danger },
                           ]}
                         >
                           {user.active ? 'Aktiv' : 'Inaktiv'}
@@ -533,7 +535,7 @@ export default function UserManagementScreen({ navigation }: any) {
                       activeOpacity={0.7}
                     >
                       <View style={styles.actionButtonIcon}>
-                        <Ionicons name="shield-checkmark" size={16} color="#8B5CF6" />
+                        <Ionicons name="shield-checkmark" size={16} color={colors.accent} />
                       </View>
                       <Text style={styles.actionButtonPrimaryText}>Rolle</Text>
                     </TouchableOpacity>
@@ -545,7 +547,7 @@ export default function UserManagementScreen({ navigation }: any) {
                         activeOpacity={0.7}
                       >
                         <View style={styles.actionButtonIcon}>
-                          <Ionicons name="pause-circle" size={16} color="#F59E0B" />
+                          <Ionicons name="pause-circle" size={16} color={colors.warning} />
                         </View>
                         <Text style={styles.actionButtonWarningText}>Deaktiver</Text>
                       </TouchableOpacity>
@@ -556,7 +558,7 @@ export default function UserManagementScreen({ navigation }: any) {
                         activeOpacity={0.7}
                       >
                         <View style={styles.actionButtonIcon}>
-                          <Ionicons name="play-circle" size={16} color="#10B981" />
+                          <Ionicons name="play-circle" size={16} color={colors.success} />
                         </View>
                         <Text style={styles.actionButtonSuccessText}>Aktiver</Text>
                       </TouchableOpacity>
@@ -582,7 +584,7 @@ export default function UserManagementScreen({ navigation }: any) {
                       activeOpacity={0.7}
                     >
                       <View style={styles.actionButtonIcon}>
-                        <Ionicons name="trash" size={16} color="#EF4444" />
+                        <Ionicons name="trash" size={16} color={colors.danger} />
                       </View>
                       <Text style={styles.actionButtonDangerText}>Slett</Text>
                     </TouchableOpacity>
@@ -607,7 +609,7 @@ export default function UserManagementScreen({ navigation }: any) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Endre rolle</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#111827" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -660,7 +662,7 @@ export default function UserManagementScreen({ navigation }: any) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Flytt bruker til annen organisasjon</Text>
               <TouchableOpacity onPress={() => setTransferModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#111827" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -677,7 +679,7 @@ export default function UserManagementScreen({ navigation }: any) {
                   <Text style={styles.modalLabel}>Velg organisasjon:</Text>
 
                   {loadingTenants ? (
-                    <ActivityIndicator size="large" color="#3B82F6" style={{ marginVertical: 20 }} />
+                    <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
                   ) : (
                     <View style={styles.pickerContainer}>
                       <Picker
@@ -706,10 +708,10 @@ export default function UserManagementScreen({ navigation }: any) {
                     disabled={!selectedTargetTenantId || transferring}
                   >
                     {transferring ? (
-                      <ActivityIndicator color="#FFF" />
+                      <ActivityIndicator color={colors.cardBg} />
                     ) : (
                       <>
-                        <Ionicons name="swap-horizontal" size={20} color="#FFF" />
+                        <Ionicons name="swap-horizontal" size={20} color={colors.cardBg} />
                         <Text style={styles.transferButtonText}>Flytt bruker</Text>
                       </>
                     )}
@@ -728,15 +730,15 @@ export default function UserManagementScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F9FAFB', // Keep or use colors.background
   },
   fixedHeader: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF', // Keep or use colors.cardBg
     paddingTop: Platform.OS === 'ios' ? 60 : 20,
     paddingBottom: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#E5E7EB', // Keep or use colors.border
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,

@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useModules } from '../contexts/ModuleContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
 import { theme } from '../styles/theme';
@@ -22,6 +23,7 @@ const { width } = Dimensions.get('window');
 export default function DashboardScreen({ navigation }: any) {
   const { user } = useAuth();
   const { modules } = useModules();
+  const { colors } = useTheme();
   const [stats, setStats] = useState({
     upcomingBookings: 0,
     totalSessions: 0,

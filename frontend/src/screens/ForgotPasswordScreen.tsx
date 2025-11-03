@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 import Container from '../components/Container';
 import { api } from '../services/api';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function ForgotPasswordScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -42,21 +44,22 @@ export default function ForgotPasswordScreen({ navigation }: any) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Container maxWidth={500}>
           <View style={styles.content}>
-            <Text style={styles.title}>Glemt passord</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: colors.primary }]}>Glemt passord</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Skriv inn e-postadressen din, så sender vi deg en lenke for å tilbakestille passordet.
             </Text>
 
-            <View style={styles.form}>
-              <Text style={styles.label}>E-post</Text>
+            <View style={[styles.form, { backgroundColor: colors.cardBg }]}>
+              <Text style={[styles.label, { color: colors.text }]}>E-post</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderColor: colors.border, backgroundColor: colors.cardBg, color: colors.text }]}
                 placeholder="din@epost.no"
+                placeholderTextColor={colors.textLight}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -65,7 +68,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
               />
 
               <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
+                style={[styles.button, { backgroundColor: colors.primary }, loading && styles.buttonDisabled]}
                 onPress={handleResetPassword}
                 disabled={loading}
               >
@@ -80,7 +83,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                 style={styles.backButton}
                 onPress={() => navigation.navigate('Login')}
               >
-                <Text style={styles.backButtonText}>Tilbake til innlogging</Text>
+                <Text style={[styles.backButtonText, { color: colors.primary }]}>Tilbake til innlogging</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -93,7 +96,6 @@ export default function ForgotPasswordScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -105,19 +107,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#3B82F6',
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
     textAlign: 'center',
     marginBottom: 32,
     paddingHorizontal: 16,
   },
   form: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 24,
     shadowColor: '#000',
@@ -129,27 +128,23 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     marginBottom: 16,
-    backgroundColor: '#FFF',
   },
   button: {
-    backgroundColor: '#3B82F6',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginBottom: 16,
   },
   buttonDisabled: {
-    backgroundColor: '#93C5FD',
+    opacity: 0.6,
   },
   buttonText: {
     color: '#FFF',
@@ -160,7 +155,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButtonText: {
-    color: '#3B82F6',
     fontSize: 14,
     fontWeight: '600',
   },

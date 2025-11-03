@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
 import TenantSelector from '../components/TenantSelector';
@@ -20,6 +21,7 @@ import type { Class, Booking } from '../types';
 
 export default function ClassesScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const [classes, setClasses] = useState<Class[]>([]);
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,7 +152,7 @@ export default function ClassesScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -167,7 +169,7 @@ export default function ClassesScreen({ navigation }: any) {
               onPress={() => navigation.goBack()}
               style={styles.backButton}
             >
-              <Ionicons name="arrow-back" size={24} color="#111827" />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Klasser</Text>
             {(user?.role === 'ADMIN' || user?.role === 'TRAINER') && (
@@ -175,7 +177,7 @@ export default function ClassesScreen({ navigation }: any) {
                 style={styles.addButton}
                 onPress={() => navigation.navigate('ClassManagement')}
               >
-                <Ionicons name="add" size={24} color="#FFF" />
+                <Ionicons name="add" size={24} color={colors.cardBg} />
               </TouchableOpacity>
             )}
           </View>
@@ -247,7 +249,7 @@ export default function ClassesScreen({ navigation }: any) {
         <View style={styles.classList}>
           {filteredClasses.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="calendar-outline" size={64} color="#D1D5DB" />
+              <Ionicons name="calendar-outline" size={64} color={colors.border} />
               <Text style={styles.emptyText}>Ingen klasser funnet</Text>
             </View>
           ) : (
@@ -276,7 +278,7 @@ export default function ClassesScreen({ navigation }: any) {
                       <Ionicons
                         name="people"
                         size={16}
-                        color={availableSpots === 0 ? '#EF4444' : '#10B981'}
+                        color={availableSpots === 0 ? colors.danger : colors.success}
                       />
                       <Text
                         style={[
@@ -298,17 +300,17 @@ export default function ClassesScreen({ navigation }: any) {
 
                   <View style={styles.classInfo}>
                     <View style={styles.infoItem}>
-                      <Ionicons name="person" size={16} color="#6B7280" />
+                      <Ionicons name="person" size={16} color={colors.textSecondary} />
                       <Text style={styles.infoText}>
                         {cls.trainer.firstName} {cls.trainer.lastName}
                       </Text>
                     </View>
                     <View style={styles.infoItem}>
-                      <Ionicons name="time" size={16} color="#6B7280" />
+                      <Ionicons name="time" size={16} color={colors.textSecondary} />
                       <Text style={styles.infoText}>{`${cls.duration} min`}</Text>
                     </View>
                     <View style={styles.infoItem}>
-                      <Ionicons name="location" size={16} color="#6B7280" />
+                      <Ionicons name="location" size={16} color={colors.textSecondary} />
                       <Text style={styles.infoText}>{cls.type}</Text>
                     </View>
                   </View>
@@ -321,7 +323,7 @@ export default function ClassesScreen({ navigation }: any) {
                             <Ionicons
                               name="checkmark-circle"
                               size={16}
-                              color="#10B981"
+                              color={colors.success}
                             />
                             <Text style={styles.bookedText}>Booket</Text>
                           </View>
@@ -365,14 +367,14 @@ export default function ClassesScreen({ navigation }: any) {
                         style={styles.editButton}
                         onPress={() => navigation.navigate('ClassManagement')}
                       >
-                        <Ionicons name="create-outline" size={20} color="#3B82F6" />
+                        <Ionicons name="create-outline" size={20} color={colors.primary} />
                         <Text style={styles.editButtonText}>Administrer</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.viewButton}
                         onPress={() => Alert.alert('Info', `Klasse: ${cls.name}\nTrener: ${cls.trainer.firstName} ${cls.trainer.lastName}\nVarighet: ${cls.duration} min\nKapasitet: ${cls.capacity} plasser\nType: ${cls.type}\nBeskrivelse: ${cls.description || 'Ingen beskrivelse'}`)}
                       >
-                        <Ionicons name="information-circle-outline" size={20} color="#6B7280" />
+                        <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
                         <Text style={styles.viewButtonText}>Info</Text>
                       </TouchableOpacity>
                     </View>

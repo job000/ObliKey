@@ -7,12 +7,65 @@ import { emailService } from '../utils/email';
 import { AppError } from '../middleware/errorHandler';
 import { authRateLimiter } from '../middleware/security';
 import { generateUsername } from '../utils/username';
+import {
+  isValidEmail,
+  validatePasswordStrength,
+  isValidPhone,
+  isValidName,
+  isValidDateOfBirth,
+  sanitizeText,
+  checkRateLimit,
+  sanitizeErrorMessage,
+} from '../utils/validation';
 
 export class AuthController {
   // Register new user
   async register(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { email, password, firstName, lastName, phone, dateOfBirth, username: requestedUsername, tenantId }: RegisterDto = req.body;
+
+      // Rate limiting: 5 registrations per hour per IP
+      const rateLimitKey = `register:${req.ip || 'unknown'}`;
+      const rateLimit = checkRateLimit(rateLimitKey, 5, 3600000); // 1 hour
+      if (!rateLimit.allowed) {
+        throw new AppError(
+          `For mange registreringsforsøk. Prøv igjen om ${Math.ceil(rateLimit.retryAfter! / 60)} minutter`,
+          429
+        );
+      }
+
+      // Validate email format
+      if (!email || !isValidEmail(email.trim())) {
+        throw new AppError('Ugyldig e-postadresse', 400);
+      }
+
+      // Validate password strength
+      const passwordValidation = validatePasswordStrength(password);
+      if (!passwordValidation.valid) {
+        throw new AppError(passwordValidation.errors[0], 400);
+      }
+
+      // Validate and sanitize firstName
+      if (!firstName || !isValidName(firstName)) {
+        throw new AppError('Fornavn må være 2-50 tegn og kan kun inneholde bokstaver, mellomrom, bindestrek og apostrof', 400);
+      }
+      const sanitizedFirstName = sanitizeText(firstName, 50);
+
+      // Validate and sanitize lastName
+      if (!lastName || !isValidName(lastName)) {
+        throw new AppError('Etternavn må være 2-50 tegn og kan kun inneholde bokstaver, mellomrom, bindestrek og apostrof', 400);
+      }
+      const sanitizedLastName = sanitizeText(lastName, 50);
+
+      // Validate phone if provided
+      if (phone && !isValidPhone(phone)) {
+        throw new AppError('Ugyldig telefonnummer. Må være et norsk telefonnummer (8 siffer eller +47)', 400);
+      }
+
+      // Validate dateOfBirth if provided
+      if (dateOfBirth && !isValidDateOfBirth(dateOfBirth)) {
+        throw new AppError('Ugyldig fødselsdato. Du må være minst 13 år gammel', 400);
+      }
 
       // Find tenant by ID or subdomain (frontend can send either)
       let tenant = await prisma.tenant.findFirst({
@@ -81,15 +134,15 @@ export class AuthController {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user
+      // Create user with sanitized data
       const user = await prisma.user.create({
         data: {
           tenantId: actualTenantId,
-          email,
+          email: email.trim().toLowerCase(),
           password: hashedPassword,
-          firstName,
-          lastName,
-          phone,
+          firstName: sanitizedFirstName,
+          lastName: sanitizedLastName,
+          phone: phone?.trim() || null,
           dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
           username,
           role: 'CUSTOMER'
@@ -153,7 +206,8 @@ export class AuthController {
       if (error instanceof AppError) {
         res.status(error.statusCode).json({ success: false, error: error.message });
       } else {
-        res.status(500).json({ success: false, error: 'Registrering feilet' });
+        console.error('Registration error:', error);
+        res.status(500).json({ success: false, error: sanitizeErrorMessage(error) });
       }
     }
   }
@@ -162,14 +216,6 @@ export class AuthController {
   async login(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { email, username, identifier, password, tenantId }: LoginDto = req.body;
-
-      console.log('Login request received:', {
-        email,
-        username,
-        identifier,
-        tenantId,
-        hasPassword: !!password
-      });
 
       // Validate input
       if (!password) {
@@ -187,8 +233,6 @@ export class AuthController {
 
       // Determine if identifier is email or username (email contains @)
       const isEmail = loginIdentifier.includes('@');
-
-      console.log(`Login type: ${isEmail ? 'email' : 'username'}, identifier: ${loginIdentifier}, tenantId: ${tenantId || 'not provided'}`);
 
       // Find user based on identifier type
       let user;
@@ -245,7 +289,6 @@ export class AuthController {
         const activeUsers = users.filter(u => u.tenant.active);
 
         if (activeUsers.length === 0) {
-          console.log(`Login failed: No active users found for identifier: ${loginIdentifier}`);
           throw new AppError('Ugyldig brukernavn/e-post eller passord', 401);
         }
 
@@ -253,12 +296,10 @@ export class AuthController {
           // User exists in multiple tenants - verify password first
           const isPasswordValid = await bcrypt.compare(password, activeUsers[0].password);
           if (!isPasswordValid) {
-            console.log(`Login failed: Invalid password for multi-tenant user: ${loginIdentifier}`);
             throw new AppError('Ugyldig brukernavn/e-post eller passord', 401);
           }
 
           // Return tenant selection response
-          console.log(`Multi-tenant user detected: ${loginIdentifier} exists in ${activeUsers.length} tenants`);
           const tenantOptions = activeUsers.map(u => ({
             id: u.tenant.id,
             name: u.tenant.name,
@@ -282,36 +323,26 @@ export class AuthController {
       }
 
       if (!user) {
-        console.log(`Login failed: User not found for identifier: ${loginIdentifier}`);
         throw new AppError('Ugyldig brukernavn/e-post eller passord', 401);
       }
 
-      console.log(`Login attempt for user: ${user.email} (ID: ${user.id})`);
-
       // Verify password hash exists
       if (!user.password) {
-        console.error(`Critical error: User ${user.email} has no password hash in database`);
+        console.error('Critical error: User has no password hash');
         throw new AppError('Ugyldig brukernavn/e-post eller passord', 401);
       }
 
       // Check password
-      console.log(`Comparing password for user: ${user.email}`);
       const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
-        console.log(`Login failed: Invalid password for user: ${user.email}`);
         throw new AppError('Ugyldig brukernavn/e-post eller passord', 401);
       }
 
-      console.log(`Password validation successful for user: ${user.email}`);
-
       // Check if user is active
       if (!user.active) {
-        console.log(`Login failed: User account is inactive: ${user.email}`);
         throw new AppError('Kontoen er deaktivert. Kontakt administrator.', 403);
       }
-
-      console.log(`User account is active: ${user.email}`);
 
       // Check if tenant is active
       const tenant = await prisma.tenant.findUnique({
@@ -319,11 +350,8 @@ export class AuthController {
       });
 
       if (!tenant || !tenant.active) {
-        console.log(`Login failed: Tenant is inactive or not found: ${user.tenantId}`);
         throw new AppError('Denne organisasjonen er deaktivert', 403);
       }
-
-      console.log(`Tenant is active: ${tenant.name} (ID: ${tenant.id})`);
 
       // Update lastLoginAt
       await prisma.user.update({
@@ -369,8 +397,6 @@ export class AuthController {
         console.error('Failed to log login:', logError);
       }
 
-      console.log(`Login successful for user: ${user.email} (ID: ${user.id})`);
-
       res.json({
         success: true,
         data: {
@@ -398,7 +424,7 @@ export class AuthController {
         res.status(error.statusCode).json({ success: false, error: error.message });
       } else {
         console.error('Login error:', error);
-        res.status(500).json({ success: false, error: 'Innlogging feilet' });
+        res.status(500).json({ success: false, error: sanitizeErrorMessage(error) });
       }
     }
   }
@@ -458,8 +484,6 @@ export class AuthController {
 
       loginIdentifier = loginIdentifier.trim().toLowerCase();
       const isEmail = loginIdentifier.includes('@');
-
-      console.log(`Tenant selection: ${loginIdentifier} selecting tenant: ${tenantId}`);
 
       // Find the specific user in the selected tenant
       let user;
@@ -531,8 +555,6 @@ export class AuthController {
         console.error('Failed to log tenant selection:', logError);
       }
 
-      console.log(`Tenant selection successful: ${user.email} -> ${tenant.name}`);
-
       res.json({
         success: true,
         data: {
@@ -560,7 +582,7 @@ export class AuthController {
         res.status(error.statusCode).json({ success: false, error: error.message });
       } else {
         console.error('Select tenant error:', error);
-        res.status(500).json({ success: false, error: 'Kunne ikke velge organisasjon' });
+        res.status(500).json({ success: false, error: sanitizeErrorMessage(error) });
       }
     }
   }
@@ -573,6 +595,12 @@ export class AuthController {
 
       if (!currentPassword || !newPassword) {
         throw new AppError('Både nåværende og nytt passord er påkrevd', 400);
+      }
+
+      // Validate new password strength
+      const passwordValidation = validatePasswordStrength(newPassword);
+      if (!passwordValidation.valid) {
+        throw new AppError(passwordValidation.errors[0], 400);
       }
 
       // Find user
@@ -590,9 +618,10 @@ export class AuthController {
         throw new AppError('Nåværende passord er feil', 401);
       }
 
-      // Validate new password
-      if (newPassword.length < 6) {
-        throw new AppError('Nytt passord må være minst 6 tegn', 400);
+      // Check if new password is same as current password
+      const isSamePassword = await bcrypt.compare(newPassword, user.password);
+      if (isSamePassword) {
+        throw new AppError('Nytt passord kan ikke være samme som nåværende passord', 400);
       }
 
       // Hash new password
@@ -613,7 +642,7 @@ export class AuthController {
         res.status(error.statusCode).json({ success: false, error: error.message });
       } else {
         console.error('Change password error:', error);
-        res.status(500).json({ success: false, error: 'Kunne ikke endre passord' });
+        res.status(500).json({ success: false, error: sanitizeErrorMessage(error) });
       }
     }
   }

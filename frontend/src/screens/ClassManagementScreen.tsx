@@ -19,9 +19,11 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { api } from '../services/api';
 import Container from '../components/Container';
+import { useTheme } from '../contexts/ThemeContext';
 import type { Class, Booking } from '../types';
 
 export default function ClassManagementScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [classes, setClasses] = useState<Class[]>([]);
   const [filteredClasses, setFilteredClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
@@ -422,9 +424,9 @@ export default function ClassManagementScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -433,9 +435,9 @@ export default function ClassManagementScreen({ navigation }: any) {
   const stats = getClassStats();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        style={styles.container}
+        style={{ flex: 1, backgroundColor: colors.background }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -443,47 +445,47 @@ export default function ClassManagementScreen({ navigation }: any) {
         <Container>
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>Klasseadministrasjon</Text>
-              <Text style={styles.subtitle}>Administrer klasser og bookinger</Text>
+              <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>Klasseadministrasjon</Text>
+              <Text style={{ fontSize: 14, color: colors.textSecondary }}>Administrer klasser og bookinger</Text>
             </View>
-            <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 }} onPress={openAddModal}>
               <Ionicons name="add" size={20} color="#FFF" />
-              <Text style={styles.addButtonText}>Ny klasse</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFF' }}>Ny klasse</Text>
             </TouchableOpacity>
           </View>
 
           {/* Stats Grid */}
           <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: '#DBEAFE' }]}>
-                <Ionicons name="calendar-outline" size={24} color="#3B82F6" />
+            <View style={{ flex: 1, minWidth: Platform.OS === 'web' ? '23%' : '47%', backgroundColor: colors.cardBg, borderRadius: 12, padding: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 8, backgroundColor: colors.primary + '20' }}>
+                <Ionicons name="calendar-outline" size={24} color={colors.primary} />
               </View>
-              <Text style={styles.statValue}>{stats.total}</Text>
-              <Text style={styles.statLabel}>Totalt</Text>
+              <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>{stats.total}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>Totalt</Text>
             </View>
 
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: '#D1FAE5' }]}>
-                <Ionicons name="checkmark-circle-outline" size={24} color="#10B981" />
+            <View style={{ flex: 1, minWidth: Platform.OS === 'web' ? '23%' : '47%', backgroundColor: colors.cardBg, borderRadius: 12, padding: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 8, backgroundColor: colors.success + '20' }}>
+                <Ionicons name="checkmark-circle-outline" size={24} color={colors.success} />
               </View>
-              <Text style={styles.statValue}>{stats.published}</Text>
-              <Text style={styles.statLabel}>Publisert</Text>
+              <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>{stats.published}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>Publisert</Text>
             </View>
 
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: '#FEE2E2' }]}>
-                <Ionicons name="close-circle-outline" size={24} color="#EF4444" />
+            <View style={{ flex: 1, minWidth: Platform.OS === 'web' ? '23%' : '47%', backgroundColor: colors.cardBg, borderRadius: 12, padding: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 8, backgroundColor: colors.danger + '20' }}>
+                <Ionicons name="close-circle-outline" size={24} color={colors.danger} />
               </View>
-              <Text style={styles.statValue}>{stats.cancelled}</Text>
-              <Text style={styles.statLabel}>Avlyst</Text>
+              <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>{stats.cancelled}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>Avlyst</Text>
             </View>
 
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="people-outline" size={24} color="#F59E0B" />
+            <View style={{ flex: 1, minWidth: Platform.OS === 'web' ? '23%' : '47%', backgroundColor: colors.cardBg, borderRadius: 12, padding: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 8, backgroundColor: colors.warning + '20' }}>
+                <Ionicons name="people-outline" size={24} color={colors.warning} />
               </View>
-              <Text style={styles.statValue}>{stats.totalBookings}</Text>
-              <Text style={styles.statLabel}>Bookinger</Text>
+              <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>{stats.totalBookings}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>Bookinger</Text>
             </View>
           </View>
 
@@ -492,51 +494,51 @@ export default function ClassManagementScreen({ navigation }: any) {
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.filterRow}>
                 <TouchableOpacity
-                  style={[styles.filterChip, statusFilter === 'all' && styles.filterChipActive]}
+                  style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: statusFilter === 'all' ? colors.primary : colors.cardBg, borderWidth: 1, borderColor: statusFilter === 'all' ? colors.primary : colors.border }}
                   onPress={() => setStatusFilter('all')}
                 >
-                  <Text style={[styles.filterChipText, statusFilter === 'all' && styles.filterChipTextActive]}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: statusFilter === 'all' ? '#FFF' : colors.textSecondary }}>
                     Alle
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.filterChip, statusFilter === 'ACTIVE' && styles.filterChipActive]}
+                  style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: statusFilter === 'ACTIVE' ? colors.primary : colors.cardBg, borderWidth: 1, borderColor: statusFilter === 'ACTIVE' ? colors.primary : colors.border }}
                   onPress={() => setStatusFilter('ACTIVE')}
                 >
-                  <Text style={[styles.filterChipText, statusFilter === 'ACTIVE' && styles.filterChipTextActive]}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: statusFilter === 'ACTIVE' ? '#FFF' : colors.textSecondary }}>
                     Aktive
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.filterChip, statusFilter === 'CANCELLED' && styles.filterChipActive]}
+                  style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: statusFilter === 'CANCELLED' ? colors.primary : colors.cardBg, borderWidth: 1, borderColor: statusFilter === 'CANCELLED' ? colors.primary : colors.border }}
                   onPress={() => setStatusFilter('CANCELLED')}
                 >
-                  <Text style={[styles.filterChipText, statusFilter === 'CANCELLED' && styles.filterChipTextActive]}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: statusFilter === 'CANCELLED' ? '#FFF' : colors.textSecondary }}>
                     Avlyste
                   </Text>
                 </TouchableOpacity>
-                <View style={styles.filterDivider} />
+                <View style={{ width: 1, height: 24, backgroundColor: colors.border, marginHorizontal: 8 }} />
                 <TouchableOpacity
-                  style={[styles.filterChip, publishedFilter === 'all' && styles.filterChipActive]}
+                  style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: publishedFilter === 'all' ? colors.primary : colors.cardBg, borderWidth: 1, borderColor: publishedFilter === 'all' ? colors.primary : colors.border }}
                   onPress={() => setPublishedFilter('all')}
                 >
-                  <Text style={[styles.filterChipText, publishedFilter === 'all' && styles.filterChipTextActive]}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: publishedFilter === 'all' ? '#FFF' : colors.textSecondary }}>
                     Alle
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.filterChip, publishedFilter === 'published' && styles.filterChipActive]}
+                  style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: publishedFilter === 'published' ? colors.primary : colors.cardBg, borderWidth: 1, borderColor: publishedFilter === 'published' ? colors.primary : colors.border }}
                   onPress={() => setPublishedFilter('published')}
                 >
-                  <Text style={[styles.filterChipText, publishedFilter === 'published' && styles.filterChipTextActive]}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: publishedFilter === 'published' ? '#FFF' : colors.textSecondary }}>
                     Publisert
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.filterChip, publishedFilter === 'draft' && styles.filterChipActive]}
+                  style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: publishedFilter === 'draft' ? colors.primary : colors.cardBg, borderWidth: 1, borderColor: publishedFilter === 'draft' ? colors.primary : colors.border }}
                   onPress={() => setPublishedFilter('draft')}
                 >
-                  <Text style={[styles.filterChipText, publishedFilter === 'draft' && styles.filterChipTextActive]}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: publishedFilter === 'draft' ? '#FFF' : colors.textSecondary }}>
                     Utkast
                   </Text>
                 </TouchableOpacity>
@@ -547,14 +549,14 @@ export default function ClassManagementScreen({ navigation }: any) {
           {/* Classes List */}
           <View style={styles.classesList}>
             {filteredClasses.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="calendar-outline" size={64} color="#D1D5DB" />
-                <Text style={styles.emptyText}>
+              <View style={{ alignItems: 'center', paddingVertical: 64 }}>
+                <Ionicons name="calendar-outline" size={64} color={colors.border} />
+                <Text style={{ fontSize: 16, color: colors.textLight, marginTop: 16, marginBottom: 24 }}>
                   {classes.length === 0 ? 'Ingen klasser funnet' : 'Ingen klasser matcher filtrene'}
                 </Text>
                 {classes.length === 0 && (
-                  <TouchableOpacity style={styles.emptyButton} onPress={openAddModal}>
-                    <Text style={styles.emptyButtonText}>Opprett klasse</Text>
+                  <TouchableOpacity style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }} onPress={openAddModal}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFF' }}>Opprett klasse</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -564,33 +566,33 @@ export default function ClassManagementScreen({ navigation }: any) {
                 return (
                 <TouchableOpacity
                   key={classItem.id}
-                  style={styles.classCard}
+                  style={{ backgroundColor: colors.cardBg, borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 }}
                   onPress={() => openEditModal(classItem)}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.classHeader}>
-                    <View style={styles.classInfo}>
-                      <View style={styles.classNameRow}>
-                        <Text style={styles.className}>{classItem.name}</Text>
-                        <View style={[styles.statusBadge, { backgroundColor: statusBadge.bg }]}>
-                          <Text style={[styles.statusBadgeText, { color: statusBadge.color }]}>
+                  <View style={{ marginBottom: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>{classItem.name}</Text>
+                        <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: statusBadge.bg }}>
+                          <Text style={{ fontSize: 11, fontWeight: '600', textTransform: 'uppercase', color: statusBadge.color }}>
                             {statusBadge.text}
                           </Text>
                         </View>
                       </View>
-                      <Text style={styles.classDescription} numberOfLines={2}>
+                      <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }} numberOfLines={2}>
                         {classItem.description}
                       </Text>
-                      <View style={styles.classMeta}>
-                        <View style={styles.metaItem}>
-                          <Ionicons name="time-outline" size={16} color="#6B7280" />
-                          <Text style={styles.metaText}>
+                      <View style={{ gap: 6 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
+                          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
                             {formatDate(classItem.startTime)} {formatTime(classItem.startTime)}
                           </Text>
                         </View>
-                        <View style={styles.metaItem}>
-                          <Ionicons name="hourglass-outline" size={16} color="#6B7280" />
-                          <Text style={styles.metaText}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Ionicons name="hourglass-outline" size={16} color={colors.textSecondary} />
+                          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
                             {formatTime(classItem.startTime)} - {formatTime(classItem.endTime)}
                           </Text>
                         </View>
@@ -598,80 +600,78 @@ export default function ClassManagementScreen({ navigation }: any) {
                     </View>
                   </View>
 
-                  <View style={styles.capacityBar}>
-                    <View style={styles.capacityInfo}>
-                      <Text style={styles.capacityText}>
+                  <View style={{ marginBottom: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>
                         {classItem._count?.bookings || 0} / {classItem.capacity} plasser
                       </Text>
                       <Text
-                        style={[
-                          styles.spotsText,
-                          {
-                            color:
-                              getAvailableSpots(classItem) === 0
-                                ? '#EF4444'
-                                : getAvailableSpots(classItem) < 5
-                                ? '#F59E0B'
-                                : '#10B981',
-                          },
-                        ]}
+                        style={{
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color:
+                            getAvailableSpots(classItem) === 0
+                              ? colors.danger
+                              : getAvailableSpots(classItem) < 5
+                              ? colors.warning
+                              : colors.success,
+                        }}
                       >
                         {getAvailableSpots(classItem)} ledige
                       </Text>
                     </View>
-                    <View style={styles.progressBar}>
+                    <View style={{ height: 8, backgroundColor: colors.border, borderRadius: 4, overflow: 'hidden' }}>
                       <View
-                        style={[
-                          styles.progressFill,
-                          {
-                            width: `${
-                              ((classItem._count?.bookings || 0) / classItem.capacity) *
-                              100
-                            }%`,
-                            backgroundColor:
-                              getAvailableSpots(classItem) === 0
-                                ? '#EF4444'
-                                : getAvailableSpots(classItem) < 5
-                                ? '#F59E0B'
-                                : '#3B82F6',
-                          },
-                        ]}
+                        style={{
+                          height: '100%',
+                          borderRadius: 4,
+                          width: `${
+                            ((classItem._count?.bookings || 0) / classItem.capacity) *
+                            100
+                          }%`,
+                          backgroundColor:
+                            getAvailableSpots(classItem) === 0
+                              ? colors.danger
+                              : getAvailableSpots(classItem) < 5
+                              ? colors.warning
+                              : colors.primary,
+                        }}
                       />
                     </View>
                   </View>
 
-                  <View style={styles.actionButtons}>
+                  <View style={{ flexDirection: 'row', gap: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
                     <TouchableOpacity
-                      style={styles.editButton}
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + '10' }}
                       onPress={() => openEditModal(classItem)}
                     >
-                      <Ionicons name="create-outline" size={18} color="#3B82F6" />
-                      <Text style={styles.editButtonText}>Rediger</Text>
+                      <Ionicons name="create-outline" size={18} color={colors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>Rediger</Text>
                     </TouchableOpacity>
 
                     {classItem.status === 'ACTIVE' && (
                       <>
                         {classItem.published ? (
                           <TouchableOpacity
-                            style={styles.unpublishButton}
+                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.textSecondary, backgroundColor: colors.textSecondary + '10' }}
                             onPress={(e) => {
                               e.stopPropagation();
                               handleUnpublishClass(classItem.id);
                             }}
                           >
-                            <Ionicons name="eye-off-outline" size={18} color="#6B7280" />
-                            <Text style={styles.unpublishButtonText}>Skjul</Text>
+                            <Ionicons name="eye-off-outline" size={18} color={colors.textSecondary} />
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary }}>Skjul</Text>
                           </TouchableOpacity>
                         ) : (
                           <TouchableOpacity
-                            style={styles.publishButton}
+                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.success, backgroundColor: colors.success + '10' }}
                             onPress={(e) => {
                               e.stopPropagation();
                               handlePublishClass(classItem.id);
                             }}
                           >
-                            <Ionicons name="eye-outline" size={18} color="#10B981" />
-                            <Text style={styles.publishButtonText}>Publiser</Text>
+                            <Ionicons name="eye-outline" size={18} color={colors.success} />
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.success }}>Publiser</Text>
                           </TouchableOpacity>
                         )}
                       </>
@@ -679,25 +679,25 @@ export default function ClassManagementScreen({ navigation }: any) {
 
                     {classItem.status === 'ACTIVE' && (
                       <TouchableOpacity
-                        style={styles.cancelButton}
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.warning, backgroundColor: colors.warning + '10' }}
                         onPress={(e) => {
                           e.stopPropagation();
                           handleCancelClass(classItem.id);
                         }}
                       >
-                        <Ionicons name="close-circle-outline" size={18} color="#F59E0B" />
-                        <Text style={styles.cancelButtonText}>Avlys</Text>
+                        <Ionicons name="close-circle-outline" size={18} color={colors.warning} />
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.warning }}>Avlys</Text>
                       </TouchableOpacity>
                     )}
 
                     <TouchableOpacity
-                      style={styles.deleteButton}
+                      style={{ width: 44, height: 44, borderRadius: 8, borderWidth: 1, borderColor: colors.danger, backgroundColor: colors.danger + '10', justifyContent: 'center', alignItems: 'center' }}
                       onPress={(e) => {
                         e.stopPropagation();
                         handleDeleteClass(classItem.id);
                       }}
                     >
-                      <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                      <Ionicons name="trash-outline" size={18} color={colors.danger} />
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
@@ -716,150 +716,150 @@ export default function ClassManagementScreen({ navigation }: any) {
         onRequestClose={() => setModalVisible(false)}
       >
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.modalOverlay}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View style={styles.modalContent}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>
+              <View style={{ backgroundColor: colors.cardBg, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%', paddingBottom: Platform.OS === 'ios' ? 34 : 20 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                  <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>
                     {editMode ? 'Rediger klasse' : 'Ny klasse'}
                   </Text>
                   <TouchableOpacity onPress={() => setModalVisible(false)}>
-                    <Ionicons name="close" size={24} color="#111827" />
+                    <Ionicons name="close" size={24} color={colors.text} />
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView style={styles.modalBody}>
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Klassenavn *</Text>
+                <ScrollView style={{ padding: 20 }}>
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 }}>Klassenavn *</Text>
                     <TextInput
-                      style={styles.input}
+                      style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: colors.cardBg, color: colors.text }}
                       value={formData.name}
                       onChangeText={(text) =>
                         setFormData({ ...formData, name: text })
                       }
                       placeholder="Eks: Yoga for nybegynnere"
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.textLight}
                     />
                   </View>
 
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Beskrivelse</Text>
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 }}>Beskrivelse</Text>
                     <TextInput
-                      style={[styles.input, styles.textArea]}
+                      style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: colors.cardBg, color: colors.text, minHeight: 100, textAlignVertical: 'top' }}
                       value={formData.description}
                       onChangeText={(text) =>
                         setFormData({ ...formData, description: text })
                       }
                       placeholder="Beskrivelse av klassen"
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.textLight}
                       multiline
                       numberOfLines={4}
                     />
                   </View>
 
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Starttid *</Text>
-                    <View style={styles.dateTimeRow}>
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 }}>Starttid *</Text>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
                       <TouchableOpacity
-                        style={[styles.dateButton, { flex: 1 }]}
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, minHeight: 48 }}
                         onPress={() => setShowStartDatePicker(true)}
                       >
-                        <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-                        <Text style={styles.dateButtonText}>
+                        <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+                        <Text style={{ fontSize: 16, color: colors.text }}>
                           {formatDate(startDateTime.toISOString())}
                         </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.dateButton, { flex: 1 }]}
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, minHeight: 48 }}
                         onPress={() => setShowStartTimePicker(true)}
                       >
-                        <Ionicons name="time-outline" size={20} color="#6B7280" />
-                        <Text style={styles.dateButtonText}>
+                        <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+                        <Text style={{ fontSize: 16, color: colors.text }}>
                           {formatTime(startDateTime.toISOString())}
                         </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
 
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Sluttid *</Text>
-                    <View style={styles.dateTimeRow}>
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 }}>Sluttid *</Text>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
                       <TouchableOpacity
-                        style={[styles.dateButton, { flex: 1 }]}
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, minHeight: 48 }}
                         onPress={() => setShowEndDatePicker(true)}
                       >
-                        <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-                        <Text style={styles.dateButtonText}>
+                        <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+                        <Text style={{ fontSize: 16, color: colors.text }}>
                           {formatDate(endDateTime.toISOString())}
                         </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.dateButton, { flex: 1 }]}
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, minHeight: 48 }}
                         onPress={() => setShowEndTimePicker(true)}
                       >
-                        <Ionicons name="time-outline" size={20} color="#6B7280" />
-                        <Text style={styles.dateButtonText}>
+                        <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+                        <Text style={{ fontSize: 16, color: colors.text }}>
                           {formatTime(endDateTime.toISOString())}
                         </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
 
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Kapasitet *</Text>
-                    <View style={styles.capacityInputContainer}>
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 }}>Kapasitet *</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                       <TouchableOpacity
-                        style={styles.capacityButton}
+                        style={{ width: 44, height: 44, borderRadius: 8, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + '10', justifyContent: 'center', alignItems: 'center' }}
                         onPress={decreaseCapacity}
                       >
-                        <Ionicons name="remove" size={20} color="#3B82F6" />
+                        <Ionicons name="remove" size={20} color={colors.primary} />
                       </TouchableOpacity>
                       <TextInput
-                        style={styles.capacityInput}
+                        style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: colors.cardBg, color: colors.text, textAlign: 'center' }}
                         value={formData.capacity}
                         onChangeText={(text) =>
                           setFormData({ ...formData, capacity: text.replace(/[^0-9]/g, '') })
                         }
                         placeholder="Antall plasser"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={colors.textLight}
                         keyboardType="number-pad"
                       />
                       <TouchableOpacity
-                        style={styles.capacityButton}
+                        style={{ width: 44, height: 44, borderRadius: 8, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + '10', justifyContent: 'center', alignItems: 'center' }}
                         onPress={increaseCapacity}
                       >
-                        <Ionicons name="add" size={20} color="#3B82F6" />
+                        <Ionicons name="add" size={20} color={colors.primary} />
                       </TouchableOpacity>
                     </View>
                   </View>
 
                   {editMode && (
-                    <View style={styles.modalActionButtons}>
+                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
                       <TouchableOpacity
-                        style={styles.modalCancelButton}
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.warning, backgroundColor: colors.warning + '10' }}
                         onPress={() => handleCancelClass(selectedClass?.id || '')}
                       >
-                        <Ionicons name="close-circle-outline" size={20} color="#F59E0B" />
-                        <Text style={styles.modalCancelButtonText}>Avlys klasse</Text>
+                        <Ionicons name="close-circle-outline" size={20} color={colors.warning} />
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.warning }}>Avlys klasse</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={styles.modalDeleteButton}
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.danger, backgroundColor: colors.danger + '10' }}
                         onPress={() => handleDeleteClass(selectedClass?.id || '')}
                       >
-                        <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                        <Text style={styles.modalDeleteButtonText}>Slett klasse</Text>
+                        <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.danger }}>Slett klasse</Text>
                       </TouchableOpacity>
                     </View>
                   )}
 
                   <TouchableOpacity
-                    style={styles.saveButton}
+                    style={{ backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 8 }}
                     onPress={handleSaveClass}
                   >
-                    <Text style={styles.saveButtonText}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFF' }}>
                       {editMode ? 'Oppdater klasse' : 'Opprett klasse'}
                     </Text>
                   </TouchableOpacity>
@@ -874,12 +874,12 @@ export default function ClassManagementScreen({ navigation }: any) {
                     onRequestClose={closeAllPickers}
                   >
                     <TouchableWithoutFeedback onPress={closeAllPickers}>
-                      <View style={styles.pickerModalOverlay}>
+                      <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
                         <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-                          <View style={styles.pickerModalContent}>
-                            <View style={styles.pickerHeader}>
+                          <View style={{ backgroundColor: colors.cardBg, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 20 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
                               <TouchableOpacity onPress={closeAllPickers}>
-                                <Text style={styles.pickerDoneText}>Ferdig</Text>
+                                <Text style={{ fontSize: 17, fontWeight: '600', color: colors.primary }}>Ferdig</Text>
                               </TouchableOpacity>
                             </View>
                             {showStartDatePicker && (
@@ -888,7 +888,7 @@ export default function ClassManagementScreen({ navigation }: any) {
                                 mode="date"
                                 display="spinner"
                                 onChange={handleStartDateChange}
-                                textColor="#111827"
+                                textColor={colors.text}
                               />
                             )}
                             {showStartTimePicker && (
@@ -897,7 +897,7 @@ export default function ClassManagementScreen({ navigation }: any) {
                                 mode="time"
                                 display="spinner"
                                 onChange={handleStartTimeChange}
-                                textColor="#111827"
+                                textColor={colors.text}
                               />
                             )}
                             {showEndDatePicker && (
@@ -906,7 +906,7 @@ export default function ClassManagementScreen({ navigation }: any) {
                                 mode="date"
                                 display="spinner"
                                 onChange={handleEndDateChange}
-                                textColor="#111827"
+                                textColor={colors.text}
                               />
                             )}
                             {showEndTimePicker && (
@@ -915,7 +915,7 @@ export default function ClassManagementScreen({ navigation }: any) {
                                 mode="time"
                                 display="spinner"
                                 onChange={handleEndTimeChange}
-                                textColor="#111827"
+                                textColor={colors.text}
                               />
                             )}
                           </View>
@@ -971,20 +971,6 @@ export default function ClassManagementScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -992,382 +978,11 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 16,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#3B82F6',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  addButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFF',
-  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
     marginBottom: 24,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: Platform.OS === 'web' ? '23%' : '47%',
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  classesList: {
-    gap: 12,
-    paddingBottom: 24,
-  },
-  classCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  classHeader: {
-    marginBottom: 12,
-  },
-  classInfo: {
-    flex: 1,
-  },
-  className: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  classDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  classMeta: {
-    gap: 6,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  capacityBar: {
-    marginBottom: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  capacityInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  capacityText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  spotsText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  editButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#3B82F6',
-    backgroundColor: '#EFF6FF',
-  },
-  editButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#3B82F6',
-  },
-  cancelButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-    backgroundColor: '#FEF3C7',
-  },
-  cancelButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#F59E0B',
-  },
-  deleteButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#EF4444',
-    backgroundColor: '#FEE2E2',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 64,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  emptyButton: {
-    backgroundColor: '#3B82F6',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  emptyButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#FFF',
-    color: '#111827',
-  },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  dateTimeRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    minHeight: 48,
-  },
-  dateButtonText: {
-    fontSize: 16,
-    color: '#111827',
-  },
-  capacityInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  capacityButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#3B82F6',
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  capacityInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#FFF',
-    color: '#111827',
-    textAlign: 'center',
-  },
-  modalActionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  modalCancelButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-    backgroundColor: '#FEF3C7',
-  },
-  modalCancelButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#F59E0B',
-  },
-  modalDeleteButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#EF4444',
-    backgroundColor: '#FEE2E2',
-  },
-  modalDeleteButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#EF4444',
-  },
-  saveButton: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  pickerModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  pickerModalContent: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 20,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  pickerDoneText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#3B82F6',
   },
   filtersContainer: {
     marginBottom: 20,
@@ -1377,80 +992,8 @@ const styles = StyleSheet.create({
     gap: 8,
     alignItems: 'center',
   },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  filterChipActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
-  },
-  filterChipText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  filterChipTextActive: {
-    color: '#FFF',
-  },
-  filterDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#E5E7EB',
-    marginHorizontal: 8,
-  },
-  classNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  publishButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#10B981',
-    backgroundColor: '#D1FAE5',
-  },
-  publishButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#10B981',
-  },
-  unpublishButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#6B7280',
-    backgroundColor: '#F3F4F6',
-  },
-  unpublishButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
+  classesList: {
+    gap: 12,
+    paddingBottom: 24,
   },
 });

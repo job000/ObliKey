@@ -11,11 +11,13 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import Container from '../components/Container';
 import type { Order } from '../types';
 
 export default function PurchaseHistoryScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -57,17 +59,17 @@ export default function PurchaseHistoryScreen({ navigation }: any) {
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
       case 'PENDING':
-        return '#F59E0B';
+        return colors.warning;
       case 'PROCESSING':
-        return '#3B82F6';
+        return colors.primary;
       case 'SHIPPED':
-        return '#8B5CF6';
+        return colors.accent;
       case 'DELIVERED':
-        return '#10B981';
+        return colors.success;
       case 'CANCELLED':
-        return '#EF4444';
+        return colors.danger;
       default:
-        return '#6B7280';
+        return colors.textSecondary;
     }
   };
 
@@ -108,9 +110,9 @@ export default function PurchaseHistoryScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -119,22 +121,22 @@ export default function PurchaseHistoryScreen({ navigation }: any) {
   const filteredOrders = getFilteredOrders();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.screenHeader}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <View style={[styles.screenHeader, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
         <Container>
           <View style={styles.headerContent}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
               style={styles.backButton}
             >
-              <Ionicons name="arrow-back" size={24} color="#111827" />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Kjøpshistorikk</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Kjøpshistorikk</Text>
           </View>
         </Container>
       </View>
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -145,14 +147,15 @@ export default function PurchaseHistoryScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.filterButton,
-              filter === 'all' && styles.filterButtonActive,
+              { borderColor: colors.border, backgroundColor: filter === 'all' ? colors.primary : colors.cardBg },
+              filter === 'all' && { borderColor: colors.primary },
             ]}
             onPress={() => setFilter('all')}
           >
             <Text
               style={[
                 styles.filterButtonText,
-                filter === 'all' && styles.filterButtonTextActive,
+                { color: filter === 'all' ? colors.cardBg : colors.text },
               ]}
             >
               Alle
@@ -161,14 +164,15 @@ export default function PurchaseHistoryScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.filterButton,
-              filter === 'pending' && styles.filterButtonActive,
+              { borderColor: colors.border, backgroundColor: filter === 'pending' ? colors.primary : colors.cardBg },
+              filter === 'pending' && { borderColor: colors.primary },
             ]}
             onPress={() => setFilter('pending')}
           >
             <Text
               style={[
                 styles.filterButtonText,
-                filter === 'pending' && styles.filterButtonTextActive,
+                { color: filter === 'pending' ? colors.cardBg : colors.text },
               ]}
             >
               Aktive
@@ -177,14 +181,15 @@ export default function PurchaseHistoryScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.filterButton,
-              filter === 'completed' && styles.filterButtonActive,
+              { borderColor: colors.border, backgroundColor: filter === 'completed' ? colors.primary : colors.cardBg },
+              filter === 'completed' && { borderColor: colors.primary },
             ]}
             onPress={() => setFilter('completed')}
           >
             <Text
               style={[
                 styles.filterButtonText,
-                filter === 'completed' && styles.filterButtonTextActive,
+                { color: filter === 'completed' ? colors.cardBg : colors.text },
               ]}
             >
               Fullført
@@ -195,27 +200,27 @@ export default function PurchaseHistoryScreen({ navigation }: any) {
         <View style={styles.ordersList}>
           {filteredOrders.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyText}>Ingen bestillinger funnet</Text>
+              <Ionicons name="receipt-outline" size={64} color={colors.border} />
+              <Text style={[styles.emptyText, { color: colors.textLight }]}>Ingen bestillinger funnet</Text>
               <TouchableOpacity
-                style={styles.emptyButton}
+                style={[styles.emptyButton, { backgroundColor: colors.primary }]}
                 onPress={() => navigation.navigate('Shop')}
               >
-                <Text style={styles.emptyButtonText}>Gå til butikken</Text>
+                <Text style={[styles.emptyButtonText, { color: colors.cardBg }]}>Gå til butikken</Text>
               </TouchableOpacity>
             </View>
           ) : (
             filteredOrders.map((order) => (
               <TouchableOpacity
                 key={order.id}
-                style={styles.orderCard}
+                style={[styles.orderCard, { backgroundColor: colors.cardBg }]}
                 onPress={() => navigation.navigate('OrderDetails', { orderId: order.id })}
                 activeOpacity={0.7}
               >
                 <View style={styles.orderHeader}>
                   <View style={styles.orderInfo}>
-                    <Text style={styles.orderNumber}>#{order.orderNumber}</Text>
-                    <Text style={styles.orderDate}>
+                    <Text style={[styles.orderNumber, { color: colors.text }]}>#{order.orderNumber}</Text>
+                    <Text style={[styles.orderDate, { color: colors.textSecondary }]}>
                       {formatDate(order.createdAt)}
                     </Text>
                   </View>
@@ -236,34 +241,34 @@ export default function PurchaseHistoryScreen({ navigation }: any) {
                   </View>
                 </View>
 
-                <View style={styles.orderItems}>
-                  <Text style={styles.itemsLabel}>
+                <View style={[styles.orderItems, { borderTopColor: colors.borderLight }]}>
+                  <Text style={[styles.itemsLabel, { color: colors.text }]}>
                     {order.items.length} {order.items.length === 1 ? 'vare' : 'varer'}
                   </Text>
                   <View style={styles.itemsList}>
                     {order.items.slice(0, 3).map((item, index) => (
-                      <Text key={index} style={styles.itemText} numberOfLines={1}>
+                      <Text key={index} style={[styles.itemText, { color: colors.textSecondary }]} numberOfLines={1}>
                         • {item.productName} (x{item.quantity})
                       </Text>
                     ))}
                     {order.items.length > 3 && (
-                      <Text style={styles.moreItems}>
+                      <Text style={[styles.moreItems, { color: colors.textLight }]}>
                         +{order.items.length - 3} flere
                       </Text>
                     )}
                   </View>
                 </View>
 
-                <View style={styles.orderFooter}>
-                  <Text style={styles.totalLabel}>Total:</Text>
-                  <Text style={styles.totalAmount}>
+                <View style={[styles.orderFooter, { borderTopColor: colors.borderLight }]}>
+                  <Text style={[styles.totalLabel, { color: colors.text }]}>Total:</Text>
+                  <Text style={[styles.totalAmount, { color: colors.text }]}>
                     {`${order.total.toLocaleString('nb-NO')} kr`}
                   </Text>
                 </View>
 
                 <View style={styles.viewDetailsButton}>
-                  <Text style={styles.viewDetailsText}>Se detaljer</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#3B82F6" />
+                  <Text style={[styles.viewDetailsText, { color: colors.primary }]}>Se detaljer</Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.primary} />
                 </View>
               </TouchableOpacity>
             ))
@@ -278,16 +283,12 @@ export default function PurchaseHistoryScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   screenHeader: {
-    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
     paddingVertical: 16,
   },
   headerContent: {
@@ -301,13 +302,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
   },
   filterContainer: {
     flexDirection: 'row',
@@ -320,28 +319,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFF',
     alignItems: 'center',
-  },
-  filterButtonActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
   },
   filterButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
-  },
-  filterButtonTextActive: {
-    color: '#FFF',
   },
   ordersList: {
     gap: 16,
     paddingBottom: 24,
   },
   orderCard: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -362,12 +350,10 @@ const styles = StyleSheet.create({
   orderNumber: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
     marginBottom: 4,
   },
   orderDate: {
     fontSize: 14,
-    color: '#6B7280',
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -382,12 +368,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
   },
   itemsLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   itemsList: {
@@ -395,11 +379,9 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: 14,
-    color: '#6B7280',
   },
   moreItems: {
     fontSize: 14,
-    color: '#9CA3AF',
     fontStyle: 'italic',
   },
   orderFooter: {
@@ -408,18 +390,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
     marginBottom: 12,
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
   },
   totalAmount: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
   },
   viewDetailsButton: {
     flexDirection: 'row',
@@ -431,7 +410,6 @@ const styles = StyleSheet.create({
   viewDetailsText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3B82F6',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -439,12 +417,10 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#9CA3AF',
     marginTop: 16,
     marginBottom: 24,
   },
   emptyButton: {
-    backgroundColor: '#3B82F6',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -452,6 +428,5 @@ const styles = StyleSheet.create({
   emptyButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFF',
   },
 });

@@ -13,9 +13,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
+import { useTheme } from '../contexts/ThemeContext';
 import Container from '../components/Container';
 
 export default function ResetPasswordScreen({ navigation, route }: any) {
+  const { colors } = useTheme();
   const [token, setToken] = useState(route?.params?.token || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -87,7 +89,7 @@ export default function ResetPasswordScreen({ navigation, route }: any) {
     color: string;
     strength: number;
   } => {
-    if (!newPassword) return { label: '', color: '#D1D5DB', strength: 0 };
+    if (!newPassword) return { label: '', color: colors.border, strength: 0 };
 
     let strength = 0;
 
@@ -98,16 +100,16 @@ export default function ResetPasswordScreen({ navigation, route }: any) {
     if (/[0-9]/.test(newPassword)) strength += 1;
     if (/[^a-zA-Z0-9]/.test(newPassword)) strength += 1;
 
-    if (strength <= 2) return { label: 'Svakt', color: '#EF4444', strength };
-    if (strength <= 4) return { label: 'Middels', color: '#F59E0B', strength };
-    return { label: 'Sterkt', color: '#10B981', strength };
+    if (strength <= 2) return { label: 'Svakt', color: colors.danger, strength };
+    if (strength <= 4) return { label: 'Middels', color: colors.warning, strength };
+    return { label: 'Sterkt', color: colors.success, strength };
   };
 
   const passwordStrength = getPasswordStrength();
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <Container>
@@ -116,11 +118,11 @@ export default function ResetPasswordScreen({ navigation, route }: any) {
           contentContainerStyle={styles.scrollContent}
         >
           <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="lock-closed" size={48} color="#3B82F6" />
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="lock-closed" size={48} color={colors.primary} />
             </View>
-            <Text style={styles.title}>Tilbakestill passord</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: colors.text }]}>Tilbakestill passord</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Opprett et nytt, sterkt passord for kontoen din
             </Text>
           </View>
@@ -129,24 +131,25 @@ export default function ResetPasswordScreen({ navigation, route }: any) {
             {/* Token Input (if not provided via route) */}
             {!route?.params?.token && (
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Tilbakestillingskode</Text>
-                <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: colors.text }]}>Tilbakestillingskode</Text>
+                <View style={[styles.inputContainer, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
                   <Ionicons
                     name="key"
                     size={20}
-                    color="#9CA3AF"
+                    color={colors.textLight}
                     style={styles.inputIcon}
                   />
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: colors.text }]}
                     placeholder="Skriv inn koden du mottok"
+                    placeholderTextColor={colors.textLight}
                     value={token}
                     onChangeText={setToken}
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
                 </View>
-                <Text style={styles.helperText}>
+                <Text style={[styles.helperText, { color: colors.textSecondary }]}>
                   Koden ble sendt til deg via e-post
                 </Text>
               </View>
@@ -154,17 +157,18 @@ export default function ResetPasswordScreen({ navigation, route }: any) {
 
             {/* New Password */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nytt passord</Text>
-              <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: colors.text }]}>Nytt passord</Text>
+              <View style={[styles.inputContainer, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
                 <Ionicons
                   name="lock-closed"
                   size={20}
-                  color="#9CA3AF"
+                  color={colors.textLight}
                   style={styles.inputIcon}
                 />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text }]}
                   placeholder="Minst 8 tegn"
+                  placeholderTextColor={colors.textLight}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry={!showPassword}
@@ -178,7 +182,7 @@ export default function ResetPasswordScreen({ navigation, route }: any) {
                   <Ionicons
                     name={showPassword ? 'eye-off' : 'eye'}
                     size={20}
-                    color="#9CA3AF"
+                    color={colors.textLight}
                   />
                 </TouchableOpacity>
               </View>
@@ -186,7 +190,7 @@ export default function ResetPasswordScreen({ navigation, route }: any) {
               {/* Password Strength Indicator */}
               {newPassword && (
                 <View style={styles.strengthContainer}>
-                  <View style={styles.strengthBarContainer}>
+                  <View style={[styles.strengthBarContainer, { backgroundColor: colors.border }]}>
                     <View
                       style={[
                         styles.strengthBar,
@@ -203,48 +207,49 @@ export default function ResetPasswordScreen({ navigation, route }: any) {
                 </View>
               )}
 
-              <View style={styles.requirements}>
-                <Text style={styles.requirementsTitle}>Krav til passord:</Text>
+              <View style={[styles.requirements, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[styles.requirementsTitle, { color: colors.text }]}>Krav til passord:</Text>
                 <View style={styles.requirement}>
                   <Ionicons
                     name={newPassword.length >= 8 ? 'checkmark-circle' : 'close-circle'}
                     size={16}
-                    color={newPassword.length >= 8 ? '#10B981' : '#EF4444'}
+                    color={newPassword.length >= 8 ? colors.success : colors.danger}
                   />
-                  <Text style={styles.requirementText}>Minst 8 tegn</Text>
+                  <Text style={[styles.requirementText, { color: colors.textSecondary }]}>Minst 8 tegn</Text>
                 </View>
                 <View style={styles.requirement}>
                   <Ionicons
                     name={/[A-Z]/.test(newPassword) ? 'checkmark-circle' : 'close-circle'}
                     size={16}
-                    color={/[A-Z]/.test(newPassword) ? '#10B981' : '#EF4444'}
+                    color={/[A-Z]/.test(newPassword) ? colors.success : colors.danger}
                   />
-                  <Text style={styles.requirementText}>Minst én stor bokstav</Text>
+                  <Text style={[styles.requirementText, { color: colors.textSecondary }]}>Minst én stor bokstav</Text>
                 </View>
                 <View style={styles.requirement}>
                   <Ionicons
                     name={/[0-9]/.test(newPassword) ? 'checkmark-circle' : 'close-circle'}
                     size={16}
-                    color={/[0-9]/.test(newPassword) ? '#10B981' : '#EF4444'}
+                    color={/[0-9]/.test(newPassword) ? colors.success : colors.danger}
                   />
-                  <Text style={styles.requirementText}>Minst ett tall</Text>
+                  <Text style={[styles.requirementText, { color: colors.textSecondary }]}>Minst ett tall</Text>
                 </View>
               </View>
             </View>
 
             {/* Confirm Password */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Bekreft passord</Text>
-              <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: colors.text }]}>Bekreft passord</Text>
+              <View style={[styles.inputContainer, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
                 <Ionicons
                   name="lock-closed"
                   size={20}
-                  color="#9CA3AF"
+                  color={colors.textLight}
                   style={styles.inputIcon}
                 />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text }]}
                   placeholder="Skriv inn passordet på nytt"
+                  placeholderTextColor={colors.textLight}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showConfirmPassword}
@@ -258,18 +263,18 @@ export default function ResetPasswordScreen({ navigation, route }: any) {
                   <Ionicons
                     name={showConfirmPassword ? 'eye-off' : 'eye'}
                     size={20}
-                    color="#9CA3AF"
+                    color={colors.textLight}
                   />
                 </TouchableOpacity>
               </View>
               {confirmPassword && newPassword !== confirmPassword && (
-                <Text style={styles.errorText}>Passordene stemmer ikke overens</Text>
+                <Text style={[styles.errorText, { color: colors.danger }]}>Passordene stemmer ikke overens</Text>
               )}
             </View>
 
             {/* Submit Button */}
             <TouchableOpacity
-              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+              style={[styles.submitButton, { backgroundColor: loading ? colors.primary + '80' : colors.primary }]}
               onPress={handleResetPassword}
               disabled={loading}
             >
@@ -288,8 +293,8 @@ export default function ResetPasswordScreen({ navigation, route }: any) {
               style={styles.backToLoginButton}
               onPress={() => navigation.navigate('Login')}
             >
-              <Ionicons name="arrow-back" size={16} color="#3B82F6" />
-              <Text style={styles.backToLoginText}>Tilbake til innlogging</Text>
+              <Ionicons name="arrow-back" size={16} color={colors.primary} />
+              <Text style={[styles.backToLoginText, { color: colors.primary }]}>Tilbake til innlogging</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -301,7 +306,6 @@ export default function ResetPasswordScreen({ navigation, route }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   scrollContent: {
     flexGrow: 1,
@@ -315,7 +319,6 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -323,12 +326,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#111827',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
     textAlign: 'center',
   },
   form: {
@@ -340,15 +341,12 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     paddingHorizontal: 12,
   },
   inputIcon: {
@@ -358,25 +356,21 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#111827',
   },
   eyeIcon: {
     padding: 4,
   },
   helperText: {
     fontSize: 13,
-    color: '#6B7280',
   },
   errorText: {
     fontSize: 13,
-    color: '#EF4444',
   },
   strengthContainer: {
     gap: 8,
   },
   strengthBarContainer: {
     height: 4,
-    backgroundColor: '#E5E7EB',
     borderRadius: 2,
     overflow: 'hidden',
   },
@@ -391,15 +385,12 @@ const styles = StyleSheet.create({
   requirements: {
     gap: 8,
     padding: 12,
-    backgroundColor: '#F9FAFB',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   requirementsTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 4,
   },
   requirement: {
@@ -409,20 +400,15 @@ const styles = StyleSheet.create({
   },
   requirementText: {
     fontSize: 13,
-    color: '#6B7280',
   },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3B82F6',
     borderRadius: 8,
     paddingVertical: 14,
     gap: 8,
     marginTop: 8,
-  },
-  submitButtonDisabled: {
-    backgroundColor: '#93C5FD',
   },
   submitButtonText: {
     fontSize: 16,
@@ -439,6 +425,5 @@ const styles = StyleSheet.create({
   backToLoginText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#3B82F6',
   },
 });

@@ -37,9 +37,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         setNotifications(response.data || []);
       }
     } catch (error: any) {
-      // Silently handle 403 errors
-      if (error?.response?.status === 403) {
-        console.log('[Notifications] Access denied');
+      // Silently handle 403 and 404 errors (endpoint may not exist in production)
+      if (error?.response?.status === 403 || error?.response?.status === 404) {
+        console.log('[Notifications] Access denied or endpoint not available');
         return;
       }
       console.error('Failed to fetch notifications:', error);
@@ -60,9 +60,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         setUnreadCount(response.data?.count || 0);
       }
     } catch (error: any) {
-      // Silently handle 403 errors (likely due to deactivated tenant)
-      if (error?.response?.status === 403) {
-        console.log('[Notifications] Tenant is deactivated or access denied');
+      // Silently handle 403 and 404 errors (endpoint may not exist in production)
+      if (error?.response?.status === 403 || error?.response?.status === 404) {
+        console.log('[Notifications] Tenant is deactivated, access denied, or endpoint not available');
         setUnreadCount(0);
         return;
       }
@@ -120,9 +120,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         setPreferences(response.data);
       }
     } catch (error: any) {
-      // Silently handle 403 errors
-      if (error?.response?.status === 403) {
-        console.log('[Notifications] Access denied to preferences');
+      // Silently handle 403 and 404 errors (endpoint may not exist in production)
+      if (error?.response?.status === 403 || error?.response?.status === 404) {
+        console.log('[Notifications] Access denied or endpoint not available');
         return;
       }
       console.error('Failed to fetch notification preferences:', error);
